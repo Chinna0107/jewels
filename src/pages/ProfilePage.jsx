@@ -15,8 +15,8 @@ export function ProfilePage() {
         <Header title="My Profile" />
         <User className="w-16 h-16 text-gray-300 mt-20" />
         <p className="text-gray-600 font-semibold">You're not logged in</p>
-        <Link to="/login" className="bg-brand-orange text-white font-bold px-8 py-3 rounded-xl text-sm">Login</Link>
-        <Link to="/signup" className="text-brand-orange text-sm font-semibold">Create Account</Link>
+        <Link to="/login" className="bg-brand-gold text-white font-bold px-8 py-3 rounded-xl text-sm">Login</Link>
+        <Link to="/signup" className="text-brand-gold text-sm font-semibold">Create Account</Link>
         <BottomNav />
       </div>
     );
@@ -32,7 +32,7 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <Header title="My Profile" />
-      <div className="bg-brand-orange text-white px-6 pt-6 pb-8 rounded-b-[2.5rem] shadow-sm">
+      <div className="bg-brand-gold text-white px-6 pt-6 pb-8 rounded-b-[2.5rem] shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center border-2 border-white/40 shrink-0">
             <User className="w-8 h-8 text-white" />

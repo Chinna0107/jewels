@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Grid, Box, User, Search } from 'lucide-react';
+import { Home, Grid, Info, User, Search } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -12,7 +12,7 @@ export function BottomNav() {
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Categories', icon: Grid, path: '/category/all' },
     { name: 'Search', icon: Search, path: '/category/all' },
-    { name: 'Orders', icon: Box, path: '/my-orders' },
+    { name: 'About Us', icon: Info, path: '/about' },
     { name: 'Profile', icon: User, path: token ? '/dashboard' : '/login' },
   ];
 
@@ -21,13 +21,13 @@ export function BottomNav() {
       <div className="flex justify-around items-center h-[72px] px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = tab.name === 'Search' 
+          const isActive = tab.name === 'Search'
             ? false // Search just acts as a quick link
             : tab.name === 'Categories'
-            ? location.pathname.startsWith('/category')
-            : tab.name === 'Profile'
-            ? location.pathname === '/profile' || location.pathname === '/dashboard' || location.pathname === '/my-addresses'
-            : location.pathname === tab.path || (tab.name === 'Orders' && location.pathname.startsWith('/my-orders'));
+              ? location.pathname.startsWith('/category')
+              : tab.name === 'Profile'
+                ? location.pathname === '/profile' || location.pathname === '/dashboard' || location.pathname === '/my-addresses'
+                : location.pathname === tab.path || (tab.name === 'About Us' && location.pathname.startsWith('/about'));
 
           return (
             <NavLink key={tab.name} to={tab.path}
@@ -39,11 +39,11 @@ export function BottomNav() {
               }}
               className={cn(
                 'flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-all duration-300 relative',
-                isActive ? 'text-[#C16E4F] -translate-y-1' : 'text-gray-400 hover:text-[#C16E4F]'
+                isActive ? 'text-brand-dark-blue -translate-y-1' : 'text-gray-400 hover:text-brand-gold'
               )}>
               <div className={cn(
-                "p-1.5 rounded-full transition-all duration-300", 
-                isActive ? "bg-orange-50 shadow-sm" : "bg-transparent"
+                "p-1.5 rounded-full transition-all duration-300",
+                isActive ? "bg-brand-gold/10 shadow-sm" : "bg-transparent"
               )}>
                 <Icon className={cn('w-5 h-5 transition-transform duration-300', isActive ? 'scale-110' : '')} strokeWidth={isActive ? 2.5 : 2} />
               </div>
@@ -52,7 +52,7 @@ export function BottomNav() {
                 isActive ? "opacity-100" : "opacity-80"
               )}>{tab.name}</span>
               {isActive && (
-                <div className="absolute -bottom-2 w-1 h-1 bg-[#C16E4F] rounded-full"></div>
+                <div className="absolute -bottom-2 w-1 h-1 bg-brand-gold rounded-full"></div>
               )}
             </NavLink>
           );

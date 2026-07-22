@@ -4,7 +4,10 @@
 @theme {
   --color-brand-orange: #4A2E1B;
   --color-brand-maroon: #2D1A10;
-  --color-brand-gold: #C69C6D;
+  --color-brand-dark-blue: #08183A;
+  --color-brand-gold: #D4AF37;
+  --color-brand-beige: #FDF8F0;
+  --color-brand-beige-darker: #F4EBE0;
   --color-brand-cream: #FDFBF7;
   --color-brand-cream-light: #FFFFFF;
   --color-brand-green: #3B5F4A;
@@ -23,10 +26,11 @@
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 20px);
   }
-  
+
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

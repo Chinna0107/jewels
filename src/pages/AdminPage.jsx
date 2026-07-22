@@ -155,7 +155,7 @@ export function AdminPage() {
                 <StatCard icon={Users} label="Total Users" value={stats.totalUsers}
                   color="bg-gradient-to-br from-blue-500 to-blue-600 text-white" sub="Registered customers" />
                 <StatCard icon={ShoppingBag} label="Total Orders" value={stats.totalOrders}
-                  color="bg-gradient-to-br from-orange-500 to-orange-600 text-white" sub="All time orders" />
+                  color="bg-gradient-to-br from-gray-500 to-gray-600 text-white" sub="All time orders" />
                 <StatCard icon={IndianRupee} label="Total Revenue"
                   value={`₹${Number(stats.totalRevenue).toLocaleString('en-IN')}`}
                   color="bg-gradient-to-br from-green-500 to-green-600 text-white" sub="Excluding cancelled" />
@@ -174,7 +174,7 @@ export function AdminPage() {
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Manage Users', action: () => setActiveTab('users'), color: 'bg-blue-50 text-blue-700' },
-                  { label: 'Manage Orders', action: () => setActiveTab('orders'), color: 'bg-orange-50 text-orange-700' },
+                  { label: 'Manage Orders', action: () => setActiveTab('orders'), color: 'bg-gray-50 text-orange-700' },
                 ].map(({ label, action, color }) => (
                   <button key={label} onClick={action}
                     className={`${color} font-bold text-xs py-3 rounded-xl hover:opacity-80 transition-opacity`}>

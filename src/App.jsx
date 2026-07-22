@@ -19,6 +19,8 @@ import { ContactPage } from './pages/ContactPage';
 import { MyOrdersPage } from './pages/MyOrdersPage';
 import { MyAddressesPage } from './pages/MyAddressesPage';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
+import { ShippingPolicyPage } from './pages/ShippingPolicyPage';
+import { ReturnsPolicyPage } from './pages/ReturnsPolicyPage';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
@@ -81,6 +83,8 @@ function App() {
                   <Route path="/my-orders" element={<MyOrdersPage />} />
                   <Route path="/my-addresses" element={<MyAddressesPage />} />
                   <Route path="/account-settings" element={<AccountSettingsPage />} />
+                  <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+                  <Route path="/returns-policy" element={<ReturnsPolicyPage />} />
                 </Routes>
               </AppLayout>
             } />

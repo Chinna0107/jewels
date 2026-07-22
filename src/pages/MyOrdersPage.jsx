@@ -100,9 +100,9 @@ export function MyOrdersPage() {
                   <tr>
                       <td>
                           <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
-                              <strong style="font-size: 20px;">Moksha Mandir</strong><br>
-                              GSTIN: 36BANPK1643M1ZC<br>
-                              Phone: +91 90326 75205 | Email: mokshamandir542@gmail.com<br>
+                              <strong style="font-size: 20px;">Houra Jewels</strong><br>
+                              // GSTIN: 36BANPK1643M1ZC<br>
+                              Phone: +91 86866 80001 | Email: hourajewels@gmail.com<br>
                           </div>
                       </td>
                       <td class="invoice-title-block">
@@ -208,18 +208,18 @@ export function MyOrdersPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-serif font-bold text-[#5C4033]">Order History</h2>
-          <span className="text-sm font-semibold text-[#5C4033]/60 bg-[#C16E4F]/10 px-3 py-1 rounded-full">{orders.length} Orders</span>
+          <h2 className="text-2xl font-serif font-bold text-[#08183A]">Order History</h2>
+          <span className="text-sm font-semibold text-[#08183A]/60 bg-[#08183A]/10 px-3 py-1 rounded-full">{orders.length} Orders</span>
         </div>
 
         {orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white rounded-3xl border border-gray-100 shadow-sm">
-            <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center">
-              <ShoppingBag className="w-12 h-12 text-[#C16E4F]" />
+            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center">
+              <ShoppingBag className="w-12 h-12 text-[#08183A]" />
             </div>
-            <p className="text-[#5C4033] font-bold text-lg">No orders yet</p>
-            <p className="text-sm text-[#5C4033]/50 text-center max-w-sm">Looks like you haven't made your first order. Explore our spiritual collection today!</p>
-            <Link to="/" className="mt-4 bg-gradient-to-r from-[#C16E4F] to-[#8B4513] text-white text-sm font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+            <p className="text-[#08183A] font-bold text-lg">No orders yet</p>
+            <p className="text-sm text-[#08183A]/50 text-center max-w-sm">Looks like you haven't made your first order. Explore our spiritual collection today!</p>
+            <Link to="/" className="mt-4 bg-gradient-to-r from-[#08183A] to-[#D4AF37] text-white text-sm font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
               Start Shopping
             </Link>
           </div>
@@ -229,10 +229,10 @@ export function MyOrdersPage() {
             return (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                 {/* Order Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b border-gray-100 bg-[#FDFBF7]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b border-gray-100 bg-[#FDF8F0]">
                   <div>
-                    <p className="text-sm font-bold text-[#5C4033]">Order #{order.order_number || order.id}</p>
-                    <p className="text-xs text-[#5C4033]/60 mt-1">
+                    <p className="text-sm font-bold text-[#08183A]">Order #{order.order_number || order.id}</p>
+                    <p className="text-xs text-[#08183A]/60 mt-1">
                       Placed on {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                   </div>
@@ -257,19 +257,19 @@ export function MyOrdersPage() {
                         {STATUS_STEPS.map((step, i) => (
                           <div key={step} className="flex flex-col items-center flex-1 relative">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all z-10 ${
-                              i <= stepIdx ? 'bg-[#C16E4F] border-[#C16E4F] text-white shadow-md' : 'bg-white border-gray-200 text-gray-400'
+                              i <= stepIdx ? 'bg-[#08183A] border-[#08183A] text-white shadow-md' : 'bg-white border-gray-200 text-gray-400'
                             }`}>
                               {i < stepIdx ? '✓' : i + 1}
                             </div>
                             {i < STATUS_STEPS.length - 1 && (
-                              <div className={`absolute top-4 left-1/2 w-full h-0.5 -z-0 ${i < stepIdx ? 'bg-[#C16E4F]' : 'bg-gray-200'}`} />
+                              <div className={`absolute top-4 left-1/2 w-full h-0.5 -z-0 ${i < stepIdx ? 'bg-[#08183A]' : 'bg-gray-200'}`} />
                             )}
                           </div>
                         ))}
                       </div>
                       <div className="flex items-center mt-2">
                         {STATUS_STEPS.map((step, i) => (
-                          <span key={step} className={`text-[10px] sm:text-xs font-bold capitalize flex-1 text-center ${i <= stepIdx ? 'text-[#C16E4F]' : 'text-gray-400'}`}>
+                          <span key={step} className={`text-[10px] sm:text-xs font-bold capitalize flex-1 text-center ${i <= stepIdx ? 'text-[#08183A]' : 'text-gray-400'}`}>
                             {step}
                           </span>
                         ))}
@@ -283,36 +283,36 @@ export function MyOrdersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Array.isArray(order.items) && order.items.map((item, i) => (
                       <div key={i} className="flex items-start gap-4 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors">
-                        <div className="w-16 h-16 bg-[#FDFBF7] rounded-xl flex items-center justify-center shrink-0 border border-[#C16E4F]/10 overflow-hidden">
+                        <div className="w-16 h-16 bg-[#FDF8F0] rounded-xl flex items-center justify-center shrink-0 border border-[#08183A]/10 overflow-hidden">
                           {item.image_url || item.product?.image_url ? (
                             <img src={item.image_url || item.product?.image_url} alt={item.name || item.product?.name} className="w-full h-full object-cover" />
                           ) : (
-                            <Package className="w-8 h-8 text-[#C16E4F]/40" />
+                            <Package className="w-8 h-8 text-[#08183A]/40" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pt-1">
-                          <p className="text-sm font-bold text-[#5C4033] line-clamp-1">{item.name || item.product?.name || 'Product'}</p>
+                          <p className="text-sm font-bold text-[#08183A] line-clamp-1">{item.name || item.product?.name || 'Product'}</p>
                           <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-xs text-[#5C4033]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">Qty: {item.qty || 1}</span>
+                            <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">Qty: {item.qty || 1}</span>
                             {(item.size || item.variant?.size) && (
-                              <span className="text-xs text-[#5C4033]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">{item.size || item.variant?.size}</span>
+                              <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">{item.size || item.variant?.size}</span>
                             )}
                           </div>
                         </div>
-                        <p className="text-sm font-bold text-[#5C4033] pt-1">₹{Number(item.price || item.variant?.price || item.product?.price || 0).toLocaleString('en-IN')}</p>
+                        <p className="text-sm font-bold text-[#08183A] pt-1">₹{Number(item.price || item.variant?.price || item.product?.price || 0).toLocaleString('en-IN')}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 px-6 py-4 bg-[#FDFBF7] border-t border-[#C16E4F]/10">
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 px-6 py-4 bg-[#FDF8F0] border-t border-[#08183A]/10">
                   <button onClick={() => openInvoice(order)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#5C4033] border border-[#5C4033]/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#5C4033]/5 transition-colors shadow-sm">
-                    <FileText className="w-4 h-4 text-[#C16E4F]" /> Download Invoice
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#08183A] border border-[#08183A]/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#08183A]/5 transition-colors shadow-sm">
+                    <FileText className="w-4 h-4 text-[#08183A]" /> Download Invoice
                   </button>
                   <button onClick={() => handleReorder(order)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#5C4033] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#8B4513] transition-colors shadow-sm">
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#08183A] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#D4AF37] transition-colors shadow-sm">
                     <RefreshCw className="w-4 h-4" /> Reorder Items
                   </button>
                 </div>

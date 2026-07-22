@@ -7,17 +7,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        'brand-orange': '#E8630A',
-        'brand-maroon': '#4A2C1D',
-        'brand-gold': '#C9971C',
-        'brand-cream': '#FFF8EE',
-        'brand-cream-light': '#FDF6ED',
-        'brand-green': '#3E9B4F',
-        'brand-gray': '#8A8A8A',
+        'brand-dark-blue': '#08183A',
+        'brand-beige': '#FDF8F0',
+        'brand-beige-darker': '#F4EBE0',
+        'brand-gold': '#D4AF37',
+        'brand-accent': '#C5A059',
       },
       fontFamily: {
         sans: ['Poppins', 'sans-serif'],
+        serif: ['Playfair Display', 'serif'],
       },
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: '0.4' },
+          '100%': { opacity: '1' },
+        }
+      },
+      animation: {
+        'fade-in': 'fade-in 0.5s ease-out',
+      }
     },
   },
   plugins: [],

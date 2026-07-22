@@ -18,9 +18,9 @@ export function Button({
   };
 
   const variantClasses = {
-    solid: "bg-gradient-to-r from-brand-orange to-[#ff7b1c] text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:-translate-y-0.5",
-    outline: "border-2 border-brand-maroon text-brand-maroon hover:bg-brand-maroon hover:text-white shadow-sm hover:-translate-y-0.5",
-    ghost: "text-brand-gray hover:text-brand-orange hover:bg-orange-50"
+    solid: "bg-gradient-to-r from-brand-gold to-[#ff7b1c] text-white shadow-lg shadow-gray-500/30 hover:shadow-gray-500/50 hover:-translate-y-0.5",
+    outline: "border-2 border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-white shadow-sm hover:-translate-y-0.5",
+    ghost: "text-brand-gray hover:text-brand-gold hover:bg-gray-50"
   };
 
   return (

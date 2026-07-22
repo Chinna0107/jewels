@@ -12,7 +12,7 @@ export function OrderTrackingPage() {
   useEffect(() => {
     // Fire a beautiful confetti burst on mount
     const end = Date.now() + 1.5 * 1000;
-    const colors = ['#C16E4F', '#7D2A2A', '#ffffff'];
+    const colors = ['#08183A', '#7D2A2A', '#ffffff'];
 
     (function frame() {
       confetti({
@@ -68,16 +68,16 @@ export function OrderTrackingPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="w-full bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 mb-8 relative overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-bl-full -z-0"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50/50 rounded-bl-full -z-0"></div>
           
           <div className="relative z-10 space-y-6">
             <div className="flex items-center justify-between border-b border-gray-100 pb-5">
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Order Number</p>
-                <p className="text-lg font-bold text-[#C16E4F]">#{orderId}</p>
+                <p className="text-lg font-bold text-[#08183A]">#{orderId}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-brand-orange" />
+              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
+                <Package className="w-6 h-6 text-brand-gold" />
               </div>
             </div>
 
@@ -102,7 +102,7 @@ export function OrderTrackingPage() {
         >
           <button 
             onClick={() => navigate('/category/all')}
-            className="w-full bg-gradient-to-r from-brand-orange to-brand-maroon text-white font-bold text-base rounded-2xl py-4 shadow-lg shadow-brand-orange/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-brand-gold to-brand-dark-blue text-white font-bold text-base rounded-2xl py-4 shadow-lg shadow-brand-gold/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
           >
             Continue Shopping
             <ShoppingBag className="w-5 h-5" />
