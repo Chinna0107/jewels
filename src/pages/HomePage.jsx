@@ -54,9 +54,9 @@ export function HomePage() {
       <Header variant="home" />
 
       {/* Hero Banner Section */}
-      <div className="animate-section px-4 py-4 md:py-8">
+      <div className="animate-section py-4 md:py-8">
         {banners.length > 0 ? (
-          <div className="relative w-full md:w-[75%] h-48 md:h-[400px] rounded-2xl overflow-hidden shadow-lg border border-gray-100 mx-auto">
+          <div className="relative w-full md:w-[75%] h-48 md:h-[400px] rounded-2xl overflow-hidden shadow-lg border border-gray-100 mx-auto px-4 md:px-0">
             <div
               className="flex h-full transition-transform duration-700 ease-in-out"
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
@@ -90,7 +90,7 @@ export function HomePage() {
             </div>
           </div>
         ) : (
-          <div className="flex justify-center px-4 md:px-24 pt-4 md:pt-6 pb-2">
+          <div className="flex justify-center px-4 md:px-24 pt-2 md:pt-6 pb-2">
             <div className="relative w-full h-72 md:h-[360px] rounded-[24px] overflow-hidden shadow-2xl border border-brand-gold/20 bg-brand-beige group">
               <div className="absolute inset-0 z-0">
                 <img src="https://images.pexels.com/photos/265906/pexels-photo-265906.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Jewelry Collection" className="w-full h-full object-cover object-right transition-transform duration-1000 group-hover:scale-105" />
