@@ -31,6 +31,7 @@ import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
 import { AdminBannersPage } from './pages/admin/AdminBannersPage';
 import { AdminCouponsPage } from './pages/admin/AdminCouponsPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminOffersPage } from './pages/admin/AdminOffersPage';
 import { AdminShippingPage } from './pages/admin/AdminShippingPage';
@@ -67,6 +68,7 @@ function App() {
                   <Route path="banners" element={<AdminBannersPage />} />
                   <Route path="/coupons" element={<AdminCouponsPage />} />
                   <Route path="/reports" element={<AdminReportsPage />} />
+                  <Route path="/settings" element={<AdminSettingsPage />} />
                 </Routes>
               </AdminLayout>
             } />
