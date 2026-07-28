@@ -80,7 +80,7 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
   return (
     <>
       {announcement && announcement.is_active && announcement.text && (
-        <div className="bg-[#D4AF37] text-[#08183A] text-xs font-bold py-2 overflow-hidden fixed top-0 w-full z-[60]">
+        <div className="hidden md:block bg-[#D4AF37] text-[#08183A] text-xs font-bold py-2 overflow-hidden fixed top-0 w-full z-[60]">
           <div className="whitespace-nowrap animate-marquee inline-block">
             {announcement.link ? (
               <a href={announcement.link} className="hover:underline">{announcement.text}</a>
@@ -413,7 +413,7 @@ export function Header({ variant = 'default', title, showShare = false }) {
         {mobileSidebarContent}
         
         {announcement && announcement.is_active && announcement.text && (
-          <div className="bg-[#D4AF37] text-[#08183A] text-[10px] font-bold py-1.5 overflow-hidden relative z-[60] fixed top-0 w-full">
+          <div className="bg-[#D4AF37] text-[#08183A] text-[10px] font-bold py-1.5 overflow-hidden fixed top-0 left-0 w-full z-[60]">
             <div className="whitespace-nowrap animate-marquee inline-block">
               {announcement.link ? (
                 <a href={announcement.link}>{announcement.text}</a>

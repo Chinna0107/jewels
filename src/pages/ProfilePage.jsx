@@ -11,12 +11,14 @@ export function ProfilePage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 pb-20">
+      <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
         <Header title="My Profile" />
-        <User className="w-16 h-16 text-gray-300 mt-20" />
-        <p className="text-gray-600 font-semibold">You're not logged in</p>
-        <Link to="/login" className="bg-brand-gold text-white font-bold px-8 py-3 rounded-xl text-sm">Login</Link>
-        <Link to="/signup" className="text-brand-gold text-sm font-semibold">Create Account</Link>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 mt-8">
+          <User className="w-16 h-16 text-gray-300" />
+          <p className="text-gray-600 font-semibold">You're not logged in</p>
+          <Link to="/login" className="bg-brand-gold text-white font-bold px-8 py-3 rounded-xl text-sm">Login</Link>
+          <Link to="/signup" className="text-brand-gold text-sm font-semibold">Create Account</Link>
+        </div>
         <BottomNav />
       </div>
     );
