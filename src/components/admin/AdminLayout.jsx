@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut, Shield, Users, Menu, X, ImageIcon, Tag, Layers, Truck, Settings } from "lucide-react";
+import image from '../../assets/logo.png'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
@@ -60,7 +61,7 @@ export function AdminLayout({ children }) {
       <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-[#08183A]/10 px-4 py-3 flex items-center justify-between z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 relative">
-            <img src="/image.png" alt="Admin" className="w-full h-full object-contain" />
+            <img src={image} alt="Admin" className="w-full h-full object-contain" />
           </div>
           <span className="font-serif font-bold text-[#08183A]">Admin</span>
         </div>
@@ -81,7 +82,7 @@ export function AdminLayout({ children }) {
         <div className="p-5 border-b border-[#08183A]/10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 relative flex-shrink-0">
-              <img src="/image.png" alt="Admin" className="w-full h-full object-contain" />
+              <img src={image} alt="Admin" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="font-serif font-bold text-[#08183A] text-sm">Admin Panel</p>
