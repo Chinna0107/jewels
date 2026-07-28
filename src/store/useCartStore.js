@@ -2,6 +2,20 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useToastStore } from './useToastStore';
 
+function validateCouponAgainstCart(coupon, items) {
+  if (!coupon) return null;
+  const cartQty = items.reduce((s, i) => s + i.qty, 0);
+  const cartValue = items.reduce((s, i) => s + ((i.variant?.price || i.product?.price || 0) * i.qty), 0);
+  if (coupon.min_type === 'qty' && cartQty < (coupon.min_qty || 0)) {
+    useToastStore.getState().showToast(`Coupon removed: need at least ${coupon.min_qty} item(s)`, 'error');
+    return null;
+  }
+  if (coupon.min_type !== 'qty' && cartValue < (coupon.min_order_value || 0)) {
+    useToastStore.getState().showToast(`Coupon removed: minimum order \u20b9${coupon.min_order_value} required`, 'error');
+    return null;
+  }
+  return coupon;
+}
 export const useCartStore = create(
   persist(
     (set, get) => ({
@@ -10,6 +24,11 @@ export const useCartStore = create(
       appliedCoupon: null,
       
       addToCart: (product, variant, qty = 1) => {
+        const stock = variant?.stock !== undefined ? Number(variant.stock) : Number(product?.stock || 0);
+        if (stock <= 0) {
+          useToastStore.getState().showToast('This item is out of stock', 'error');
+          return;
+        }
         set((state) => {
           const existingItemIndex = state.items.findIndex(
             (i) => i.product.id === product.id && i.variant === variant
@@ -26,24 +45,21 @@ export const useCartStore = create(
         useToastStore.getState().showToast(`Added ${product.name} to cart!`);
       },
       
-      removeFromCart: (productId, variant) => set((state) => ({
-        items: state.items.filter(item => !(item.product.id === productId && item.variant === variant))
-      })),
+      removeFromCart: (productId, variant) => set((state) => {
+        const newItems = state.items.filter(item => !(item.product.id === productId && item.variant === variant));
+        return { items: newItems, appliedCoupon: validateCouponAgainstCart(state.appliedCoupon, newItems) };
+      }),
       
       updateQuantity: (productId, variant, qty) => set((state) => {
+        let newItems;
         if (qty <= 0) {
-          return {
-            items: state.items.filter(item => !(item.product.id === productId && item.variant === variant))
-          };
+          newItems = state.items.filter(item => !(item.product.id === productId && item.variant === variant));
+        } else {
+          newItems = state.items.map(item =>
+            (item.product.id === productId && item.variant === variant) ? { ...item, qty } : item
+          );
         }
-        
-        return {
-          items: state.items.map(item => 
-            (item.product.id === productId && item.variant === variant) 
-              ? { ...item, qty } 
-              : item
-          )
-        };
+        return { items: newItems, appliedCoupon: validateCouponAgainstCart(state.appliedCoupon, newItems) };
       }),
 
       clearCart: () => set({ items: [], appliedCoupon: null }),

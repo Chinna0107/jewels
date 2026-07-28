@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const FROM_ADDRESS = {
-  name: "Moksha Mandir",
+  name: "Houra Jewels",
   line1: "1-1-738, Vinayaka temple road",
   city: "Koratla",
   state: "Telangana",
@@ -195,7 +195,7 @@ export function AdminOrdersPage() {
                   <td class="from-box">
                       <div class="section-heading">From Address</div>
                       <div class="address-box">
-                          <strong>Moksha Mandir</strong><br>
+                          <strong>Houra Jewels</strong><br>
                           1-1-738, Vinayaka temple road,<br>
                           Koratla, Telangana, USA<br>
                           <strong>Phone:</strong> +91 90326 75205
@@ -274,7 +274,7 @@ export function AdminOrdersPage() {
       `Hi ${order.user_name || address.name || 'Customer'}! 🙏 Please find your *Invoice* for Order *#${order.order_number || order.id}* below:\n\n` +
       `*Items:*\n${itemsText}\n\n` +
       `*Total: $${order.total}*\n\n` +
-      `Thank you for shopping with Moksha Mandir!`
+      `Thank you for shopping with Houra Jewels!`
     );
     window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
   };
@@ -320,7 +320,7 @@ export function AdminOrdersPage() {
 <body>
 <div class="box">
   <div class="hdr">
-    <div class="brand">Moksha Mandir</div>
+    <div class="brand">Houra Jewels</div>
     <div class="oid">#${order.order_number || order.id}</div>
   </div>
   <div class="sec">
@@ -460,8 +460,31 @@ export function AdminOrdersPage() {
                     </div>
                   </div>
 
+                  {/* Order Items List */}
+                  <div className="pt-4 border-t border-[#08183A]/5">
+                    <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Order Items</p>
+                    <div className="space-y-3">
+                      {(typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])).map((item, idx) => (
+                        <div key={idx} className="flex gap-3 items-center">
+                          <div className="w-12 h-12 rounded bg-gray-50 border border-gray-100 flex items-center justify-center p-1 shrink-0">
+                            <img src={item.product?.images?.[0] || item.product?.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#08183A] truncate">{item.product?.name || 'Unknown Product'}</p>
+                            <p className="text-xs text-gray-500">
+                              {item.variant?.size ? `Size: ${item.variant.size}` : 'Standard'} • Qty: {item.qty}
+                            </p>
+                          </div>
+                          <div className="text-sm font-bold text-[#D4AF37]">
+                            ${(item.variant?.price || item.product?.price || 0) * item.qty}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#08183A]/5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 border-t border-[#08183A]/5">
                     <button onClick={() => printLabel(order)}
                       className="flex items-center justify-center gap-1.5 bg-[#08183A] text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans hover:bg-[#08183A]/80 transition-colors">
                       <Printer className="w-3.5 h-3.5 flex-shrink-0" />

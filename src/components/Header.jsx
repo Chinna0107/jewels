@@ -79,31 +79,28 @@ function AvatarDropdown({ user, onLogout }) {
 function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout, categories, offers, announcement }) {
   return (
     <>
-      {announcement && announcement.is_active && announcement.text && (
-        <div className="hidden md:block bg-[#D4AF37] text-[#08183A] text-xs font-bold py-2 overflow-hidden fixed top-0 w-full z-[60]">
-          <div className="whitespace-nowrap animate-marquee inline-block">
-            {announcement.link ? (
-              <a href={announcement.link} className="hover:underline">{announcement.text}</a>
-            ) : (
-              <span>{announcement.text}</span>
-            )}
-            <span className="mx-8">•</span>
-            {announcement.link ? (
-              <a href={announcement.link} className="hover:underline">{announcement.text}</a>
-            ) : (
-              <span>{announcement.text}</span>
-            )}
-            <span className="mx-8">•</span>
-            {announcement.link ? (
-              <a href={announcement.link} className="hover:underline">{announcement.text}</a>
-            ) : (
-              <span>{announcement.text}</span>
-            )}
+      {announcement && announcement.is_active && announcement.items?.some(i => i.text) && (
+        <div className="hidden md:block bg-[#D4AF37] text-[#08183A] text-xs font-bold py-2 w-full fixed top-0 z-[60] overflow-hidden">
+          <div className="animate-marquee">
+            {[0, 1].map(copy => (
+              <div key={copy} className="flex items-center" style={{minWidth:'50%'}}>
+                {announcement.items.filter(i => i.text).map((item, idx) => (
+                  <span key={idx} className="inline-flex items-center whitespace-nowrap">
+                    {item.link ? (
+                      <a href={item.link} className="hover:underline">{item.text}</a>
+                    ) : (
+                      <span>{item.text}</span>
+                    )}
+                    <span className="mx-8">•</span>
+                  </span>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       )}
       <div className="h-[76px] hidden md:block" />
-      <header className={`fixed ${announcement && announcement.is_active ? 'top-[32px]' : 'top-0'} left-0 z-50 w-full bg-brand-dark-blue px-4 md:px-12 lg:px-20 py-3 shadow-md border-b border-white/10 hidden md:block transition-all`}>
+      <header className={`fixed ${announcement && announcement.is_active && announcement.items?.some(i => i.text) ? 'top-[32px]' : 'top-0'} left-0 z-50 w-full bg-brand-dark-blue px-4 md:px-12 lg:px-20 py-3 shadow-md border-b border-white/10 hidden md:block transition-all`}>
         <div className="w-full mx-auto flex items-center justify-between">
 
           <Link to="/" className="flex items-center gap-3 hover:opacity-95 transition-opacity">
@@ -412,26 +409,29 @@ export function Header({ variant = 'default', title, showShare = false }) {
       <div className="md:hidden">
         {mobileSidebarContent}
         
-        {announcement && announcement.is_active && announcement.text && (
-          <div className="bg-[#D4AF37] text-[#08183A] text-[10px] font-bold py-1.5 overflow-hidden fixed top-0 left-0 w-full z-[60]">
-            <div className="whitespace-nowrap animate-marquee inline-block">
-              {announcement.link ? (
-                <a href={announcement.link}>{announcement.text}</a>
-              ) : (
-                <span>{announcement.text}</span>
-              )}
-              <span className="mx-6">•</span>
-              {announcement.link ? (
-                <a href={announcement.link}>{announcement.text}</a>
-              ) : (
-                <span>{announcement.text}</span>
-              )}
+        {announcement && announcement.is_active && announcement.items?.some(i => i.text) && (
+          <div className="block bg-[#D4AF37] text-[#08183A] text-[10px] font-bold py-1.5 w-full fixed top-0 left-0 z-[60] overflow-hidden">
+            <div className="animate-marquee">
+              {[0, 1].map(copy => (
+                <div key={copy} className="flex items-center" style={{minWidth:'50%'}}>
+                  {announcement.items.filter(i => i.text).map((item, idx) => (
+                    <span key={idx} className="inline-flex items-center whitespace-nowrap">
+                      {item.link ? (
+                        <a href={item.link}>{item.text}</a>
+                      ) : (
+                        <span>{item.text}</span>
+                      )}
+                      <span className="mx-5">•</span>
+                    </span>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className={`h-[76px] ${announcement && announcement.is_active ? 'mt-[27px]' : ''}`} />
-        <header className={`fixed ${announcement && announcement.is_active ? 'top-[27px]' : 'top-0'} left-0 z-50 w-full bg-brand-dark-blue/95 backdrop-blur-md px-4 py-2 shadow-lg border-b border-white/5 h-[76px] transition-all`}>
+        <div className={`h-[76px] ${announcement && announcement.is_active && announcement.items?.some(i => i.text) ? 'mt-[27px]' : ''}`} />
+        <header className={`fixed ${announcement && announcement.is_active && announcement.items?.some(i => i.text) ? 'top-[27px]' : 'top-0'} left-0 z-50 w-full bg-brand-dark-blue/95 backdrop-blur-md px-4 py-2 shadow-lg border-b border-white/5 h-[76px] transition-all`}>
           <div className="w-full h-full flex items-center justify-between relative">
             {/* Left: Menu & Logo */}
             <div className="flex items-center gap-3">

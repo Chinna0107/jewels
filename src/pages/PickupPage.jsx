@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, UserCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, Store, CheckCircle, CreditCard, ChevronLeft, UserCircle2 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -10,20 +10,15 @@ import { useGSAP } from '@gsap/react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
-export function CheckoutPage() {
+export function PickupPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { items, getTotal, getSubtotal, getDiscount, appliedCoupon, clearCart } = useCartStore();
   const { token, user } = useAuthStore();
   const { showToast } = useToastStore();
   
-  const [step, setStep] = useState(token ? 2 : 1); // 1: Auth, 2: Address, 3: Payment
-  const [address, setAddress] = useState({
+  const [step, setStep] = useState(token ? 2 : 1); // 1: Auth, 2: Details, 3: Payment
+  const [details, setDetails] = useState({
     name: user?.name || '',
-    line1: '',
-    city: '',
-    state: '',
-    pincode: '',
     mobile: user?.phone || ''
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -35,45 +30,27 @@ export function CheckoutPage() {
   const subtotal = getSubtotal();
   const discount = getDiscount();
   
-  const [shippingConfig, setShippingConfig] = useState(null);
-  const [shippingFee, setShippingFee] = useState(0);
+  const [taxConfig, setTaxConfig] = useState(null);
   const [taxAmount, setTaxAmount] = useState(0);
-  const [taxLabel, setTaxLabel] = useState('Tax (enter pincode)');
-  const finalTotal = subtotal - discount + shippingFee + taxAmount;
+  const finalTotal = subtotal - discount + taxAmount;
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/shipping`)
       .then(r => r.json())
-      .then(d => setShippingConfig(d))
+      .then(d => setTaxConfig(d))
       .catch(console.error);
   }, []);
 
-  // Recompute shipping fee whenever config loads
   useEffect(() => {
-    if (!shippingConfig?.settings) return;
-    setShippingFee(parseFloat(shippingConfig.settings.flat_rate) || 0);
-  }, [shippingConfig]);
-
-  // Recompute tax whenever subtotal, discount, address pincode, or config changes
-  useEffect(() => {
-    if (!shippingConfig?.settings) return;
-    const { tax_mode, tax_percentage } = shippingConfig.settings;
+    if (!taxConfig || !taxConfig.settings) return;
+    
+    // Tax on subtotal after discount
     const taxable = subtotal - discount;
+    const tax = taxable * ((taxConfig.settings.tax_percentage ?? 0) / 100);
+    setTaxAmount(tax);
+  }, [taxConfig, subtotal, discount]);
 
-    if (tax_mode === 'pincode') {
-      const pin = address.pincode?.trim();
-      const rule = pin ? (shippingConfig.pincodes || []).find(p => p.pincode === pin) : null;
-      const pct = rule ? parseFloat(rule.percentage) : 0;
-      setTaxAmount(taxable * (pct / 100));
-      setTaxLabel(rule ? `Tax (${pct}% — pincode ${pin})` : 'Tax (0% — pincode not matched)');
-    } else {
-      const pct = parseFloat(tax_percentage) || 0;
-      setTaxAmount(taxable * (pct / 100));
-      setTaxLabel(`Tax (${pct}%)`);
-    }
-  }, [shippingConfig, subtotal, discount, address.pincode]);
-
-  const couponCode = appliedCoupon?.code || location.state?.couponCode || '';
+  const couponCode = appliedCoupon?.code || '';
 
   // Redirect to cart if empty
   useEffect(() => {
@@ -87,7 +64,7 @@ export function CheckoutPage() {
     if (token && step === 1) {
       setStep(2);
       if (user) {
-        setAddress(prev => ({ ...prev, name: user.name, mobile: user.phone }));
+        setDetails(prev => ({ ...prev, name: user.name, mobile: user.phone }));
       }
     }
   }, [token, step, user]);
@@ -122,25 +99,22 @@ export function CheckoutPage() {
       headers,
       body: JSON.stringify({
         items,
-        address,
+        address: { name: details.name, mobile: details.mobile }, // Save name/mobile in address field for pickup
         total: finalTotal,
         coupon_code: couponCode,
         payment_method: pMethod,
+        order_type: 'pickup'
       })
     });
     return res.json();
   };
 
   const handleProceedToPayment = () => {
-    if (!address.name.trim() || !address.line1.trim() || !address.city.trim() || !address.state.trim() || !address.pincode.trim() || !address.mobile.trim()) {
-      showToast('Please fill all details. All fields are required.', 'error');
+    if (!details.name.trim() || !details.mobile.trim()) {
+      showToast('Please provide name and mobile number.', 'error');
       return;
     }
-    if (!/^\d{6}$/.test(address.pincode)) {
-      showToast('ZIP Code must be 6 digits.', 'error');
-      return;
-    }
-    if (!/^\d{10}$/.test(address.mobile)) {
+    if (!/^\d{10}$/.test(details.mobile)) {
       showToast('Phone number must be exactly 10 digits.', 'error');
       return;
     }
@@ -159,7 +133,6 @@ export function CheckoutPage() {
 
       const chargeAmount = finalTotal;
 
-      // Create Razorpay Order
       const orderRes = await fetch(`${BACKEND_URL}/general/razorpay/order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,11 +151,10 @@ export function CheckoutPage() {
         amount: orderData.order.amount,
         currency: orderData.order.currency,
         name: 'Tradition Store',
-        description: 'Order Payment',
+        description: 'Store Pickup Order Payment',
         order_id: orderData.order.id,
         handler: async function (response) {
           try {
-            // Verify payment
             const verifyRes = await fetch(`${BACKEND_URL}/general/razorpay/verify`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -215,8 +187,8 @@ export function CheckoutPage() {
           }
         },
         prefill: {
-          name: address.name,
-          contact: address.mobile
+          name: details.name,
+          contact: details.mobile
         },
         theme: { color: '#08183A' },
         modal: {
@@ -240,69 +212,75 @@ export function CheckoutPage() {
         <div className="w-6 h-6 rounded-full bg-brand-dark-blue text-brand-gold flex items-center justify-center text-xs font-bold border border-brand-gold/30">✓</div>
         <span className="text-[10px] text-brand-dark-blue font-bold mt-1">Cart</span>
       </div>
-      <div className={`h-px flex-1 mx-2 ${step >= 2 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
+      <div className="h-px bg-brand-dark-blue flex-1 mx-2"></div>
       
-      <div className="flex flex-col items-center">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>
-          {step > 2 ? '✓' : (token ? '✓' : '1')}
+      <div className="flex flex-col items-center cursor-pointer" onClick={() => step > 1 && setStep(1)}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 1 ? 'bg-brand-dark-blue text-brand-gold border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/60 border-brand-dark-blue/10'}`}>
+          {step > 1 ? '✓' : '1'}
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>{token ? 'Auth' : 'Login'}</span>
+        <span className={`text-[10px] font-bold mt-1 ${step >= 1 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/60'}`}>Login</span>
       </div>
-      <div className={`h-px flex-1 mx-2 ${step >= 2 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
+      <div className={`h-px flex-1 mx-2 ${step > 1 ? 'bg-brand-dark-blue' : 'bg-brand-gold/30'}`}></div>
 
-      <div className="flex flex-col items-center">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>
+      <div className="flex flex-col items-center cursor-pointer" onClick={() => step > 2 && setStep(2)}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 2 ? 'bg-brand-dark-blue text-brand-gold border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/60 border-brand-dark-blue/10'}`}>
           {step > 2 ? '✓' : '2'}
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>Address</span>
+        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/60'}`}>Details</span>
       </div>
-      <div className={`h-px flex-1 mx-2 ${step >= 3 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
-      <div className={`flex flex-col items-center ${step < 3 ? 'opacity-70' : ''}`}>
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 3 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>3</div>
-        <span className={`text-[10px] font-bold mt-1 ${step >= 3 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>Payment</span>
+      <div className={`h-px flex-1 mx-2 ${step > 2 ? 'bg-brand-dark-blue' : 'bg-brand-gold/30'}`}></div>
+
+      <div className="flex flex-col items-center">
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border ${step >= 3 ? 'bg-brand-dark-blue text-brand-gold border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/60 border-brand-dark-blue/10'}`}>
+          3
+        </div>
+        <span className={`text-[10px] font-bold mt-1 ${step >= 3 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/60'}`}>Payment</span>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-brand-beige pb-36 font-sans">
-      <Header title="Checkout" />
+    <div className="min-h-screen bg-brand-beige pb-36">
+      <Header title="Store Pickup Checkout" />
       
-      <div className="p-4 md:p-8 space-y-4 md:space-y-8 md:max-w-7xl mx-auto">
-        {renderStepIndicator()}
+      <div className="p-4 md:p-8 md:max-w-7xl mx-auto mt-6">
+        <button 
+          onClick={() => step > 1 ? setStep(step - 1) : navigate('/cart')} 
+          className="flex items-center text-sm font-bold text-brand-dark-blue hover:text-brand-gold transition-colors mb-6"
+        >
+          <ChevronLeft className="w-5 h-5 mr-1" />
+          {step === 1 ? 'Back to Cart' : 'Back'}
+        </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-12 items-start">
-          {/* Left Column: Forms */}
-          <div className="lg:col-span-8 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Steps */}
+          <div className="lg:col-span-8">
+            {renderStepIndicator()}
+
             {step === 1 && (
-              <div className="space-y-4 max-w-3xl mx-auto">
+              <div className="space-y-4 max-w-2xl mx-auto">
                 <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-6">
                   <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
                     <UserCircle2 className="w-4 h-4 text-brand-gold" />
                   </div>
-                  Authentication
+                  Account Details
                 </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Login Option */}
-                  <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg text-brand-dark-blue mb-2">Login / Sign Up</h3>
-                      <p className="text-sm text-brand-dark-blue/60 mb-6">Access your saved addresses, track orders easily, and get exclusive offers.</p>
-                    </div>
-                    <button 
-                      onClick={() => navigate('/login?redirect=/checkout')}
-                      className="w-full bg-brand-dark-blue text-brand-gold font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
-                    >
-                      Login to Continue
-                    </button>
-                  </div>
+                <div className="bg-white/80 p-6 rounded-3xl shadow-sm border border-brand-gold/20 flex flex-col items-center justify-center text-center">
+                  <UserCircle2 className="w-16 h-16 text-brand-gold mb-4" />
+                  <h3 className="text-lg font-bold text-brand-dark-blue mb-2">Welcome to Secure Checkout</h3>
+                  <p className="text-sm text-brand-dark-blue/60 mb-8 max-w-sm">Log in to your account for a faster checkout experience and to earn loyalty points on this purchase.</p>
                   
-                  {/* Guest Checkout Option */}
-                  <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg text-brand-dark-blue mb-2">Guest Checkout</h3>
-                      <p className="text-sm text-brand-dark-blue/60 mb-6">Proceed without an account. You can track your order using the order ID.</p>
+                  <div className="w-full max-w-sm space-y-3 flex flex-col items-center">
+                    <button 
+                      onClick={() => navigate('/login', { state: { returnTo: '/pickup' } })}
+                      className="w-full bg-brand-dark-blue text-brand-gold font-bold py-3 rounded-xl shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                    >
+                      Login to your account
+                    </button>
+                    <div className="flex items-center w-full gap-3 py-2">
+                      <div className="h-px bg-brand-gold/20 flex-1"></div>
+                      <span className="text-xs font-bold text-brand-dark-blue/40 uppercase">or</span>
+                      <div className="h-px bg-brand-gold/20 flex-1"></div>
                     </div>
                     <button 
                       onClick={() => setStep(2)}
@@ -316,72 +294,70 @@ export function CheckoutPage() {
             )}
 
             {step === 2 && (
-          <div className="space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                <MapPin className="w-4 h-4 text-brand-gold" />
-              </div>
-              Shipping Address
-            </h2>
-            
-            <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-brand-gold/5 to-transparent rounded-bl-full pointer-events-none"></div>
-              <div className="space-y-5">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Full Name</label>
-                  <input required value={address.name} onChange={e => setAddress({...address, name: e.target.value})} className="w-full text-lg font-bold text-gray-900 border-b-2 border-gray-100 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Full Name" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Address Line 1</label>
-                  <input required value={address.line1} onChange={e => setAddress({...address, line1: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Address Line 1" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">City</label>
-                    <input required value={address.city} onChange={e => setAddress({...address, city: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="City" />
+              <div className="space-y-4 max-w-3xl mx-auto">
+                <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
+                    <Store className="w-4 h-4 text-brand-gold" />
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">State</label>
-                    <input required value={address.state} onChange={e => setAddress({...address, state: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="State" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">ZIP Code</label>
-                    <input type="text" maxLength={6} required value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="ZIP Code" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Mobile</label>
-                    <input type="text" maxLength={10} required value={address.mobile} onChange={e => setAddress({...address, mobile: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Mobile Number" />
+                  Pickup Details
+                </h2>
+                
+                <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-brand-gold/5 to-transparent rounded-bl-full pointer-events-none"></div>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Full Name</label>
+                      <input required value={details.name} onChange={e => setDetails({...details, name: e.target.value})} className="w-full text-lg font-bold text-gray-900 border-b-2 border-gray-100 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Full Name for Pickup" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Mobile</label>
+                      <input type="text" maxLength={10} required value={details.mobile} onChange={e => setDetails({...details, mobile: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Mobile Number" />
+                    </div>
+                    <div className="mt-4 p-4 bg-brand-dark-blue/5 border border-brand-dark-blue/10 rounded-xl">
+                      <p className="text-sm text-brand-dark-blue font-bold flex items-center gap-2"><Store className="w-4 h-4 text-brand-gold"/> Pickup Location</p>
+                      <p className="text-xs text-brand-dark-blue/80 mt-1">Houra Jewels Store, Main Market, City Center</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {step === 3 && (
-          <div className="space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-brand-gold" />
-              </div>
-              Payment
-            </h2>
-            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
-              <div className="flex items-center p-4 rounded-xl border-2 border-brand-gold bg-gray-50/50">
-                <div className="w-9 h-9 rounded-lg bg-brand-gold/10 flex items-center justify-center mr-3 shrink-0">
-                  <CreditCard className="w-5 h-5 text-brand-dark-blue" />
+            {step === 3 && (
+              <div className="space-y-4 max-w-3xl mx-auto">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4 text-brand-gold" />
+                  </div>
+                  Payment Method
+                </h2>
+
+                <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
+                  <div className="space-y-3">
+                    {/* Online Payment */}
+                    <label className="flex items-center p-4 rounded-xl border-2 border-brand-gold bg-gray-50/50 shadow-sm cursor-pointer transition-all">
+                      <div className="w-9 h-9 rounded-lg bg-brand-gold/10 flex items-center justify-center mr-3 shrink-0">
+                        <CreditCard className="w-5 h-5 text-brand-dark-blue" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-base font-bold text-brand-dark-blue block">Online Payment</span>
+                        <span className="text-xs text-brand-dark-blue/60">Credit/Debit Card, UPI, NetBanking</span>
+                      </div>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="razorpay"
+                        checked={true}
+                        readOnly
+                        className="w-4 h-4 accent-brand-gold"
+                      />
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-base font-bold text-brand-dark-blue block">Online Payment</span>
-                  <span className="text-xs text-brand-dark-blue/60">Credit/Debit Card, UPI, NetBanking</span>
-                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>          {/* Right Column: Order Summary (Desktop) */}
+
+          {/* Right Column: Order Summary (Desktop) */}
           <div className="hidden lg:block lg:col-span-4 sticky top-24">
             <div className="bg-white/80 p-6 rounded-3xl shadow-sm border border-brand-gold/20">
               <h3 className="font-serif font-bold text-brand-dark-blue mb-6 text-xl">Order Summary</h3>
@@ -412,14 +388,10 @@ export function CheckoutPage() {
                     <span className="font-medium">- ${discount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
-                  <span>Shipping Fee</span>
-                  <span className="font-medium text-brand-dark-blue">${shippingFee.toFixed(2)}</span>
-                </div>
-                {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
+                {taxAmount > 0 && (
                   <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
-                    <span>{taxLabel || 'Tax'}</span>
-                    <span className="font-medium text-brand-dark-blue">₹{taxAmount.toFixed(2)}</span>
+                    <span>Tax ({taxConfig?.settings?.tax_percentage ?? 0}%)</span>
+                    <span className="font-medium text-brand-dark-blue">${taxAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-brand-dark-blue text-xl pt-2 border-t border-brand-gold/20">
@@ -473,13 +445,11 @@ export function CheckoutPage() {
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <>
-                <p className="text-xs font-bold text-brand-dark-blue/60 uppercase tracking-wider mb-1">Payable Amount</p>
-                <div className="flex flex-col">
-                  {appliedCoupon && <span className="text-[10px] text-brand-gold font-bold -mb-1">Code applied: {appliedCoupon.code}</span>}
-                  <p className="text-2xl font-bold text-brand-dark-blue leading-none">₹{finalTotal.toFixed(2)}</p>
-                </div>
-              </>
+              <p className="text-xs font-bold text-brand-dark-blue/60 uppercase tracking-wider mb-1">Payable Amount</p>
+              <div className="flex flex-col">
+                {appliedCoupon && <span className="text-[10px] text-brand-gold font-bold -mb-1">Code applied: {appliedCoupon.code}</span>}
+                <p className="text-2xl font-bold text-brand-dark-blue leading-none">${finalTotal.toFixed(2)}</p>
+              </div>
             </div>
           </div>
           

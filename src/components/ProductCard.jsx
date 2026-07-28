@@ -12,11 +12,25 @@ export function ProductCard({ product, layout = 'grid' }) {
   const { offers } = useStoreData();
 
   const isWishlisted = wishlistItems.includes(product.id);
-  const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : { size: 'Standard', price: 0 };
-  const originalPrice = defaultSize.price;
+
+  // Fallback for older product structure
+  let variants = product.variants;
+  if (!variants || variants.length === 0) {
+    variants = [{
+      color: product.color || "",
+      images: product.images || (product.image_url ? [product.image_url] : []),
+      sizes: product.sizes ? product.sizes.map(s => ({ size: s.size, mrp: s.price, our_price: s.price })) : []
+    }];
+  }
+
+  const firstVariant = variants[0] || { color: "", images: [], sizes: [] };
+  const firstImg = firstVariant.images && firstVariant.images.length > 0 ? firstVariant.images[0] : "";
+  const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0 ? firstVariant.sizes[0] : { size: 'Standard', mrp: 0, our_price: 0 };
   
+  const originalPrice = Number(defaultSize.mrp) || Number(defaultSize.our_price) || 0;
+  let displayPrice = Number(defaultSize.our_price) || originalPrice;
+
   // Calculate offer price
-  let displayPrice = originalPrice;
   let activeOffer = null;
   if (product.offer_id) {
     activeOffer = offers?.find(o => o.id === product.offer_id && o.is_active);
@@ -24,9 +38,6 @@ export function ProductCard({ product, layout = 'grid' }) {
       displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
     }
   }
-  
-  // Use the first image from images array, fallback to image_url
-  const firstImg = (product.images && product.images.length > 0) ? product.images[0] : product.image_url;
 
   const handleWishlist = (e) => {
     e.preventDefault();
@@ -51,12 +62,21 @@ export function ProductCard({ product, layout = 'grid' }) {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, { ...defaultSize, price: displayPrice });
+    addToCart(product, { ...defaultSize, price: displayPrice }, 1, firstVariant.color);
   };
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
   };
+
+  // Determine reviews average
+  let avgRating = 4.5;
+  let reviewCount = 12; // default mock
+  if (product.reviews && product.reviews.length > 0) {
+    const total = product.reviews.reduce((acc, r) => acc + r.rating, 0);
+    avgRating = (total / product.reviews.length).toFixed(1);
+    reviewCount = product.reviews.length;
+  }
 
   if (layout === 'list') {
     return (
@@ -65,24 +85,29 @@ export function ProductCard({ product, layout = 'grid' }) {
           <img src={firstImg} alt={product.name} className="w-full h-full object-contain" />
         </div>
         <div className="flex flex-col justify-center flex-grow">
-          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
+          <div className="flex justify-between items-start">
+            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
+            {product.product_code && (
+               <span className="text-[9px] text-gray-400 font-mono ml-2 shrink-0">{product.product_code}</span>
+            )}
+          </div>
           
           <div className="flex items-center gap-1 mb-2">
             <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />
-            <span className="text-[10px] font-medium text-gray-500">4.5 (12)</span>
-            {product.color && (
+            <span className="text-[10px] font-medium text-gray-500">{avgRating} ({reviewCount})</span>
+            {variants.length > 1 && (
               <>
                 <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
-                <span className="text-[10px] font-medium text-gray-500">{product.color}</span>
+                <span className="text-[10px] font-medium text-brand-dark-blue">{variants.length} Colors</span>
               </>
             )}
           </div>
 
           <div className="flex items-center justify-between mt-auto">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold text-gray-900">${displayPrice}</span>
-              {activeOffer && (
-                <span className="text-[10px] text-gray-400 line-through">${originalPrice}</span>
+              <span className="text-base font-bold text-gray-900">₹{displayPrice}</span>
+              {(activeOffer || originalPrice > displayPrice) && (
+                <span className="text-[10px] text-gray-400 line-through">₹{originalPrice}</span>
               )}
               <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1 py-0.5 rounded">{defaultSize.size}</span>
             </div>
@@ -130,19 +155,33 @@ export function ProductCard({ product, layout = 'grid' }) {
             {activeOffer.discount_percentage}% OFF
           </div>
         )}
-        <img src={firstImg} alt={product.name} className="w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110" />
+        {firstImg ? (
+          <img src={firstImg} alt={product.name} className="w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
+        )}
       </div>
 
       <div className="flex flex-col flex-grow">
-        <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1.5">{product.name}</h3>
+        <div className="flex justify-between items-start mb-1.5">
+          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{product.name}</h3>
+        </div>
+        {product.product_code && (
+           <div className="text-[10px] text-gray-400 font-mono mb-1">{product.product_code}</div>
+        )}
         
         <div className="flex items-center gap-1 mb-2">
           <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />
-          <span className="text-[10px] font-medium text-gray-500">4.5 (12)</span>
-          {product.color && (
+          <span className="text-[10px] font-medium text-gray-500">{avgRating} ({reviewCount})</span>
+          {variants.length > 1 ? (
+             <>
+               <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
+               <span className="text-[10px] font-medium text-brand-dark-blue">{variants.length} Colors</span>
+             </>
+          ) : firstVariant.color && (
             <>
               <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
-              <span className="text-[10px] font-medium text-gray-500">{product.color}</span>
+              <span className="text-[10px] font-medium text-gray-500 line-clamp-1">{firstVariant.color}</span>
             </>
           )}
         </div>
@@ -151,9 +190,9 @@ export function ProductCard({ product, layout = 'grid' }) {
           <div className="flex flex-col gap-1">
             <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold text-gray-900 leading-none">${displayPrice}</span>
-              {activeOffer && (
-                <span className="text-[10px] text-gray-400 line-through leading-none">${originalPrice}</span>
+              <span className="text-base font-bold text-gray-900 leading-none">₹{displayPrice}</span>
+              {(activeOffer || originalPrice > displayPrice) && (
+                <span className="text-[10px] text-gray-400 line-through leading-none">₹{originalPrice}</span>
               )}
             </div>
           </div>

@@ -8,7 +8,7 @@ export function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editCoupon, setEditCoupon] = useState(null);
-  const [formData, setFormData] = useState({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true, user_id: "all" });
+  const [formData, setFormData] = useState({ code: '', discount_type: 'percentage', discount_value: 0, min_order_value: 0, expires_at: '', is_active: true, user_id: 'all', usage_type: 'multiple', min_type: 'amount', min_qty: 0 });
   const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -45,13 +45,13 @@ export function AdminCouponsPage() {
   }, []);
 
   const handleAdd = () => {
-    setFormData({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true, user_id: "all" });
+    setFormData({ code: '', discount_type: 'percentage', discount_value: 0, min_order_value: 0, expires_at: '', is_active: true, user_id: 'all', usage_type: 'multiple', min_type: 'amount', min_qty: 0 });
     setEditCoupon({});
     setIsNew(true);
   };
 
   const handleEdit = (coupon) => {
-    setFormData({ ...coupon, expires_at: coupon.expires_at ? coupon.expires_at.split('T')[0] : "", user_id: coupon.user_id || "all" });
+    setFormData({ ...coupon, expires_at: coupon.expires_at ? coupon.expires_at.split('T')[0] : '', user_id: coupon.user_id || 'all', usage_type: coupon.usage_type || 'multiple', min_type: coupon.min_type || 'amount', min_qty: coupon.min_qty || 0 });
     setEditCoupon(coupon);
     setIsNew(false);
   };
@@ -140,11 +140,12 @@ export function AdminCouponsPage() {
                 {coupon.discount_type === "percentage" ? `${coupon.discount_value}% OFF` : `$${coupon.discount_value} OFF`}
               </p>
               <div className="text-xs text-[#08183A]/60 font-sans space-y-1">
-                <p>Min Purchase: ${coupon.min_order_value}</p>
+                <p>Min: {coupon.min_type === 'qty' ? `${coupon.min_qty} item(s)` : `₹${coupon.min_order_value}`}</p>
+                <p>Usage: {coupon.usage_type === 'one_time' ? 'One Time' : 'Multiple'}</p>
                 <p>Customer: {coupon.user_name ? coupon.user_name : 'All Customers'}</p>
                 {coupon.expires_at && (
                   <p className="flex items-center gap-1 text-[#08183A]">
-                    <Calendar className="w-3.5 h-3.5" /> Expires: {new Date(coupon.expires_at).toLocaleDateString("en-IN")}
+                    <Calendar className="w-3.5 h-3.5" /> Expires: {new Date(coupon.expires_at).toLocaleDateString('en-IN')}
                   </p>
                 )}
               </div>
@@ -184,16 +185,44 @@ export function AdminCouponsPage() {
                   <input type="number" value={formData.discount_value} onChange={(e) => setFormData({ ...formData, discount_value: Number(e.target.value) })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Min Purchase ($)</label>
-                  <input type="number" value={formData.min_order_value} onChange={(e) => setFormData({ ...formData, min_order_value: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Usage</label>
+                  <select value={formData.usage_type} onChange={e => setFormData({ ...formData, usage_type: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
+                    <option value="multiple">Multiple Times</option>
+                    <option value="one_time">One Time Only</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Min Requirement Based On</label>
+                  <select value={formData.min_type} onChange={e => setFormData({ ...formData, min_type: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
+                    <option value="amount">Min Amount (₹)</option>
+                    <option value="qty">Min Quantity (items)</option>
+                  </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">
+                    {formData.min_type === 'qty' ? 'Min Quantity' : 'Min Purchase (₹)'}
+                  </label>
+                  <input type="number" min="0"
+                    value={formData.min_type === 'qty' ? formData.min_qty : formData.min_order_value}
+                    onChange={e => setFormData(formData.min_type === 'qty'
+                      ? { ...formData, min_qty: Number(e.target.value) }
+                      : { ...formData, min_order_value: Number(e.target.value) }
+                    )}
+                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
+                  <p className="text-[10px] text-[#08183A]/40 mt-1">
+                    {formData.min_type === 'qty' ? 'Coupon applies when cart has at least this many items' : 'Coupon applies when cart value meets this amount'}
+                  </p>
+                </div>
+                <div>
                   <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Expires At (Optional)</label>
-                  <input type="date" value={formData.expires_at} onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                  <input type="date" value={formData.expires_at} onChange={e => setFormData({ ...formData, expires_at: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
                 </div>
               </div>

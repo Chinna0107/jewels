@@ -122,7 +122,7 @@ export function MyOrdersPage() {
                   <td class="from-box">
                       <div class="section-heading">From Address</div>
                       <div class="address-box">
-                          <strong>Moksha Mandir</strong><br>
+                          <strong>Houra Jewels</strong><br>
                           1-1-738, Vinayaka temple road,<br>
                           Koratla, Telangana, USA<br>
                           <strong>Phone:</strong> +91 90326 75205

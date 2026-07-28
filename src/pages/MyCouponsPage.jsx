@@ -87,11 +87,27 @@ export function MyCouponsPage() {
                   </h3>
                   
                   <div className="space-y-1.5 text-sm text-brand-dark-blue/60 mb-6">
-                    <p>Minimum Purchase: <span className="font-semibold text-brand-dark-blue">${coupon.min_order_value}</span></p>
+                    <p>
+                      Min Requirement:{' '}
+                      <span className="font-semibold text-brand-dark-blue">
+                        {coupon.min_type === 'qty'
+                          ? `${coupon.min_qty || 0} item(s)`
+                          : `₹${coupon.min_order_value}`}
+                      </span>
+                    </p>
+                    <p>
+                      Usage:{' '}
+                      <span className="font-semibold text-brand-dark-blue">
+                        {coupon.usage_type === 'one_time' ? 'One Time Only' : 'Multiple Times'}
+                      </span>
+                    </p>
                     {coupon.expires_at && (
                       <p className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" /> 
-                        Valid till: <span className="font-semibold text-brand-dark-blue">{new Date(coupon.expires_at).toLocaleDateString()}</span>
+                        <Calendar className="w-4 h-4" />
+                        Valid till:{' '}
+                        <span className="font-semibold text-brand-dark-blue">
+                          {new Date(coupon.expires_at).toLocaleDateString('en-IN')}
+                        </span>
                       </p>
                     )}
                   </div>
