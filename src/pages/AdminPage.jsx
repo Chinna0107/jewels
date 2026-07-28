@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, ShoppingBag, IndianRupee, TrendingUp, Trash2,
+  Users, ShoppingBag, USAnRupee, TrendingUp, Trash2,
   ArrowLeft, Shield, RefreshCw, ChevronDown, Search, X
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
@@ -156,8 +156,8 @@ export function AdminPage() {
                   color="bg-gradient-to-br from-blue-500 to-blue-600 text-white" sub="Registered customers" />
                 <StatCard icon={ShoppingBag} label="Total Orders" value={stats.totalOrders}
                   color="bg-gradient-to-br from-gray-500 to-gray-600 text-white" sub="All time orders" />
-                <StatCard icon={IndianRupee} label="Total Revenue"
-                  value={`₹${Number(stats.totalRevenue).toLocaleString('en-IN')}`}
+                <StatCard icon={USAnRupee} label="Total Revenue"
+                  value={`$${Number(stats.totalRevenue).toLocaleString('en-IN')}`}
                   color="bg-gradient-to-br from-green-500 to-green-600 text-white" sub="Excluding cancelled" />
               </div>
             ) : (
@@ -259,7 +259,7 @@ export function AdminPage() {
                       <p className="text-[11px] text-gray-500">{order.user_name} · {order.user_email}</p>
                       <p className="text-[10px] text-gray-400">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </div>
-                    <p className="text-sm font-bold text-gray-900">₹{Number(order.total).toLocaleString('en-IN')}</p>
+                    <p className="text-sm font-bold text-gray-900">${Number(order.total).toLocaleString('en-IN')}</p>
                   </div>
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">

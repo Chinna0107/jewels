@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Package, Heart, MapPin, Wallet, Tag, Bell, Settings,
-  LogOut, ChevronRight, User, Plus, Trash2, Edit2, X, Check
+  LogOut, ChevronRight, User, Plus, Trash2, Edit2, X, Check, Ticket
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { BottomNav } from '../components/BottomNav';
@@ -22,7 +22,7 @@ function AddressModal({ onClose, onSave }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
         </div>
         <div className="space-y-3">
-          {[['name','Full Name'],['line1','Address Line 1'],['line2','Address Line 2 (optional)'],['city','City'],['state','State'],['pincode','Pincode'],['mobile','Mobile']].map(([field, label]) => (
+          {[['name','Full Name'],['line1','Address Line 1'],['line2','Address Line 2 (optional)'],['city','City'],['state','State'],['pincode','ZIP Code'],['mobile','Mobile']].map(([field, label]) => (
             <div key={field}>
               <label className="text-xs font-semibold text-gray-600 block mb-1">{label}</label>
               <input name={field} value={form[field]} onChange={handleChange}
@@ -168,6 +168,7 @@ export function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {[
                 { icon: Package, label: 'My Orders', action: () => navigate('/my-orders') },
+                { icon: Ticket, label: 'My Coupons', action: () => navigate('/my-coupons') },
                 { icon: Heart, label: 'Wishlist', action: () => navigate('/wishlist') },
                 { icon: MapPin, label: 'Saved Addresses', action: () => navigate('/my-addresses') },
                 { icon: Settings, label: 'Account Settings', action: () => navigate('/account-settings') },
@@ -219,7 +220,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex justify-between items-center border-t border-gray-100 pt-2 mt-2">
                     <p className="text-xs text-gray-600">{Array.isArray(order.items) ? order.items.length : 0} item(s)</p>
-                    <p className="text-sm font-bold text-gray-900">₹{Number(order.total).toLocaleString('en-IN')}</p>
+                    <p className="text-sm font-bold text-gray-900">${Number(order.total).toLocaleString('en-IN')}</p>
                   </div>
                 </div>
               ))

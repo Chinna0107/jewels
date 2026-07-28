@@ -4,12 +4,13 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Menu, Search, Heart, ShoppingCart, ArrowLeft, Share2,
   User, LogIn, Package, MapPin, LayoutDashboard, LogOut,
-  Settings, Shield, ChevronDown, X
+  Settings, Shield, ChevronDown, X, Ticket
 } from 'lucide-react';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useWishlistStore } from '../store/useWishlistStore';
-import image from '../assets/image.png';
+import { useStoreData } from '../store/useStoreData';
+import logo from '../assets/logo.png';
 
 function AvatarDropdown({ user, onLogout }) {
   const [open, setOpen] = useState(false);
@@ -27,6 +28,7 @@ function AvatarDropdown({ user, onLogout }) {
   const items = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Package, label: 'My Orders', path: '/my-orders' },
+    { icon: Ticket, label: 'My Coupons', path: '/my-coupons' },
     { icon: MapPin, label: 'My Addresses', path: '/my-addresses' },
     { icon: Heart, label: 'Wishlist', path: '/wishlist' },
     { icon: Settings, label: 'Account Settings', path: '/account-settings' },
@@ -72,7 +74,7 @@ function AvatarDropdown({ user, onLogout }) {
   );
 }
 
-function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout }) {
+function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout, categories, offers }) {
   return (
     <>
       <div className="h-[76px] hidden md:block" />
@@ -80,11 +82,9 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
         <div className="w-full mx-auto flex items-center justify-between">
 
           <Link to="/" className="flex items-center gap-3 hover:opacity-95 transition-opacity">
-            {/* Cropped Bird Icon */}
-            <div className="w-[52px] h-[52px] overflow-hidden flex items-start justify-center shrink-0">
-              <img src={image} alt="Icon" className="w-[170%] max-w-none h-auto object-cover object-top -mt-2.5" />
+            <div className="h-[52px] flex items-center justify-center shrink-0">
+              <img src={logo} alt="Icon" className="h-full w-auto object-contain" />
             </div>
-            {/* Text */}
             <div className="flex flex-col text-left mt-1">
               <span className="font-serif font-bold text-lg leading-none tracking-[0.12em] text-brand-gold whitespace-nowrap">HOURA JEWELS</span>
               <span className="text-white text-[10px] tracking-[0.2em] mt-1.5 uppercase font-medium">By S & M</span>
@@ -95,7 +95,45 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
           <div className="flex-1 flex items-center justify-end md:justify-center px-4 lg:px-12 gap-8">
             <nav className="hidden lg:flex items-center gap-6">
               <Link to="/" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">Home</Link>
-              <Link to="/category/all" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">Categories</Link>
+              <div className="relative group">
+                <div className="flex items-center cursor-pointer py-4">
+                  <span className="text-sm font-medium text-gray-200 group-hover:text-brand-gold transition-colors">
+                    Categories
+                  </span>
+                  <ChevronDown className="w-4 h-4 ml-1 text-gray-200 group-hover:text-brand-gold transition-transform group-hover:-rotate-180" />
+                </div>
+                {categories && categories.length > 0 && (
+                  <div className="absolute top-[100%] left-0 hidden group-hover:block w-48 bg-white rounded-xl shadow-xl py-2 z-[100] border border-gray-100 mt-[-8px]">
+                    <div className="w-full h-2 bg-transparent absolute -top-2 left-0" />
+                    <Link to="/category/all" className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-orange-50 hover:text-brand-orange transition-colors">All Categories</Link>
+                    {categories.map((cat) => (
+                      <Link key={cat.id} to={`/category/${cat.id}`} className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-brand-orange transition-colors">
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="relative group">
+                <div className="flex items-center cursor-pointer py-2 px-1">
+                  <span className="text-sm font-medium text-gray-200 group-hover:text-brand-gold transition-colors">
+                    Offers
+                  </span>
+                  <ChevronDown className="w-4 h-4 ml-1 text-gray-200 group-hover:text-brand-gold transition-transform group-hover:-rotate-180" />
+                </div>
+                {offers && offers.length > 0 && (
+                  <div className="absolute top-[100%] left-0 hidden group-hover:block w-56 bg-white rounded-xl shadow-xl py-2 z-[100] border border-gray-100 mt-[-8px]">
+                    <div className="w-full h-2 bg-transparent absolute -top-2 left-0" />
+                    {offers.map((offer) => (
+                      <Link key={offer.id} to={`/offer/${offer.id}`} className="flex justify-between items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-brand-orange transition-colors">
+                        <span>{offer.title}</span>
+                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{offer.discount_percentage}% OFF</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Link to="/about" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">About</Link>
               <Link to="/contact" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">Contact</Link>
             </nav>
@@ -148,6 +186,8 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
 export function Header({ variant = 'default', title, showShare = false }) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const [mobileOffersOpen, setMobileOffersOpen] = useState(false);
   const cartItems = useCartStore((state) => state.items);
   const cartCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
 
@@ -155,18 +195,20 @@ export function Header({ variant = 'default', title, showShare = false }) {
   const wishlistCount = wishlistItems ? wishlistItems.length : 0;
 
   const { token, user, logout } = useAuthStore();
+  const { categories, offers } = useStoreData();
 
   const handleLogout = () => { logout(); navigate('/'); };
 
   const navLinks = [
     { label: 'Home', to: '/' },
-    { label: 'Categories', to: '/category/all' },
+    { label: 'Categories', to: '#' },
+    { label: 'Offers', to: '#' },
     { label: 'About Us', to: '/about' },
-    { label: 'Contact Us', to: '/contact' },
+    { label: 'Contact', to: '/contact' },
     { label: 'My Profile', to: '/profile' },
   ];
 
-  const MobileSidebar = () => (
+  const mobileSidebarContent = (
     <AnimatePresence>
       {mobileMenuOpen && (
         <>
@@ -198,7 +240,9 @@ export function Header({ variant = 'default', title, showShare = false }) {
               className="px-5 py-5 flex items-center justify-between border-b border-brand-gold/15 bg-brand-dark-blue"
             >
               <div className="flex items-center gap-3">
-                <img src={image} alt="Houra Jewels" className="h-14 w-auto object-contain" />
+                <div className="h-14 flex items-center justify-center shrink-0">
+                  <img src={logo} alt="Houra Jewels" className="h-full w-auto object-contain" />
+                </div>
                 <div className="flex flex-col">
                   <span className="font-serif font-bold text-base leading-none" style={{ color: '#C6A184' }}>HOURA JEWELS</span>
                   <span className="text-white text-[9px] tracking-widest mt-0.5">By S & M</span>
@@ -221,13 +265,81 @@ export function Header({ variant = 'default', title, showShare = false }) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.12 + i * 0.06, type: 'spring', stiffness: 260, damping: 22 }}
                 >
-                  <Link
-                    to={to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block text-brand-dark-blue font-semibold text-base py-3 px-4 rounded-xl hover:bg-brand-dark-blue hover:text-brand-gold transition-all"
-                  >
-                    {label}
-                  </Link>
+                  {label === 'Categories' ? (
+                    <div className="flex flex-col rounded-xl overflow-hidden">
+                      <div
+                        onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+                        className="flex items-center justify-between hover:bg-brand-dark-blue hover:text-brand-gold transition-all cursor-pointer group rounded-xl"
+                      >
+                        <span className="block text-brand-dark-blue font-semibold text-base py-3 px-4 flex-grow group-hover:text-brand-gold">
+                          {label}
+                        </span>
+                        <button className="p-3 text-brand-dark-blue group-hover:text-brand-gold">
+                          <ChevronDown className={`w-5 h-5 transition-transform ${mobileCategoriesOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                      <AnimatePresence>
+                        {mobileCategoriesOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-black/5 overflow-hidden rounded-lg mx-2 mt-1"
+                          >
+                            <div className="py-2 px-2 flex flex-col gap-1">
+                              <Link to="/category/all" onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-brand-dark-blue py-2 px-3 rounded-lg hover:bg-black/5">All Categories</Link>
+                              {categories && categories.map((cat) => (
+                                <Link key={cat.id} to={`/category/${cat.id}`} onClick={() => setMobileMenuOpen(false)} className="block text-sm text-brand-dark-blue py-2 px-3 rounded-lg hover:bg-black/5">{cat.name}</Link>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : label === 'Offers' ? (
+                    <div className="flex flex-col rounded-xl overflow-hidden">
+                      <div
+                        onClick={() => setMobileOffersOpen(!mobileOffersOpen)}
+                        className="flex items-center justify-between hover:bg-brand-dark-blue hover:text-brand-gold transition-all cursor-pointer group rounded-xl"
+                      >
+                        <span className="block text-brand-dark-blue font-semibold text-base py-3 px-4 flex-grow group-hover:text-brand-gold">
+                          {label}
+                        </span>
+                        <button className="p-3 text-brand-dark-blue group-hover:text-brand-gold">
+                          <ChevronDown className={`w-5 h-5 transition-transform ${mobileOffersOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                      <AnimatePresence>
+                        {mobileOffersOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-black/5 overflow-hidden rounded-lg mx-2 mt-1"
+                          >
+                            <div className="py-2 px-2 flex flex-col gap-1">
+                              {offers && offers.length > 0 ? offers.map((offer) => (
+                                <Link key={offer.id} to={`/offer/${offer.id}`} onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-between text-sm text-brand-dark-blue py-2 px-3 rounded-lg hover:bg-black/5">
+                                  <span>{offer.title}</span>
+                                  <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{offer.discount_percentage}% OFF</span>
+                                </Link>
+                              )) : (
+                                <span className="py-2 px-3 text-sm text-gray-500">No active offers</span>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <Link
+                      to={to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-brand-dark-blue font-semibold text-base py-3 px-4 rounded-xl hover:bg-brand-dark-blue hover:text-brand-gold transition-all"
+                    >
+                      {label}
+                    </Link>
+                  )}
                 </motion.div>
               ))}
             </nav>
@@ -259,11 +371,11 @@ export function Header({ variant = 'default', title, showShare = false }) {
   return (
     <>
       {/* Desktop Header is always full header */}
-      <DesktopFullHeader cartCount={cartCount} wishlistCount={wishlistCount} token={token} user={user} handleLogout={handleLogout} />
+      <DesktopFullHeader cartCount={cartCount} wishlistCount={wishlistCount} token={token} user={user} handleLogout={handleLogout} categories={categories} offers={offers} />
 
       {/* Mobile Header is now global */}
       <div className="md:hidden">
-        <MobileSidebar />
+        {mobileSidebarContent}
         <div className="h-[76px]" />
         <header className="fixed top-0 left-0 z-50 w-full bg-brand-dark-blue/95 backdrop-blur-md px-4 py-2 shadow-lg border-b border-white/5 h-[76px]">
           <div className="w-full h-full flex items-center justify-between relative">
@@ -274,11 +386,9 @@ export function Header({ variant = 'default', title, showShare = false }) {
               </button>
 
               <Link to="/" className="flex items-center gap-2.5 z-20">
-                {/* Cropped Bird Icon (No Circle) */}
-                <div className="w-10 h-10 overflow-hidden flex items-start justify-center shrink-0">
-                  <img src={image} alt="Icon" className="w-[170%] max-w-none h-auto object-cover object-top -mt-2" />
+                <div className="h-10 flex items-center justify-center shrink-0">
+                  <img src={logo} alt="Icon" className="h-full w-auto object-contain" />
                 </div>
-                {/* Text */}
                 <div className="flex flex-col text-left mt-0.5">
                   <span className="font-serif font-bold text-[15px] sm:text-base leading-none tracking-[0.12em] text-brand-gold whitespace-nowrap">HOURA JEWELS</span>
                   <span className="text-white text-[8px] sm:text-[9px] tracking-[0.2em] mt-1 uppercase font-medium">By S & M</span>

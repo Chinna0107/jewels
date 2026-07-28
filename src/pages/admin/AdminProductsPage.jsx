@@ -7,11 +7,12 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 export function AdminProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editProduct, setEditProduct] = useState(null);
   
   const [formData, setFormData] = useState({ 
-    name: "", description: "", sizes: [], stock: 0, image_url: "", images: [], color: "", category: "", model: "", is_active: true 
+    name: "", description: "", sizes: [], stock: 0, image_url: "", images: [], color: "", category: "", model: "", is_active: true, offer_id: ""
   });
   
   const [newSize, setNewSize] = useState({ size: "", price: "" });
@@ -27,16 +28,19 @@ export function AdminProductsPage() {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const [prodRes, catRes] = await Promise.all([
+      const [prodRes, catRes, offerRes] = await Promise.all([
         fetch(`${BACKEND_URL}/admin/products`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${BACKEND_URL}/admin/categories`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${BACKEND_URL}/admin/categories`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BACKEND_URL}/admin/offers`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       
       const prodData = await prodRes.json();
       const catData = await catRes.json();
+      const offerData = await offerRes.json();
       
       if (prodData.products) setProducts(prodData.products);
       if (catData.categories) setCategories(catData.categories);
+      if (offerData.offers) setOffers(offerData.offers);
     } catch (err) {
       console.error(err);
     } finally {
@@ -88,7 +92,7 @@ export function AdminProductsPage() {
   };
 
   const handleAdd = () => {
-    setFormData({ name: "", description: "", sizes: [], stock: 0, image_url: "", images: [], color: "", category: "", model: "", is_active: true });
+    setFormData({ name: "", description: "", sizes: [], stock: 0, image_url: "", images: [], color: "", category: "", model: "", is_active: true, offer_id: "" });
     setNewSize({ size: "", price: "" });
     setEditProduct({});
     setIsNew(true);
@@ -99,7 +103,7 @@ export function AdminProductsPage() {
       ? product.images 
       : (product.image_url ? [product.image_url] : []);
       
-    setFormData({ ...product, model: product.model || "", sizes: product.sizes || [], images, color: product.color || "" });
+    setFormData({ ...product, model: product.model || "", sizes: product.sizes || [], images, color: product.color || "", offer_id: product.offer_id || "" });
     setNewSize({ size: "", price: "" });
     setEditProduct(product);
     setIsNew(false);
@@ -138,7 +142,8 @@ export function AdminProductsPage() {
       // Ensure image_url has the first image for backward compatibility
       const payload = {
         ...formData,
-        image_url: formData.images.length > 0 ? formData.images[0] : ""
+        image_url: formData.images.length > 0 ? formData.images[0] : "",
+        offer_id: formData.offer_id ? Number(formData.offer_id) : null
       };
 
       await fetch(url, {
@@ -301,6 +306,17 @@ export function AdminProductsPage() {
                     </select>
                   </div>
                 )}
+                
+                <div className={availableModels.length === 0 ? 'col-span-1' : 'col-span-2'}>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Active Offer</label>
+                  <select value={formData.offer_id || ""} onChange={(e) => setFormData({ ...formData, offer_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
+                    <option value="">No Offer</option>
+                    {offers.filter(o => o.is_active).map(o => (
+                      <option key={o.id} value={o.id}>{o.title} ({o.discount_percentage}% OFF)</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
               <div className="pt-3 border-t border-[#08183A]/10">
@@ -309,7 +325,7 @@ export function AdminProductsPage() {
                   {formData.sizes.map((s, idx) => (
                     <div key={idx} className="flex items-center gap-2 bg-[#FDF8F0] border border-[#08183A]/10 p-2 rounded-lg">
                       <span className="flex-1 font-semibold text-[#08183A] pl-2">{s.size}</span>
-                      <span className="text-[#08183A] font-bold w-24">₹{s.price}</span>
+                      <span className="text-[#08183A] font-bold w-24">${s.price}</span>
                       <button onClick={() => removeSize(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
@@ -325,7 +341,7 @@ export function AdminProductsPage() {
                     <option value="Medium">Medium</option>
                     <option value="Large">Large</option>
                   </select>
-                  <input type="number" value={newSize.price} onChange={(e) => setNewSize({ ...newSize, price: e.target.value })} placeholder="Price (₹)"
+                  <input type="number" value={newSize.price} onChange={(e) => setNewSize({ ...newSize, price: e.target.value })} placeholder="Price ($)"
                     className="w-24 px-3 py-2 rounded-lg bg-white border border-[#08183A]/20 focus:outline-none focus:border-[#08183A]/50 text-sm" />
                   <button onClick={addSize} className="bg-[#FDF8F0] text-[#08183A] border border-[#08183A]/20 px-4 rounded-lg font-semibold hover:bg-[#08183A]/10 transition-colors">Add</button>
                 </div>

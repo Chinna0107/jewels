@@ -91,7 +91,7 @@ export function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-brand-dark-blue text-lg mb-1">Our Location</h3>
-                <p className="text-brand-dark-blue/70 text-sm leading-relaxed">Texas, US</p>
+                <p className="text-brand-dark-blue/70 text-sm leading-relaxed">Dallas, Texas</p>
                 <p className="text-brand-dark-blue/40 text-xs mt-1">Home-based boutique</p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-brand-dark-blue text-lg mb-1">Phone & WhatsApp</h3>
-                <p className="text-brand-dark-blue/70 text-sm">+91 86866 80001</p>
+                <p className="text-brand-dark-blue/70 text-sm">+1 940-465-6563</p>
                 <p className="text-brand-dark-blue/40 text-xs mt-1">Mon–Sat, 9:00 AM – 6:00 PM</p>
               </div>
             </div>
@@ -205,7 +205,7 @@ export function ContactPage() {
             </div>
           </div>
           <a
-            href="https://wa.me/918686680001"
+            href="https://wa.me/19404656563"
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 bg-brand-gold text-brand-dark-blue font-bold py-4 px-8 rounded-xl hover:scale-105 hover:shadow-2xl transition-all text-sm md:text-base"

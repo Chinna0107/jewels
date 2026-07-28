@@ -22,6 +22,9 @@ export function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState('description');
   const isWishlisted = product ? wishlistItems.includes(product.id) : false;
   
+  const { offers } = useStoreData();
+  const activeOffer = product?.offer_id ? offers?.find(o => o.id === product.offer_id && o.is_active) : null;
+  
   const container = useRef(null);
 
   const productImages = product ? ((product.images && product.images.length > 0) 
@@ -92,12 +95,19 @@ export function ProductDetailPage() {
     );
   }
 
+  const getDisplayPrice = (original) => {
+    if (activeOffer) return Math.round(original - (original * (activeOffer.discount_percentage / 100)));
+    return original;
+  };
+
   const handleAddToCart = () => {
-    addToCart(product, selectedSize || { size: 'Standard', price: 0 }, quantity);
+    const size = selectedSize || { size: 'Standard', price: 0 };
+    addToCart(product, { ...size, price: getDisplayPrice(size.price) }, quantity);
   };
 
   const handleBuyNow = () => {
-    addToCart(product, selectedSize || { size: 'Standard', price: 0 }, quantity);
+    const size = selectedSize || { size: 'Standard', price: 0 };
+    addToCart(product, { ...size, price: getDisplayPrice(size.price) }, quantity);
     navigate('/cart');
   };
 
@@ -140,9 +150,14 @@ export function ProductDetailPage() {
           <div className="md:col-span-5 animate-image mb-8 md:mb-0 md:sticky md:top-32">
             {/* Main Image */}
             <div className="w-full aspect-square relative rounded-2xl overflow-hidden shadow-sm">
-              {product.is_bestseller && (
+              {product.is_bestseller && !activeOffer && (
                 <div className="absolute top-4 left-4 bg-brand-gold text-brand-dark-blue text-xs font-bold px-3 py-1.5 rounded-full z-10 shadow-sm">
                   Bestseller
+                </div>
+              )}
+              {activeOffer && (
+                <div className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10 shadow-sm">
+                  {activeOffer.discount_percentage}% OFF
                 </div>
               )}
               <img 
@@ -182,10 +197,15 @@ export function ProductDetailPage() {
             </div>
 
             <div className="animate-info">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-3">
                 <span className="text-4xl md:text-5xl font-bold text-brand-dark-blue">
-                  ₹{selectedSize ? selectedSize.price.toLocaleString() : (product.sizes?.[0]?.price || 0).toLocaleString()}
+                  ${selectedSize ? getDisplayPrice(selectedSize.price).toLocaleString() : getDisplayPrice(product.sizes?.[0]?.price || 0).toLocaleString()}
                 </span>
+                {activeOffer && (
+                  <span className="text-xl md:text-2xl font-bold text-gray-400 line-through">
+                    ${selectedSize ? selectedSize.price.toLocaleString() : (product.sizes?.[0]?.price || 0).toLocaleString()}
+                  </span>
+                )}
               </div>
               <p className="text-brand-dark-blue/60 text-sm font-medium mt-1">Inclusive of all taxes</p>
             </div>
@@ -216,7 +236,7 @@ export function ProductDetailPage() {
                           }`}
                         >
                           <span className={`font-bold text-base ${isSelected ? 'text-brand-dark-blue' : 'text-brand-dark-blue/80'}`}>{sizeObj.size}</span>
-                          <span className={`font-bold mt-1 ${isSelected ? 'text-brand-gold' : 'text-brand-dark-blue/50'}`}>₹{sizeObj.price}</span>
+                          <span className={`font-bold mt-1 ${isSelected ? 'text-brand-gold' : 'text-brand-dark-blue/50'}`}>${sizeObj.price}</span>
                         </button>
                       );
                     })}

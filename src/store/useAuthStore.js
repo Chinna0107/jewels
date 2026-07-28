@@ -50,6 +50,20 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  googleLogin: async (idToken) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await api.post('/auth/google', { idToken });
+      localStorage.setItem('token', data.token);
+      set({ token: data.token, user: data.user, loading: false });
+      return { success: true, role: data.user.role };
+    } catch (err) {
+      const error = err.response?.data?.error || 'Google Login failed';
+      set({ loading: false, error });
+      return { success: false, error };
+    }
+  },
+
   fetchProfile: async () => {
     if (!get().token) return;
     set({ loading: true });

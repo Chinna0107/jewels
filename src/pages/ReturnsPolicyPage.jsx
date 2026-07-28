@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { RefreshCw, CheckCircle, XCircle, Clock, AlertCircle, ChevronDown } from 'lucide-react';
 
 const steps = [
-  { num: '01', title: 'Contact Us', desc: 'Reach out via WhatsApp (+91 86866 80001) or email (hourajewels@gmail.com) within 7 days of receiving your order. Include your order number and the reason for the return.' },
+  { num: '01', title: 'Contact Us', desc: 'Reach out via WhatsApp (+1 940-465-6563) or email (hourajewels@gmail.com) within 7 days of receiving your order. Include your order number and the reason for the return.' },
   { num: '02', title: 'Get Confirmation', desc: 'Our team will review your request and send you a return confirmation along with shipping instructions within 24 hours.' },
   { num: '03', title: 'Ship the Item', desc: 'Pack the item securely in its original packaging and ship it back using the address provided. The return shipping cost is borne by the customer (unless the return is due to our error).' },
   { num: '04', title: 'Refund / Exchange', desc: 'Once we receive and inspect the item, your refund will be processed within 5–7 business days or your exchange item will be dispatched within 2–3 business days.' },
@@ -238,7 +238,7 @@ export function ReturnsPolicyPage() {
               </div>
               <h3 className="font-bold text-white text-lg mb-2">Start a Return</h3>
               <p className="text-white/50 text-sm mb-5 leading-relaxed">Message us and we'll guide you through the return process step by step.</p>
-              <a href="https://wa.me/918686680001" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/19404656563" target="_blank" rel="noopener noreferrer"
                 className="block w-full bg-brand-gold text-brand-dark-blue font-bold py-3 rounded-xl text-sm hover:bg-brand-gold/80 transition-all">
                 Chat on WhatsApp
               </a>
@@ -264,7 +264,7 @@ export function ReturnsPolicyPage() {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">WhatsApp</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">+91 86866 80001</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">+1 940-465-6563</p>
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Hours</p>

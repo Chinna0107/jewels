@@ -10,7 +10,7 @@ const FIELDS = [
   ['line2', 'Address Line 2 (optional)', 'text'],
   ['city', 'City', 'text'],
   ['state', 'State', 'text'],
-  ['pincode', 'Pincode', 'text'],
+  ['pincode', 'ZIP Code', 'text'],
   ['mobile', 'Mobile Number', 'tel'],
 ];
 

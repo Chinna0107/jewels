@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut, Shield, Users, Menu, X, ImageIcon, Tag, Layers } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut, Shield, Users, Menu, X, ImageIcon, Tag, Layers, Truck } from "lucide-react";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
@@ -10,6 +10,8 @@ const NAV = [
   { href: "/admin/customers", label: "Customers", icon: <Users className="w-4 h-4" /> },
   { href: "/admin/products", label: "Products", icon: <Package className="w-4 h-4" /> },
   { href: "/admin/categories", label: "Categories", icon: <Layers className="w-4 h-4" /> },
+  { href: "/admin/offers", label: "Offers", icon: <Shield className="w-4 h-4" /> },
+  { href: "/admin/shipping", label: "Shipping", icon: <Truck className="w-4 h-4" /> },
   { href: "/admin/banners", label: "Banners", icon: <ImageIcon className="w-4 h-4" /> },
   { href: "/admin/coupons", label: "Coupons", icon: <Tag className="w-4 h-4" /> },
   { href: "/admin/reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },

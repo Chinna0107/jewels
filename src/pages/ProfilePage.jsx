@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Heart, MapPin, Wallet, Tag, Bell, Settings, LogOut, ChevronRight, User } from 'lucide-react';
+import { Package, Heart, MapPin, Wallet, Tag, Bell, Settings, LogOut, ChevronRight, User, Ticket } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { Header } from '../components/Header';
 import { useAuthStore } from '../store/useAuthStore';
@@ -24,6 +24,7 @@ export function ProfilePage() {
 
   const menuItems = [
     { icon: Package, label: 'My Orders', action: () => navigate('/my-orders') },
+    { icon: Ticket, label: 'My Coupons', action: () => navigate('/my-coupons') },
     { icon: Heart, label: 'Wishlist', action: () => navigate('/wishlist') },
     { icon: MapPin, label: 'Saved Addresses', action: () => navigate('/my-addresses') },
     { icon: Settings, label: 'Account Settings', action: () => navigate('/account-settings') },

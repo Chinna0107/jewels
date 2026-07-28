@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin } from 'lucide-react';
-import logoUrl from '../assets/image.png';
+import logoUrl from '../assets/logo.png';
 
 export function Footer() {
   return (
@@ -12,8 +12,13 @@ export function Footer() {
           {/* Brand Info */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <img src={logoUrl} alt="Houra Jewels" className="w-14 h-14 object-contain bg-white rounded-full p-1 shadow-lg" />
-              <h2 className="text-2xl font-bold" style={{ color: '#C6A184' }}>Houra Jewels</h2>
+              <div className="h-14 w-14 flex items-center justify-center shrink-0 bg-black rounded-full p-1 shadow-lg">
+                <img src={logoUrl} alt="Houra Jewels" className="h-full w-auto object-contain" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-serif font-bold text-xl leading-none" style={{ color: '#C6A184' }}>HOURA JEWELS</span>
+                <span className="text-white text-[10px] tracking-[0.2em] mt-1 uppercase font-medium">By S & M</span>
+              </div>
             </div>
             <p className="text-sm text-gray-100/80 leading-relaxed">
               Your one-stop destination for authentic and premium jewelry. Experience elegance with our carefully curated collection.
@@ -64,11 +69,11 @@ export function Footer() {
             <h3 className="text-lg font-bold mb-2" style={{ color: '#C6A184' }}>Contact Us</h3>
             <div className="flex items-start gap-3 text-sm text-gray-100/80">
               <MapPin className="w-5 h-5 shrink-0" style={{ color: '#C6A184' }} />
-              <span>Texas, US</span>
+              <span>Dallas, Texas</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-100/80">
               <Phone className="w-5 h-5 shrink-0" style={{ color: '#C6A184' }} />
-              <span>+91 86866 80001</span>
+              <span>+1 940-465-6563</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-100/80">
               <Mail className="w-5 h-5 shrink-0" style={{ color: '#C6A184' }} />

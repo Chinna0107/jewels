@@ -120,7 +120,7 @@ export function AdminOrdersPage() {
         <td><span style="font-weight: bold; color: #222222;">${escapeHtml(item.product?.name)}</span></td>
         <td style="text-align: center;">${escapeHtml(item.variant?.size || '-')}</td>
         <td style="text-align: center;">${item.qty} </td>
-        <td style="text-align: right;">₹${(item.variant?.price || item.product?.price || 0).toFixed(2)}</td>
+        <td style="text-align: right;">$${(item.variant?.price || item.product?.price || 0).toFixed(2)}</td>
       </tr>
     `).join("");
 
@@ -175,7 +175,7 @@ export function AdminOrdersPage() {
                           <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
                               <strong style="font-size: 20px;">Houra Jewels</strong><br>
                               // GSTIN: 36BANPK1643M1ZC<br>
-                              Phone: +91 86866 80001 | Email: hourajewels@gmail.com<br>
+                              Phone: +1 940-465-6563 | Email: hourajewels@gmail.com<br/>
                           </div>
                       </td>
                       <td class="invoice-title-block">
@@ -197,7 +197,7 @@ export function AdminOrdersPage() {
                       <div class="address-box">
                           <strong>Moksha Mandir</strong><br>
                           1-1-738, Vinayaka temple road,<br>
-                          Koratla, Telangana, India<br>
+                          Koratla, Telangana, USA<br>
                           <strong>Phone:</strong> +91 90326 75205
                       </div>
                   </td>
@@ -206,7 +206,7 @@ export function AdminOrdersPage() {
                       <div class="address-box">
                           <strong>${escapeHtml(address.name || "")}</strong><br>
                           ${escapeHtml(address.line1 || "")}${address.line2 ? `, ${escapeHtml(address.line2)}` : ""}<br>
-                          ${escapeHtml(address.city || "")}, ${escapeHtml(address.state || "")} — ${escapeHtml(address.pincode || "")}, India<br>
+                          ${escapeHtml(address.city || "")}, ${escapeHtml(address.state || "")} — ${escapeHtml(address.pincode || "")}, USA<br>
                           ${address.mobile ? `<strong>Mobile:</strong> ${escapeHtml(address.mobile)}` : ""}
                       </div>
                   </td>
@@ -220,7 +220,7 @@ export function AdminOrdersPage() {
                       <th style="width: 44%;">Item Name</th>
                       <th style="width: 18%; text-align: center;">Pack Size</th>
                       <th style="width: 12%; text-align: center;">Quantity</th>
-                      <th style="width: 18%; text-align: right;">Price (₹)</th>
+                      <th style="width: 18%; text-align: right;">Price ($)</th>
                   </tr>
               </thead>
               <tbody>
@@ -233,11 +233,11 @@ export function AdminOrdersPage() {
               <td class="terms-cell"></td>
               <td class="summary-cell">
                   <table class="inner-summary-table">
-                      <tr><td class="label">Subtotal</td><td class="value">₹${subtotal.toFixed(2)}</td></tr>
-                      ${Number(order.total) - subtotal > 0 ? `<tr><td class="label">Delivery Charges</td><td class="value">₹${(Number(order.total) - subtotal).toFixed(2)}</td></tr>` : ''}
-                      <tr class="grand-total"><td class="label">TOTAL:</td><td class="value">₹${Number(order.total).toFixed(2)}</td></tr>
-                      ${order.payment_method === 'cod' ? `<tr><td class="label" style="color: #059669; font-size: 9pt;">Advance Paid (Online)</td><td class="value" style="color: #059669; font-size: 9pt;">-₹${Number(order.advance_paid || 0).toFixed(2)}</td></tr>
-                      <tr class="grand-total" style="background-color: #ecfdf5; border-color: #059669; color: #059669;"><td class="label" style="color: #059669;">CASH TO COLLECT:</td><td class="value">₹${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</td></tr>` : ''}
+                      <tr><td class="label">Subtotal</td><td class="value">$${subtotal.toFixed(2)}</td></tr>
+                      ${Number(order.total) - subtotal > 0 ? `<tr><td class="label">Delivery Charges</td><td class="value">$${(Number(order.total) - subtotal).toFixed(2)}</td></tr>` : ''}
+                      <tr class="grand-total"><td class="label">TOTAL:</td><td class="value">$${Number(order.total).toFixed(2)}</td></tr>
+                      ${order.payment_method === 'cod' ? `<tr><td class="label" style="color: #059669; font-size: 9pt;">Advance Paid (Online)</td><td class="value" style="color: #059669; font-size: 9pt;">-$${Number(order.advance_paid || 0).toFixed(2)}</td></tr>
+                      <tr class="grand-total" style="background-color: #ecfdf5; border-color: #059669; color: #059669;"><td class="label" style="color: #059669;">CASH TO COLLECT:</td><td class="value">$${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</td></tr>` : ''}
                   </table>
                   </td>
               </tr>
@@ -269,11 +269,11 @@ export function AdminOrdersPage() {
     try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
     
     const phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
-    const itemsText = items.map((i) => `• ${i.product?.name} ×${i.qty} — ₹${(i.variant?.price || i.product?.price || 0) * i.qty}`).join("\n");
+    const itemsText = items.map((i) => `• ${i.product?.name} ×${i.qty} — $${(i.variant?.price || i.product?.price || 0) * i.qty}`).join("\n");
     const msg = encodeURIComponent(
       `Hi ${order.user_name || address.name || 'Customer'}! 🙏 Please find your *Invoice* for Order *#${order.order_number || order.id}* below:\n\n` +
       `*Items:*\n${itemsText}\n\n` +
-      `*Total: ₹${order.total}*\n\n` +
+      `*Total: $${order.total}*\n\n` +
       `Thank you for shopping with Moksha Mandir!`
     );
     window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
@@ -327,7 +327,7 @@ export function AdminOrdersPage() {
     <div class="lbl">Ship To</div>
     <div class="val">${escapeHtml(address.name || '')}</div>
     <div class="sm">${escapeHtml(address.line1 || '')}${address.line2 ? ', ' + escapeHtml(address.line2) : ''}</div>
-    <div class="sm">${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} - ${escapeHtml(address.pincode || '')}, India</div>
+    <div class="sm">${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} - ${escapeHtml(address.pincode || '')}, USA</div>
     ${address.mobile ? '<div class="sm" style="font-weight:700;margin-top:1mm;">Ph: ' + escapeHtml(address.mobile) + '</div>' : ''}
   </div>
  
@@ -411,7 +411,7 @@ export function AdminOrdersPage() {
                     </span>
                     {order.payment_method === 'cod' && (
                       <span className="text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                        COD (₹{order.total - (order.advance_paid || 0)} Pending)
+                        COD (${order.total - (order.advance_paid || 0)} Pending)
                       </span>
                     )}
                   </div>
@@ -419,7 +419,7 @@ export function AdminOrdersPage() {
                     {order.user_name || "Guest"}
                   </p>
                 </div>
-                <span className="font-serif font-bold text-[#D4AF37] text-sm sm:text-base lg:text-lg flex-shrink-0">₹{order.total}</span>
+                <span className="font-serif font-bold text-[#D4AF37] text-sm sm:text-base lg:text-lg flex-shrink-0">${order.total}</span>
                 <ChevronDown className={`w-4 h-4 text-[#08183A]/40 transition-transform flex-shrink-0 ${expanded === order.id ? "rotate-180" : ""}`} />
               </div>
 

@@ -136,7 +136,7 @@ export function AboutPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-brand-dark-blue text-xl mb-3">Premium 18K Plating</h3>
+              <h3 className="font-bold text-brand-dark-blue text-xl mb-3">Premium Stainless Steel Plating</h3>
               <p className="text-gray-600 text-sm leading-relaxed">Advanced PVD (Physical Vapor Deposition) technology ensures our 18K gold finish lasts 10x longer than standard plating.</p>
             </motion.div>
 

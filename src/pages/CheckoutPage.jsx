@@ -34,8 +34,47 @@ export function CheckoutPage() {
   const textRef = useRef(null);
 
   const subtotal = getSubtotal();
-  const grandTotal = getTotal();
   const discount = getDiscount();
+  
+  const [shippingConfig, setShippingConfig] = useState(null);
+  const [shippingFee, setShippingFee] = useState(0);
+  const finalTotal = subtotal - discount + shippingFee;
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/general/shipping`)
+      .then(r => r.json())
+      .then(d => setShippingConfig(d))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!shippingConfig) return;
+    
+    let fee = 0;
+    const amount = subtotal; 
+
+    if (shippingConfig.settings.mode === 'fixed') {
+      // Flat percentage applied immediately
+      fee = amount * (shippingConfig.settings.fixed_percentage / 100);
+    } else if (shippingConfig.settings.mode === 'pincode') {
+      // ZIP Code based: Initially 0. Calculate only if 6 digits are entered.
+      if (address.pincode.length === 6) {
+        const currentZipCode = address.pincode.trim();
+        const match = shippingConfig.zipCodes.find(p => p.pincode === currentZipCode);
+        if (match) {
+          fee = amount * (match.percentage / 100);
+        } else {
+          // If no matching rule for this pincode, fee remains 0
+          fee = 0;
+        }
+      } else {
+        // Not 6 digits yet, fee is 0
+        fee = 0;
+      }
+    }
+    setShippingFee(Math.round(fee));
+  }, [shippingConfig, address.pincode, subtotal]);
+
   const couponCode = appliedCoupon?.code || location.state?.couponCode || '';
 
   // Redirect to cart if empty
@@ -77,7 +116,7 @@ export function CheckoutPage() {
   };
 
   const COD_ADVANCE = 100;
-  const codRemaining = grandTotal - COD_ADVANCE;
+  const codRemaining = finalTotal - COD_ADVANCE;
 
   const createOrder = async (pMethod) => {
     const endpoint = token ? `${BACKEND_URL}/auth/orders` : `${BACKEND_URL}/general/orders`;
@@ -89,7 +128,7 @@ export function CheckoutPage() {
       body: JSON.stringify({
         items,
         address,
-        total: grandTotal,
+        total: finalTotal,
         coupon_code: couponCode,
         payment_method: pMethod,
       })
@@ -103,7 +142,7 @@ export function CheckoutPage() {
       return;
     }
     if (!/^\d{6}$/.test(address.pincode)) {
-      showToast('Pincode must be 6 digits.', 'error');
+      showToast('ZIP Code must be 6 digits.', 'error');
       return;
     }
     if (!/^\d{10}$/.test(address.mobile)) {
@@ -123,8 +162,8 @@ export function CheckoutPage() {
         return;
       }
 
-      // Amount to charge online: ₹100 for COD, full amount for prepaid
-      const chargeAmount = paymentMethod === 'cod' ? COD_ADVANCE : grandTotal;
+      // Amount to charge online: $100 for COD, full amount for prepaid
+      const chargeAmount = paymentMethod === 'cod' ? COD_ADVANCE : finalTotal;
 
       // Create Razorpay Order
       const orderRes = await fetch(`${BACKEND_URL}/general/razorpay/order`, {
@@ -146,7 +185,7 @@ export function CheckoutPage() {
         currency: orderData.order.currency,
         name: 'Tradition Store',
         description: paymentMethod === 'cod'
-          ? `COD Advance Payment (₹${COD_ADVANCE})`
+          ? `COD Advance Payment ($${COD_ADVANCE})`
           : 'Order Payment',
         order_id: orderData.order.id,
         handler: async function (response) {
@@ -290,7 +329,7 @@ export function CheckoutPage() {
               <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
                 <MapPin className="w-4 h-4 text-brand-gold" />
               </div>
-              Delivery Address
+              Shipping Address
             </h2>
             
             <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 relative overflow-hidden">
@@ -316,8 +355,8 @@ export function CheckoutPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Pincode</label>
-                    <input type="text" maxLength={6} required value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Pincode" />
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">ZIP Code</label>
+                    <input type="text" maxLength={6} required value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="ZIP Code" />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Mobile</label>
@@ -366,7 +405,7 @@ export function CheckoutPage() {
                   </div>
                   <div className="flex-1" onClick={() => setPaymentMethod('cod')}>
                     <span className="text-base font-bold text-brand-dark-blue block">Cash on Delivery</span>
-                    <span className="text-xs text-brand-dark-blue/60">Pay ₹100 now + ₹{Math.max(0, codRemaining).toFixed(0)} at your door</span>
+                    <span className="text-xs text-brand-dark-blue/60">Pay $100 now + ${Math.max(0, codRemaining).toFixed(0)} at your door</span>
                   </div>
                   <input
                     type="radio"
@@ -387,9 +426,9 @@ export function CheckoutPage() {
                 <div>
                   <p className="text-sm font-bold text-emerald-800">How COD works</p>
                   <ul className="mt-1 space-y-1">
-                    <li className="text-xs text-emerald-700">✓ Pay <strong>₹{COD_ADVANCE}</strong> advance online now (via Razorpay)</li>
-                    <li className="text-xs text-emerald-700">✓ Remaining <strong>₹{Math.max(0, codRemaining).toFixed(0)}</strong> is collected at your door by the delivery person</li>
-                    <li className="text-xs text-emerald-700">✓ Your order will be confirmed instantly after the ₹100 advance</li>
+                    <li className="text-xs text-emerald-700">✓ Pay <strong>${COD_ADVANCE}</strong> advance online now (via Razorpay)</li>
+                    <li className="text-xs text-emerald-700">✓ Remaining <strong>${Math.max(0, codRemaining).toFixed(0)}</strong> is collected at your door by the delivery person</li>
+                    <li className="text-xs text-emerald-700">✓ Your order will be confirmed instantly after the $100 advance</li>
                   </ul>
                 </div>
               </div>
@@ -410,7 +449,7 @@ export function CheckoutPage() {
                     <div>
                       <h4 className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</h4>
                       <p className="text-xs text-brand-dark-blue/60 mt-1">Qty: {item.qty} | {item.variant?.size || 'Std'}</p>
-                      <p className="text-sm font-bold text-brand-gold mt-1">₹{(item.variant?.price || item.product.price) * item.qty}</p>
+                      <p className="text-sm font-bold text-brand-gold mt-1">${(item.variant?.price || item.product.price) * item.qty}</p>
                     </div>
                   </div>
                 ))}
@@ -419,17 +458,21 @@ export function CheckoutPage() {
               <div className="border-t border-dashed border-brand-gold/20 pt-4 mb-6">
                 <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                   <span>Item Total</span>
-                  <span className="font-medium text-brand-dark-blue">₹{subtotal.toFixed(2)}</span>
+                  <span className="font-medium text-brand-dark-blue">${subtotal.toFixed(2)}</span>
                 </div>
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm text-brand-gold mb-2">
                     <span>Coupon ({appliedCoupon.code})</span>
-                    <span className="font-medium">- ₹{discount.toFixed(2)}</span>
+                    <span className="font-medium">- ${discount.toFixed(2)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
+                  <span>Shipping Fee</span>
+                  <span className="font-medium text-brand-dark-blue">${shippingFee.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between font-bold text-brand-dark-blue text-xl pt-2 border-t border-brand-gold/20">
                   <span>Grand Total</span>
-                  <span className="text-brand-gold">₹{grandTotal.toFixed(2)}</span>
+                  <span className="text-brand-gold">${finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -466,7 +509,7 @@ export function CheckoutPage() {
                   ) : paymentMethod === 'cod' ? (
                     <>
                       <Banknote className="w-5 h-5" />
-                      Pay ₹{COD_ADVANCE} Advance & Place Order
+                      Pay ${COD_ADVANCE} Advance & Place Order
                     </>
                   ) : 'Confirm & Pay'}
                 </button>
@@ -489,15 +532,15 @@ export function CheckoutPage() {
               {step === 3 && paymentMethod === 'cod' ? (
                 <>
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Pay Now (Advance)</p>
-                  <p className="text-2xl font-bold text-emerald-600 leading-none">₹{COD_ADVANCE}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">+ ₹{Math.max(0, codRemaining).toFixed(0)} at delivery</p>
+                  <p className="text-2xl font-bold text-emerald-600 leading-none">${COD_ADVANCE}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">+ ${Math.max(0, codRemaining).toFixed(0)} at delivery</p>
                 </>
               ) : (
                 <>
                   <p className="text-xs font-bold text-brand-dark-blue/60 uppercase tracking-wider mb-1">Payable Amount</p>
                   <div className="flex flex-col">
                     {appliedCoupon && <span className="text-[10px] text-brand-gold font-bold -mb-1">Code applied: {appliedCoupon.code}</span>}
-                    <p className="text-2xl font-bold text-brand-dark-blue leading-none">₹{grandTotal.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-brand-dark-blue leading-none">${finalTotal.toFixed(2)}</p>
                   </div>
                 </>
               )}
@@ -539,7 +582,7 @@ export function CheckoutPage() {
               ) : paymentMethod === 'cod' ? (
                 <>
                   <Banknote className="w-5 h-5" />
-                  Pay ₹{COD_ADVANCE} Advance & Place Order
+                  Pay ${COD_ADVANCE} Advance & Place Order
                 </>
               ) : 'Confirm Order'}
             </button>

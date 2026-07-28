@@ -3,15 +3,27 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Share2 } from 'lucide-react';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useCartStore } from '../store/useCartStore';
+import { useStoreData } from '../store/useStoreData';
 
 export function ProductCard({ product, layout = 'grid' }) {
   const navigate = useNavigate();
   const { toggleWishlist, items: wishlistItems } = useWishlistStore();
   const { addToCart } = useCartStore();
+  const { offers } = useStoreData();
 
   const isWishlisted = wishlistItems.includes(product.id);
   const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : { size: 'Standard', price: 0 };
-  const displayPrice = defaultSize.price;
+  const originalPrice = defaultSize.price;
+  
+  // Calculate offer price
+  let displayPrice = originalPrice;
+  let activeOffer = null;
+  if (product.offer_id) {
+    activeOffer = offers?.find(o => o.id === product.offer_id && o.is_active);
+    if (activeOffer) {
+      displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
+    }
+  }
   
   // Use the first image from images array, fallback to image_url
   const firstImg = (product.images && product.images.length > 0) ? product.images[0] : product.image_url;
@@ -39,7 +51,7 @@ export function ProductCard({ product, layout = 'grid' }) {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, defaultSize);
+    addToCart(product, { ...defaultSize, price: displayPrice });
   };
 
   const handleCardClick = () => {
@@ -68,7 +80,10 @@ export function ProductCard({ product, layout = 'grid' }) {
 
           <div className="flex items-center justify-between mt-auto">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold text-gray-900">₹{displayPrice}</span>
+              <span className="text-base font-bold text-gray-900">${displayPrice}</span>
+              {activeOffer && (
+                <span className="text-[10px] text-gray-400 line-through">${originalPrice}</span>
+              )}
               <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1 py-0.5 rounded">{defaultSize.size}</span>
             </div>
             <button onClick={handleAddToCart} className="bg-[#08183A] text-white text-xs font-semibold px-4 py-1.5 rounded-md hover:bg-[#D4AF37] transition-colors flex items-center gap-1">
@@ -110,6 +125,11 @@ export function ProductCard({ product, layout = 'grid' }) {
       </div>
 
       <div className="relative aspect-square bg-gray-50 overflow-hidden rounded-xl mb-3">
+        {activeOffer && (
+          <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+            {activeOffer.discount_percentage}% OFF
+          </div>
+        )}
         <img src={firstImg} alt={product.name} className="w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110" />
       </div>
 
@@ -130,7 +150,12 @@ export function ProductCard({ product, layout = 'grid' }) {
         <div className="flex items-end justify-between mt-auto mb-1">
           <div className="flex flex-col gap-1">
             <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
-            <span className="text-base font-bold text-gray-900 leading-none">₹{displayPrice}</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base font-bold text-gray-900 leading-none">${displayPrice}</span>
+              {activeOffer && (
+                <span className="text-[10px] text-gray-400 line-through leading-none">${originalPrice}</span>
+              )}
+            </div>
           </div>
 
           <button onClick={handleAddToCart} className="bg-[#08183A] text-white p-2.5 rounded-full hover:bg-[#D4AF37] transition-all hover:shadow-md hover:scale-105 shrink-0 flex items-center justify-center group/btn">

@@ -6,7 +6,7 @@ export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
-      deliveryCharge: 1,
+      deliveryCharge: 0,
       appliedCoupon: null,
       
       addToCart: (product, variant, qty = 1) => {
@@ -75,13 +75,11 @@ export const useCartStore = create(
         if (!coupon) return 0;
         
         let discount = 0;
+        const discountValue = Number(coupon.discount_value) || 0;
         if (coupon.discount_type === 'percentage') {
-          discount = subtotal * (coupon.discount_value / 100);
-          // Assuming max_discount is not available or handled via business rules, just calculate percentage
-          // if coupon.max_discount is available we could cap it:
-          // if (coupon.max_discount) discount = Math.min(discount, coupon.max_discount);
+          discount = subtotal * (discountValue / 100);
         } else {
-          discount = coupon.discount_value; // flat amount
+          discount = discountValue; // flat amount
         }
         return discount > subtotal ? subtotal : discount;
       },
@@ -97,7 +95,7 @@ export const useCartStore = create(
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...persistedState,
-        deliveryCharge: 1
+        deliveryCharge: 0
       })
     }
   )

@@ -30,7 +30,7 @@ export function AdminDashboardPage() {
 
   const stats = [
     { label: "Total Orders", value: orders.length, icon: <ShoppingBag className="w-6 h-6" />, color: "bg-[#08183A]/10 text-[#08183A]" },
-    { label: "Total Revenue", value: `₹${revenue.toLocaleString()}`, icon: <TrendingUp className="w-6 h-6" />, color: "bg-green-100 text-green-600" },
+    { label: "Total Revenue", value: `$${revenue.toLocaleString()}`, icon: <TrendingUp className="w-6 h-6" />, color: "bg-green-100 text-green-600" },
     { label: "Customers", value: users.length, icon: <Users className="w-6 h-6" />, color: "bg-blue-100 text-blue-600" },
     { label: "Pending Orders", value: pending, icon: <Clock className="w-6 h-6" />, color: "bg-[#D4AF37]/10 text-[#D4AF37]" },
     { label: "Products", value: productsCount, icon: <Package className="w-6 h-6" />, color: "bg-purple-100 text-purple-600" },
@@ -84,7 +84,7 @@ export function AdminDashboardPage() {
                     <tr key={order.id} className="hover:bg-[#FDF8F0]/30 transition-colors">
                       <td className="py-3 pr-2 sm:pr-4 font-semibold text-[#08183A] text-xs sm:text-sm">#{order.id}</td>
                       <td className="py-3 pr-2 sm:pr-4 text-[#08183A]/70 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{order.address?.name || "—"}</td>
-                      <td className="py-3 pr-2 sm:pr-4 font-serif font-bold text-[#D4AF37] text-xs sm:text-sm">₹{order.total}</td>
+                      <td className="py-3 pr-2 sm:pr-4 font-serif font-bold text-[#D4AF37] text-xs sm:text-sm">${order.total}</td>
                       <td className="py-3 pr-2 sm:pr-4">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                           order.status === "delivered" ? "bg-green-100 text-green-700" :

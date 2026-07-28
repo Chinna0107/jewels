@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Ticket, Plus, Trash2, Edit2, X, Save, Calendar } from "lucide-react";
+import { Ticket, Plus, Trash2, Edit2, X, Save, Calendar, ChevronDown, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
@@ -8,13 +8,12 @@ export function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editCoupon, setEditCoupon] = useState(null);
-  const [formData, setFormData] = useState({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true });
+  const [formData, setFormData] = useState({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true, user_id: "all" });
+  const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [isNew, setIsNew] = useState(false);
-
-  useEffect(() => {
-    fetchCoupons();
-  }, []);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const fetchCoupons = async () => {
     try {
@@ -29,14 +28,30 @@ export function AdminCouponsPage() {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BACKEND_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.users) setUsers(data.users);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCoupons();
+    fetchUsers();
+  }, []);
+
   const handleAdd = () => {
-    setFormData({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true });
+    setFormData({ code: "", discount_type: "percentage", discount_value: 0, min_order_value: 0, expires_at: "", is_active: true, user_id: "all" });
     setEditCoupon({});
     setIsNew(true);
   };
 
   const handleEdit = (coupon) => {
-    setFormData({ ...coupon, expires_at: coupon.expires_at ? coupon.expires_at.split('T')[0] : "" });
+    setFormData({ ...coupon, expires_at: coupon.expires_at ? coupon.expires_at.split('T')[0] : "", user_id: coupon.user_id || "all" });
     setEditCoupon(coupon);
     setIsNew(false);
   };
@@ -77,6 +92,8 @@ export function AdminCouponsPage() {
     </div>
   );
 
+  const filteredCoupons = coupons.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -90,8 +107,18 @@ export function AdminCouponsPage() {
         </button>
       </div>
 
+      <div className="mb-6">
+        <input 
+          type="text" 
+          placeholder="Search coupons by code..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:max-w-md px-4 py-2 rounded-xl bg-white border border-[#08183A]/10 focus:outline-none focus:border-[#D4AF37]"
+        />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {coupons.map((coupon, i) => (
+        {filteredCoupons.map((coupon, i) => (
           <motion.div key={coupon.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="bg-white rounded-2xl border border-[#08183A]/10 p-5 shadow-sm relative overflow-hidden">
             {!coupon.is_active && (
@@ -110,10 +137,11 @@ export function AdminCouponsPage() {
             
             <div className="space-y-2">
               <p className="font-serif text-xl font-bold text-[#08183A]">
-                {coupon.discount_type === "percentage" ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
+                {coupon.discount_type === "percentage" ? `${coupon.discount_value}% OFF` : `$${coupon.discount_value} OFF`}
               </p>
               <div className="text-xs text-[#08183A]/60 font-sans space-y-1">
-                <p>Min Purchase: ₹{coupon.min_order_value}</p>
+                <p>Min Purchase: ${coupon.min_order_value}</p>
+                <p>Customer: {coupon.user_name ? coupon.user_name : 'All Customers'}</p>
                 {coupon.expires_at && (
                   <p className="flex items-center gap-1 text-[#08183A]">
                     <Calendar className="w-3.5 h-3.5" /> Expires: {new Date(coupon.expires_at).toLocaleDateString("en-IN")}
@@ -146,7 +174,7 @@ export function AdminCouponsPage() {
                   <select value={formData.discount_type} onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
                     <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount (₹)</option>
+                    <option value="fixed">Fixed Amount ($)</option>
                   </select>
                 </div>
               </div>
@@ -157,7 +185,7 @@ export function AdminCouponsPage() {
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Min Purchase (₹)</label>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Min Purchase ($)</label>
                   <input type="number" value={formData.min_order_value} onChange={(e) => setFormData({ ...formData, min_order_value: Number(e.target.value) })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
                 </div>
@@ -167,6 +195,64 @@ export function AdminCouponsPage() {
                   <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Expires At (Optional)</label>
                   <input type="date" value={formData.expires_at} onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative">
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Assign to Customer</label>
+                  <button 
+                    type="button"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none text-left flex justify-between items-center"
+                  >
+                    <span className="truncate">
+                      {formData.user_id === "all" ? "All Customers" : users.find(u => u.id.toString() === formData.user_id?.toString())?.email || "Select Customer"}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-[#08183A]/50 shrink-0" />
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-[#08183A]/10 rounded-lg shadow-lg overflow-hidden">
+                      <div className="p-2 border-b border-[#08183A]/10 flex items-center gap-2">
+                        <Search className="w-4 h-4 text-[#08183A]/50 shrink-0" />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search name or email..."
+                          value={formData.customerSearch || ""}
+                          onChange={(e) => setFormData({ ...formData, customerSearch: e.target.value })}
+                          className="w-full text-sm focus:outline-none bg-transparent"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, user_id: "all", customerSearch: "" });
+                            setDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FDF8F0] transition-colors ${formData.user_id === "all" ? "bg-[#FDF8F0] font-bold" : ""}`}
+                        >
+                          All Customers
+                        </button>
+                        {users
+                          .filter(u => !formData.customerSearch || u.email.toLowerCase().includes(formData.customerSearch.toLowerCase()) || u.name.toLowerCase().includes(formData.customerSearch.toLowerCase()))
+                          .map(u => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, user_id: u.id.toString(), customerSearch: "" });
+                                setDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#FDF8F0] transition-colors truncate ${formData.user_id === u.id.toString() ? "bg-[#FDF8F0] font-bold" : ""}`}
+                            >
+                              {u.name} ({u.email})
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4">

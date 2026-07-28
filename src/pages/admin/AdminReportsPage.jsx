@@ -45,7 +45,7 @@ export function AdminReportsPage() {
             </div>
             <div>
               <p className="text-xs font-sans text-[#08183A]/50 uppercase tracking-wider font-semibold">Total Revenue</p>
-              <p className="text-xl font-serif font-bold text-[#08183A]">₹{stats?.totalRevenue || 0}</p>
+              <p className="text-xl font-serif font-bold text-[#08183A]">${stats?.totalRevenue || 0}</p>
             </div>
           </div>
           <button onClick={() => downloadReport('revenue')} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#FDF8F0] text-[#08183A] py-2 rounded-xl text-sm font-semibold hover:bg-[#08183A]/10 transition-colors">

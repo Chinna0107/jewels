@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, MessageCircle, ShoppingCart } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 export function CartPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { items, removeFromCart, updateQuantity, getSubtotal, getTotal, getDiscount, deliveryCharge, appliedCoupon, applyCoupon, removeCoupon } = useCartStore();
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || '');
   const { showToast } = useToastStore();
@@ -50,7 +52,7 @@ export function CartPage() {
       const res = await fetch(`${BACKEND_URL}/general/validate-coupon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode, cartValue: subtotal })
+        body: JSON.stringify({ code: couponCode, cartValue: subtotal, user_id: user?.id })
       });
       const data = await res.json();
       if (data.success) {
@@ -132,7 +134,7 @@ export function CartPage() {
                       )}
                     </div>
                   </div>
-                  <div className="font-bold text-[#08183A] mb-2">₹{item.variant?.price || item.product.price}</div>
+                  <div className="font-bold text-[#08183A] mb-2">${item.variant?.price || item.product.price}</div>
                   
                   <div className="flex items-center w-24 border border-brand-gold/30 rounded-lg p-0.5 bg-white">
                     <button 
@@ -182,23 +184,18 @@ export function CartPage() {
             <div className="space-y-3">
               <div className="flex justify-between text-sm text-brand-dark-blue/80">
                 <span>Item Total ({items.length} items)</span>
-                <span className="font-medium text-brand-dark-blue">₹{subtotal.toFixed(2)}</span>
+                <span className="font-medium text-brand-dark-blue">${subtotal.toFixed(2)}</span>
               </div>
               {appliedCoupon && (
                 <div className="flex justify-between text-sm text-brand-gold">
                   <span>Coupon Discount ({appliedCoupon.code})</span>
-                  <span className="font-medium">- ₹{getDiscount().toFixed(2)}</span>
+                  <span className="font-medium">- ${getDiscount().toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm text-brand-dark-blue/80">
-                <span>Delivery Charges</span>
-                <span className="font-medium text-green-600">
-                  {deliveryCharge > 0 ? `₹${deliveryCharge.toFixed(2)}` : 'FREE'}
-                </span>
-              </div>
+
                 <div className="flex justify-between font-bold text-brand-dark-blue text-lg md:text-xl pt-5 mt-3 border-t border-dashed border-brand-gold/30">
                   <span>Grand Total</span>
-                  <span className="text-brand-gold">₹{grandTotal.toFixed(2)}</span>
+                  <span className="text-brand-gold">${grandTotal.toFixed(2)}</span>
                 </div>
                 
                 <button 
@@ -219,7 +216,7 @@ export function CartPage() {
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <div className="hidden sm:block">
               <p className="text-[11px] font-bold text-brand-dark-blue/60 uppercase tracking-wider mb-0.5">Total Amount</p>
-              <p className="text-xl font-bold text-brand-dark-blue leading-none">₹{grandTotal.toFixed(2)}</p>
+              <p className="text-xl font-bold text-brand-dark-blue leading-none">${grandTotal.toFixed(2)}</p>
             </div>
             <button 
               onClick={handleCheckout}

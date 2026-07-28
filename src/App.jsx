@@ -5,6 +5,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { useStoreData } from './store/useStoreData';
 import { HomePage } from './pages/HomePage';
 import { CategoryListingPage } from './pages/CategoryListingPage';
+import { OfferPage } from './pages/OfferPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -17,6 +18,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { MyOrdersPage } from './pages/MyOrdersPage';
+import { MyCouponsPage } from './pages/MyCouponsPage';
 import { MyAddressesPage } from './pages/MyAddressesPage';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { ShippingPolicyPage } from './pages/ShippingPolicyPage';
@@ -30,6 +32,8 @@ import { AdminBannersPage } from './pages/admin/AdminBannersPage';
 import { AdminCouponsPage } from './pages/admin/AdminCouponsPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
+import { AdminOffersPage } from './pages/admin/AdminOffersPage';
+import { AdminShippingPage } from './pages/admin/AdminShippingPage';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -58,6 +62,8 @@ function App() {
                   <Route path="customers" element={<AdminCustomersPage />} />
                   <Route path="products" element={<AdminProductsPage />} />
                   <Route path="categories" element={<AdminCategoriesPage />} />
+                  <Route path="offers" element={<AdminOffersPage />} />
+                  <Route path="shipping" element={<AdminShippingPage />} />
                   <Route path="banners" element={<AdminBannersPage />} />
                   <Route path="/coupons" element={<AdminCouponsPage />} />
                   <Route path="/reports" element={<AdminReportsPage />} />
@@ -73,6 +79,7 @@ function App() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/category/:categoryId" element={<CategoryListingPage />} />
+                  <Route path="/offer/:id" element={<OfferPage />} />
                   <Route path="/product/:id" element={<ProductDetailPage />} />
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
@@ -81,6 +88,7 @@ function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/my-orders" element={<MyOrdersPage />} />
+                  <Route path="/my-coupons" element={<MyCouponsPage />} />
                   <Route path="/my-addresses" element={<MyAddressesPage />} />
                   <Route path="/account-settings" element={<AccountSettingsPage />} />
                   <Route path="/shipping-policy" element={<ShippingPolicyPage />} />

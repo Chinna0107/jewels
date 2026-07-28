@@ -24,7 +24,7 @@ const sections = [
     badge: '3–7 Business Days',
     badgeColor: 'bg-blue-100 text-blue-700',
     content: [
-      'Standard delivery takes 3–7 business days after dispatch, depending on your location within India.',
+      'Standard delivery takes 3–7 business days after dispatch, depending on your location within USA.',
       'Remote or rural areas may require an additional 1–3 business days beyond the standard timeline.',
       'We do not currently offer express shipping, but we are actively working to bring faster options.',
       'Delivery timelines may vary during peak seasons or festival periods.',
@@ -34,13 +34,13 @@ const sections = [
     id: 'coverage',
     icon: <MapPin className="w-6 h-6 text-brand-gold" />,
     title: 'Shipping Coverage',
-    badge: 'Pan India + Select International',
+    badge: 'Pan USA + Select International',
     badgeColor: 'bg-purple-100 text-purple-700',
     content: [
-      'We ship to all pin codes across India through our trusted logistics partners.',
+      'We ship to all pin codes across USA through our trusted logistics partners.',
       'International shipping is available to select countries — please contact us before placing your international order.',
       'For international orders, additional customs duties or import taxes may apply depending on your country.',
-      'Contact us at hourajewels@gmail.com or WhatsApp +91 86866 80001 for international shipping rates.',
+      'Contact us at hourajewels@gmail.com or WhatsApp +1 940-465-6563 for international shipping rates.',
     ],
   },
   {
@@ -145,7 +145,7 @@ export function ShippingPolicyPage() {
           {[
             { label: 'Processing', value: '1–2 Days' },
             { label: 'Delivery', value: '3–7 Days' },
-            { label: 'Coverage', value: 'Pan India' },
+            { label: 'Coverage', value: 'Pan USA' },
             { label: 'Packaging', value: 'Gift-Ready' },
           ].map((s, i) => (
             <motion.div
@@ -202,7 +202,7 @@ export function ShippingPolicyPage() {
               </div>
               <h3 className="font-bold text-white text-lg mb-2">Got a Question?</h3>
               <p className="text-white/50 text-sm mb-5 leading-relaxed">We're here to help with any shipping concerns.</p>
-              <a href="https://wa.me/918686680001" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/19404656563" target="_blank" rel="noopener noreferrer"
                 className="block w-full bg-brand-gold text-brand-dark-blue font-bold py-3 rounded-xl text-sm hover:bg-brand-gold/80 transition-all">
                 Chat on WhatsApp
               </a>
@@ -224,7 +224,7 @@ export function ShippingPolicyPage() {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">WhatsApp</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">+91 86866 80001</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">+1 940-465-6563</p>
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Hours</p>
