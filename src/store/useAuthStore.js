@@ -1,9 +1,28 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 
+// Decode JWT and check expiry without any library
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+function getValidToken() {
+  const token = localStorage.getItem('token');
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem('token');
+    return null;
+  }
+  return token;
+}
+
 export const useAuthStore = create((set, get) => ({
   user: null,
-  token: localStorage.getItem('token') || null,
+  token: getValidToken(),
   addresses: [],
   orders: [],
   loading: false,
@@ -66,12 +85,23 @@ export const useAuthStore = create((set, get) => ({
 
   fetchProfile: async () => {
     if (!get().token) return;
+    // Re-check token expiry before making the call
+    if (isTokenExpired(get().token)) {
+      localStorage.removeItem('token');
+      set({ user: null, token: null, addresses: [], orders: [] });
+      return;
+    }
     set({ loading: true });
     try {
       const { data } = await api.get('/auth/profile');
       set({ user: data.user, addresses: data.addresses, orders: data.orders, loading: false });
-    } catch {
+    } catch (err) {
       set({ loading: false });
+      // 401 = token expired or invalid on server side
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        set({ user: null, token: null, addresses: [], orders: [] });
+      }
     }
   },
 

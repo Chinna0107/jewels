@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, Droplet, Feather, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -165,6 +165,8 @@ function ForgotPassword({ onBack, dark = false }) {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/';
   const { login, googleLogin, loading, error } = useAuthStore();
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
@@ -177,7 +179,7 @@ export function LoginPage() {
     e.preventDefault();
     setLocalError('');
     const res = await login(form.email, form.password);
-    if (res.success) navigate(res.role === 'admin' ? '/admin' : '/');
+    if (res.success) navigate(res.role === 'admin' ? '/admin' : redirect);
     else setLocalError(res.error);
   };
 
@@ -201,7 +203,7 @@ export function LoginPage() {
       setLocalError('');
       // Send access_token to backend
       const res = await googleLogin(tokenResponse.access_token);
-      if (res.success) navigate(res.role === 'admin' ? '/admin' : '/');
+      if (res.success) navigate(res.role === 'admin' ? '/admin' : redirect);
       else setLocalError(res.error);
     },
     onError: () => {

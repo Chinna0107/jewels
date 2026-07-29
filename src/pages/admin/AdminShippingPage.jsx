@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Trash2, Save, Loader, AlertCircle, Check } from 'lucide-react';
+import { Package, Plus, Trash2, Save, Loader, AlertCircle, Check, Store } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function AdminShippingPage() {
@@ -16,9 +16,13 @@ export function AdminShippingPage() {
   const [savingShipping, setSavingShipping] = useState(false);
 
   // Tax
-  const [taxMode, setTaxMode] = useState('flat'); // 'flat' | 'pincode'
+  const [taxMode, setTaxMode] = useState('flat');
   const [flatTaxPercentage, setFlatTaxPercentage] = useState(0);
   const [savingTax, setSavingTax] = useState(false);
+
+  // Pickup
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [savingPickup, setSavingPickup] = useState(false);
 
   // Pincode rules
   const [pincodes, setPincodes] = useState([]);
@@ -27,22 +31,22 @@ export function AdminShippingPage() {
   const [savingPincode, setSavingPincode] = useState(false);
 
   useEffect(() => {
-    const t = getToken();
-    if (!t) return;
+    if (!getToken()) return;
     fetchData();
   }, [token]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const shippingRes = await fetch(`${BACKEND_URL}/general/shipping`);
-      const shippingData = shippingRes.ok ? await shippingRes.json() : {};
-      const s = shippingData.settings || {};
+      const res = await fetch(`${BACKEND_URL}/general/shipping`);
+      const data = res.ok ? await res.json() : {};
+      const s = data.settings || {};
       setFlatShippingRate(s.flat_rate ?? 0);
       setFreeShippingThreshold(s.free_shipping_threshold ?? '');
       setTaxMode(s.tax_mode || 'flat');
       setFlatTaxPercentage(s.tax_percentage ?? 0);
-      setPincodes(shippingData.pincodes || []);
+      setPickupEnabled(s.pickup_enabled ?? false);
+      setPincodes(data.pincodes || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,41 +56,47 @@ export function AdminShippingPage() {
 
   const showSuccess = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); };
 
+  const saveSettings = async (patch) => {
+    const res = await fetch(`${BACKEND_URL}/admin/settings/shipping`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(patch)
+    });
+    if (!res.ok) throw new Error('Failed to save');
+  };
+
   const handleSaveShipping = async () => {
-    setSavingShipping(true);
-    setError(null);
+    setSavingShipping(true); setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/settings/shipping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold) })
-      });
-      if (!res.ok) throw new Error('Failed to save');
+      await saveSettings({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold) });
       showSuccess('Shipping rate saved');
     } catch (err) { setError(err.message); }
     finally { setSavingShipping(false); }
   };
 
   const handleSaveTax = async () => {
-    setSavingTax(true);
-    setError(null);
+    setSavingTax(true); setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/settings/shipping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ tax_mode: taxMode, tax_percentage: Number(flatTaxPercentage) })
-      });
-      if (!res.ok) throw new Error('Failed to save');
+      await saveSettings({ tax_mode: taxMode, tax_percentage: Number(flatTaxPercentage) });
       showSuccess('Tax settings saved');
     } catch (err) { setError(err.message); }
     finally { setSavingTax(false); }
   };
 
+  const handleTogglePickup = async (val) => {
+    setPickupEnabled(val);
+    setSavingPickup(true); setError(null);
+    try {
+      await saveSettings({ pickup_enabled: val });
+      showSuccess(`Store pickup ${val ? 'enabled' : 'disabled'}`);
+    } catch (err) { setError(err.message); setPickupEnabled(!val); }
+    finally { setSavingPickup(false); }
+  };
+
   const handleAddPincode = async (e) => {
     e.preventDefault();
     if (!newPincode || !newPercentage) return;
-    setSavingPincode(true);
-    setError(null);
+    setSavingPincode(true); setError(null);
     try {
       const res = await fetch(`${BACKEND_URL}/admin/shipping-pincodes`, {
         method: 'POST',
@@ -96,8 +106,7 @@ export function AdminShippingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add');
       setPincodes([data.pincode, ...pincodes]);
-      setNewPincode('');
-      setNewPercentage('');
+      setNewPincode(''); setNewPercentage('');
     } catch (err) { setError(err.message); }
     finally { setSavingPincode(false); }
   };
@@ -106,8 +115,7 @@ export function AdminShippingPage() {
     if (!window.confirm('Delete this pincode rule?')) return;
     try {
       await fetch(`${BACKEND_URL}/admin/shipping-pincodes/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` }
+        method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` }
       });
       setPincodes(pincodes.filter(p => p.id !== id));
     } catch (err) { setError(err.message); }
@@ -121,7 +129,7 @@ export function AdminShippingPage() {
         <h1 className="text-2xl font-bold text-brand-dark-blue flex items-center gap-2">
           <Package className="w-6 h-6" /> Shipping & Tax Settings
         </h1>
-        <p className="text-gray-500 mt-1">Configure shipping fee and tax applied at checkout</p>
+        <p className="text-gray-500 mt-1">Configure shipping fee, tax, and pickup options at checkout</p>
       </div>
 
       {error && (
@@ -135,6 +143,36 @@ export function AdminShippingPage() {
         </div>
       )}
 
+      {/* Store Pickup Toggle */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-gold/10 rounded-xl flex items-center justify-center">
+              <Store className="w-5 h-5 text-brand-dark-blue" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Store Pickup</h2>
+              <p className="text-sm text-gray-500">
+                {pickupEnabled
+                  ? 'Customers can choose between pickup or home delivery at checkout'
+                  : 'Customers will only see home delivery at checkout'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => handleTogglePickup(!pickupEnabled)}
+            disabled={savingPickup}
+            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none disabled:opacity-60 ${pickupEnabled ? 'bg-brand-dark-blue' : 'bg-gray-200'}`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${pickupEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
+          </button>
+        </div>
+        <div className={`mt-4 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 ${pickupEnabled ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
+          <span className={`w-2 h-2 rounded-full ${pickupEnabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+          {pickupEnabled ? 'Pickup is ON — customers will see "Store Pickup" and "Home Delivery" options' : 'Pickup is OFF — customers go directly to home delivery checkout'}
+        </div>
+      </div>
+
       {/* Shipping Flat Rate */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-1">Flat Shipping Fee</h2>
@@ -142,20 +180,14 @@ export function AdminShippingPage() {
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[160px] max-w-xs">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Shipping Fee ($)</label>
-            <input
-              type="number" min="0" value={flatShippingRate}
-              onChange={e => setFlatShippingRate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
-            />
+            <input type="number" min="0" value={flatShippingRate} onChange={e => setFlatShippingRate(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50" />
           </div>
           <div className="flex-1 min-w-[160px] max-w-xs">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Free Shipping Above ($)</label>
-            <input
-              type="number" min="0" value={freeShippingThreshold}
-              onChange={e => setFreeShippingThreshold(e.target.value)}
+            <input type="number" min="0" value={freeShippingThreshold} onChange={e => setFreeShippingThreshold(e.target.value)}
               placeholder="e.g. 50 (leave blank to disable)"
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
-            />
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50" />
             <p className="text-xs text-gray-400 mt-1">Orders at or above this amount get free shipping</p>
           </div>
           <button onClick={handleSaveShipping} disabled={savingShipping}
@@ -169,32 +201,21 @@ export function AdminShippingPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-1">Tax Settings</h2>
         <p className="text-sm text-gray-500 mb-5">Choose how tax is calculated — flat % on all orders or per pincode.</p>
-
-        {/* Toggle */}
         <div className="flex gap-3 mb-6">
-          <button
-            onClick={() => setTaxMode('flat')}
-            className={`px-4 py-2 rounded-xl font-semibold text-sm border transition-all ${taxMode === 'flat' ? 'bg-brand-dark-blue text-brand-gold border-brand-dark-blue' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}
-          >
-            Flat % (All Orders)
-          </button>
-          <button
-            onClick={() => setTaxMode('pincode')}
-            className={`px-4 py-2 rounded-xl font-semibold text-sm border transition-all ${taxMode === 'pincode' ? 'bg-brand-dark-blue text-brand-gold border-brand-dark-blue' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}
-          >
-            Pincode Based
-          </button>
+          {['flat', 'pincode'].map(mode => (
+            <button key={mode} onClick={() => setTaxMode(mode)}
+              className={`px-4 py-2 rounded-xl font-semibold text-sm border transition-all ${taxMode === mode ? 'bg-brand-dark-blue text-brand-gold border-brand-dark-blue' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+              {mode === 'flat' ? 'Flat % (All Orders)' : 'Pincode Based'}
+            </button>
+          ))}
         </div>
 
         {taxMode === 'flat' && (
           <div className="flex items-end gap-4">
             <div className="flex-1 max-w-xs">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tax Percentage (%)</label>
-              <input
-                type="number" min="0" step="0.1" value={flatTaxPercentage}
-                onChange={e => setFlatTaxPercentage(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
-              />
+              <input type="number" min="0" step="0.1" value={flatTaxPercentage} onChange={e => setFlatTaxPercentage(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50" />
               <p className="text-xs text-gray-400 mt-1">Applied on subtotal after coupon discount</p>
             </div>
             <button onClick={handleSaveTax} disabled={savingTax}
@@ -213,28 +234,16 @@ export function AdminShippingPage() {
               </button>
             </div>
             <p className="text-sm text-gray-500">Tax % is looked up by the customer's delivery pincode. If no rule matches, 0% tax is applied.</p>
-
-            {/* Add pincode form */}
             <form onSubmit={handleAddPincode} className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text" placeholder="Pincode (e.g. 500001)" value={newPincode}
-                onChange={e => setNewPincode(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
-                required
-              />
-              <input
-                type="number" placeholder="Tax %" min="0" step="0.1" value={newPercentage}
-                onChange={e => setNewPercentage(e.target.value)}
-                className="w-full sm:w-32 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
-                required
-              />
+              <input type="text" placeholder="Pincode (e.g. 500001)" value={newPincode} onChange={e => setNewPincode(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50" required />
+              <input type="number" placeholder="Tax %" min="0" step="0.1" value={newPercentage} onChange={e => setNewPercentage(e.target.value)}
+                className="w-full sm:w-32 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50" required />
               <button type="submit" disabled={savingPincode}
                 className="flex items-center justify-center gap-2 bg-brand-dark-blue text-brand-gold px-5 py-2 rounded-xl font-bold hover:bg-brand-dark-blue/90 transition-all disabled:opacity-50 whitespace-nowrap">
                 <Plus className="w-4 h-4" /> Add Rule
               </button>
             </form>
-
-            {/* Pincode list */}
             {pincodes.length > 0 ? (
               <div className="border border-gray-100 rounded-xl overflow-hidden">
                 <table className="w-full text-left text-sm">

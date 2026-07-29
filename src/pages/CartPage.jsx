@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart, Store, Truck, X } from 'lucide-react';
 import { Header } from '../components/Header';
@@ -39,6 +39,15 @@ export function CartPage() {
   }, { scope: container });
 
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
+
+  useEffect(() => {
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+    fetch(`${BACKEND_URL}/general/shipping`)
+      .then(r => r.json())
+      .then(d => setPickupEnabled(d.settings?.pickup_enabled ?? false))
+      .catch(() => {});
+  }, []);
 
   const handleCheckout = () => {
     // Re-validate coupon conditions before proceeding
@@ -56,6 +65,11 @@ export function CartPage() {
         showToast(`Coupon removed: minimum order \u20b9${appliedCoupon.min_order_value} required`, 'error');
         return;
       }
+    }
+    // If pickup is disabled by admin, go directly to checkout
+    if (!pickupEnabled) {
+      navigate('/checkout', { state: { couponCode } });
+      return;
     }
     setShowDeliveryModal(true);
   };
