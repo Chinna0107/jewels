@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Store, CheckCircle, CreditCard, ChevronLeft, UserCircle2 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useElements } from '@stripe/react-stripe-js';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -9,6 +11,24 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+function StripeCardForm({ onReady }) {
+  const elements = useElements();
+  useEffect(() => {
+    if (elements) onReady(elements.getElement(CardElement));
+  }, [elements]);
+  return (
+    <div className="p-3 border border-brand-gold/30 rounded-xl bg-white">
+      <CardElement options={{
+        style: {
+          base: { fontSize: '16px', color: '#08183A', '::placeholder': { color: '#9ca3af' } },
+          invalid: { color: '#ef4444' }
+        }
+      }} />
+    </div>
+  );
+}
 
 export function PickupPage() {
   const navigate = useNavigate();
@@ -22,6 +42,7 @@ export function PickupPage() {
     mobile: user?.phone || ''
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [stripeCardElement, setStripeCardElement] = useState(null);
   
   const overlayRef = useRef(null);
   const iconRef = useRef(null);
@@ -80,16 +101,6 @@ export function PickupPage() {
     }
   }, { dependencies: [isPlacingOrder] });
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const createOrder = async (pMethod) => {
     const endpoint = token ? `${BACKEND_URL}/auth/orders` : `${BACKEND_URL}/general/orders`;
     const headers = { 'Content-Type': 'application/json' };
@@ -124,84 +135,47 @@ export function PickupPage() {
   const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
     try {
-      const res = await loadRazorpay();
-      if (!res) {
-        showToast('Razorpay SDK failed to load. Are you online?', 'error');
-        setIsPlacingOrder(false);
-        return;
-      }
-
-      const chargeAmount = finalTotal;
-
-      const orderRes = await fetch(`${BACKEND_URL}/general/razorpay/order`, {
+      const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: chargeAmount })
+        body: JSON.stringify({ amount: finalTotal })
       });
-      const orderData = await orderRes.json();
-
-      if (!orderData.success) {
+      const intentData = await intentRes.json();
+      if (!intentData.success) {
         showToast('Failed to initialize payment', 'error');
         setIsPlacingOrder(false);
         return;
       }
 
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
-        name: 'Tradition Store',
-        description: 'Store Pickup Order Payment',
-        order_id: orderData.order.id,
-        handler: async function (response) {
-          try {
-            const verifyRes = await fetch(`${BACKEND_URL}/general/razorpay/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
-            });
-            const verifyData = await verifyRes.json();
-
-            if (verifyData.success) {
-              const createOrderData = await createOrder('razorpay');
-              if (createOrderData.success) {
-                setTimeout(() => {
-                  clearCart();
-                  navigate(`/order-tracking/${createOrderData.order.order_number}`);
-                }, 2000);
-              } else {
-                showToast('Failed to place order after payment.', 'error');
-                setIsPlacingOrder(false);
-              }
-            } else {
-              showToast('Payment verification failed', 'error');
-              setIsPlacingOrder(false);
-            }
-          } catch (err) {
-            console.error(err);
-            setIsPlacingOrder(false);
-          }
-        },
-        prefill: {
-          name: details.name,
-          contact: details.mobile
-        },
-        theme: { color: '#08183A' },
-        modal: {
-          ondismiss: function () {
-            setIsPlacingOrder(false);
-          }
+      const stripe = await stripePromise;
+      const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
+        payment_method: {
+          card: stripeCardElement,
+          billing_details: { name: details.name }
         }
-      };
+      });
 
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
+      if (error) {
+        showToast(error.message || 'Payment failed', 'error');
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        const createOrderData = await createOrder('stripe');
+        if (createOrderData.success) {
+          setTimeout(() => {
+            clearCart();
+            navigate(`/order-tracking/${createOrderData.order.order_number}`);
+          }, 2000);
+        } else {
+          showToast('Failed to place order after payment.', 'error');
+          setIsPlacingOrder(false);
+        }
+      }
     } catch (err) {
       console.error(err);
+      showToast('Payment error. Please try again.', 'error');
       setIsPlacingOrder(false);
     }
   };
@@ -332,26 +306,10 @@ export function PickupPage() {
                 </h2>
 
                 <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
-                  <div className="space-y-3">
-                    {/* Online Payment */}
-                    <label className="flex items-center p-4 rounded-xl border-2 border-brand-gold bg-gray-50/50 shadow-sm cursor-pointer transition-all">
-                      <div className="w-9 h-9 rounded-lg bg-brand-gold/10 flex items-center justify-center mr-3 shrink-0">
-                        <CreditCard className="w-5 h-5 text-brand-dark-blue" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-base font-bold text-brand-dark-blue block">Online Payment</span>
-                        <span className="text-xs text-brand-dark-blue/60">Credit/Debit Card, UPI, NetBanking</span>
-                      </div>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="razorpay"
-                        checked={true}
-                        readOnly
-                        className="w-4 h-4 accent-brand-gold"
-                      />
-                    </label>
-                  </div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Card Details</p>
+                  <Elements stripe={stripePromise}>
+                    <StripeCardForm onReady={setStripeCardElement} />
+                  </Elements>
                 </div>
               </div>
             )}
@@ -467,7 +425,7 @@ export function PickupPage() {
             >
               Proceed to Payment
               <span className="w-1 h-1 bg-white rounded-full mx-1 opacity-50" />
-              Step 3
+              
             </button>
           ) : (
             <button

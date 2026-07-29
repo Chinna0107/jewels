@@ -92,7 +92,7 @@ export function MyCouponsPage() {
                       <span className="font-semibold text-brand-dark-blue">
                         {coupon.min_type === 'qty'
                           ? `${coupon.min_qty || 0} item(s)`
-                          : `₹${coupon.min_order_value}`}
+                          : `$${coupon.min_order_value}`}
                       </span>
                     </p>
                     <p>

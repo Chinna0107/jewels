@@ -264,11 +264,11 @@ export function ProductDetailPage() {
             <div className="animate-info">
               <div className="flex items-baseline gap-3">
                 <span className="text-4xl md:text-5xl font-bold text-brand-dark-blue">
-                  ₹{displayPrice.toLocaleString()}
+                  ${displayPrice.toLocaleString()}
                 </span>
                 {(activeOffer || currentMrp > currentOurPrice) && (
                   <span className="text-xl md:text-2xl font-bold text-gray-400 line-through">
-                    ₹{currentMrp.toLocaleString()}
+                    ${currentMrp.toLocaleString()}
                   </span>
                 )}
               </div>
@@ -283,12 +283,12 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            <div className="animate-info">
+            {/* <div className="animate-info">
               <h3 className="font-bold text-brand-dark-blue text-lg mb-2">About this product</h3>
               <p className="text-brand-dark-blue/70 leading-relaxed font-medium">
                 {product.description || "Beautifully crafted jewelry piece, perfect for any occasion. Made with premium materials to ensure lasting elegance and durability."}
               </p>
-            </div>
+            </div> */}
 
             {/* Variants Selection */}
             <div className="animate-info space-y-6">
@@ -338,9 +338,9 @@ export function ProductDetailPage() {
                           } ${isSzOutOfStock ? 'opacity-60' : ''}`}
                         >
                           <span className={`font-bold text-base ${isSelected ? 'text-brand-dark-blue' : 'text-brand-dark-blue/80'}`}>{sizeObj.size}</span>
-                          <span className={`font-bold mt-1 ${isSelected ? 'text-brand-gold' : 'text-brand-dark-blue/50'}`}>₹{displaySzPrice}</span>
+                          <span className={`font-bold mt-1 ${isSelected ? 'text-brand-gold' : 'text-brand-dark-blue/50'}`}>${displaySzPrice}</span>
                           {(szMrp > szOur || activeOffer) && (
-                            <span className="text-[10px] line-through text-gray-400">₹{szMrp}</span>
+                            <span className="text-[10px] line-through text-gray-400">${szMrp}</span>
                           )}
                           {isSzOutOfStock ? (
                             <span className="absolute top-1 right-1 text-[8px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">Sold Out</span>

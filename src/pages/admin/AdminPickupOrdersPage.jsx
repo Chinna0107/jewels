@@ -117,7 +117,7 @@ export function AdminPickupOrdersPage() {
                           <div className="mt-4 pt-4 border-t border-gray-200">
                             <p className="text-sm text-gray-700"><strong>Customer Name:</strong> {address.name || order.user_name || 'Guest'}</p>
                             <p className="text-sm text-gray-700"><strong>Mobile:</strong> {address.mobile || order.user_phone || 'N/A'}</p>
-                            <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {order.payment_method === 'razorpay' ? 'Online' : order.payment_method}</p>
+                            <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {order.payment_method === 'stripe' || order.payment_method === 'razorpay' ? 'Online' : order.payment_method}</p>
                           </div>
                         </td>
                       </tr>

@@ -11,7 +11,7 @@ export function BottomNav() {
   const tabs = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Categories', icon: Grid, path: '/category/all' },
-    { name: 'Search', icon: Search, path: '/category/all' },
+    { name: 'Search', icon: Search, path: '/search' },
     { name: 'About Us', icon: Info, path: '/about' },
     { name: 'Profile', icon: User, path: token ? '/dashboard' : '/login' },
   ];
@@ -22,7 +22,7 @@ export function BottomNav() {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = tab.name === 'Search'
-            ? false // Search just acts as a quick link
+            ? location.pathname === '/search'
             : tab.name === 'Categories'
               ? location.pathname.startsWith('/category')
               : tab.name === 'Profile'
@@ -31,12 +31,7 @@ export function BottomNav() {
 
           return (
             <NavLink key={tab.name} to={tab.path}
-              onClick={() => {
-                if (tab.name === 'Search') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                  setTimeout(() => document.querySelector('input[type="text"]')?.focus(), 300);
-                }
-              }}
+              onClick={() => {}}
               className={cn(
                 'flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-all duration-300 relative',
                 isActive ? 'text-brand-gold -translate-y-1' : 'text-gray-400 hover:text-white'

@@ -12,6 +12,7 @@ export function AdminShippingPage() {
 
   // Shipping
   const [flatShippingRate, setFlatShippingRate] = useState(0);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
   const [savingShipping, setSavingShipping] = useState(false);
 
   // Tax
@@ -38,6 +39,7 @@ export function AdminShippingPage() {
       const shippingData = shippingRes.ok ? await shippingRes.json() : {};
       const s = shippingData.settings || {};
       setFlatShippingRate(s.flat_rate ?? 0);
+      setFreeShippingThreshold(s.free_shipping_threshold ?? '');
       setTaxMode(s.tax_mode || 'flat');
       setFlatTaxPercentage(s.tax_percentage ?? 0);
       setPincodes(shippingData.pincodes || []);
@@ -57,7 +59,7 @@ export function AdminShippingPage() {
       const res = await fetch(`${BACKEND_URL}/admin/settings/shipping`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ flat_rate: Number(flatShippingRate) })
+        body: JSON.stringify({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold) })
       });
       if (!res.ok) throw new Error('Failed to save');
       showSuccess('Shipping rate saved');
@@ -136,15 +138,25 @@ export function AdminShippingPage() {
       {/* Shipping Flat Rate */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-1">Flat Shipping Fee</h2>
-        <p className="text-sm text-gray-500 mb-5">Fixed ₹ amount added to every delivery order at checkout.</p>
-        <div className="flex items-end gap-4">
-          <div className="flex-1 max-w-xs">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Shipping Fee (₹)</label>
+        <p className="text-sm text-gray-500 mb-5">Fixed $ amount added to every delivery order at checkout.</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex-1 min-w-[160px] max-w-xs">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Shipping Fee ($)</label>
             <input
               type="number" min="0" value={flatShippingRate}
               onChange={e => setFlatShippingRate(e.target.value)}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
             />
+          </div>
+          <div className="flex-1 min-w-[160px] max-w-xs">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Free Shipping Above ($)</label>
+            <input
+              type="number" min="0" value={freeShippingThreshold}
+              onChange={e => setFreeShippingThreshold(e.target.value)}
+              placeholder="e.g. 50 (leave blank to disable)"
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-dark-blue outline-none bg-gray-50"
+            />
+            <p className="text-xs text-gray-400 mt-1">Orders at or above this amount get free shipping</p>
           </div>
           <button onClick={handleSaveShipping} disabled={savingShipping}
             className="flex items-center gap-2 bg-brand-dark-blue text-brand-gold px-5 py-2.5 rounded-xl font-bold hover:bg-brand-dark-blue/90 transition-all disabled:opacity-50">

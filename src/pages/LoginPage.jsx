@@ -1,11 +1,167 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, ShieldCheck, Droplet, Feather } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ShieldCheck, Droplet, Feather, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../store/useAuthStore';
 import logoImg from '../assets/image.png';
-import brandLogo from '../assets/logo.png'; // Updated logo for mobile
+import brandLogo from '../assets/logo.png';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+
+function ForgotPassword({ onBack, dark = false }) {
+  const [step, setStep] = useState('email'); // email | otp | password
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const otpRefs = useRef([]);
+
+  const inputCls = dark
+    ? 'w-full bg-transparent border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all'
+    : 'w-full bg-white border border-brand-gold/20 rounded-xl px-4 py-3.5 pl-11 text-sm text-brand-dark-blue placeholder:text-brand-dark-blue/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow';
+  const labelCls = dark ? 'text-xs font-medium text-white block mb-1.5' : 'text-sm font-semibold text-brand-dark-blue block mb-1.5';
+  const btnCls = dark
+    ? 'w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+    : 'w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 shadow-lg';
+  const errCls = dark
+    ? 'bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center'
+    : 'bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center';
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/forgot-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setStep('otp');
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    const code = otp.join('');
+    if (code.length < 6) return setError('Enter all 6 digits');
+    setStep('password');
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) return setError('Password must be at least 6 characters');
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otp.join(''), newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess('Password reset successfully! You can now sign in.');
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleOtpChange = (val, idx) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...otp]; next[idx] = val; setOtp(next);
+    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
+  };
+  const handleOtpKeyDown = (e, idx) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
+  };
+
+  if (success) return (
+    <div className="text-center space-y-4">
+      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+        <span className="text-3xl">✓</span>
+      </div>
+      <p className={`text-sm font-semibold ${dark ? 'text-green-400' : 'text-green-600'}`}>{success}</p>
+      <button onClick={onBack} className={btnCls}>Back to Sign In</button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <button onClick={onBack} className={`flex items-center gap-1.5 text-xs font-semibold mb-2 ${dark ? 'text-white/50 hover:text-white' : 'text-brand-dark-blue/50 hover:text-brand-dark-blue'} transition-colors`}>
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
+      </button>
+
+      <div>
+        <h4 className={`font-bold tracking-widest uppercase text-xs mb-1 ${dark ? 'text-[#D4AF37]' : 'text-brand-gold'}`}>Reset Password</h4>
+        <h2 className={`text-2xl font-serif font-bold mb-1 ${dark ? 'text-white' : 'text-brand-dark-blue'}`}>
+          {step === 'email' ? 'Forgot Password' : step === 'otp' ? 'Verify OTP' : 'New Password'}
+        </h2>
+        <p className={`text-xs ${dark ? 'text-white/50' : 'text-brand-dark-blue/60'}`}>
+          {step === 'email' ? 'Enter your email to receive a reset OTP.' : step === 'otp' ? `OTP sent to ${email}` : 'Enter your new password.'}
+        </p>
+      </div>
+
+      {step === 'email' && (
+        <form onSubmit={handleSendOtp} className="space-y-4">
+          <div>
+            <label className={labelCls}>Email Address</label>
+            <div className="relative">
+              <Mail className={`w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 ${dark ? 'text-[#D4AF37]' : 'text-brand-dark-blue/40'}`} />
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className={inputCls} />
+            </div>
+          </div>
+          {error && <p className={errCls}>{error}</p>}
+          <button type="submit" disabled={loading} className={btnCls}>{loading ? 'Sending OTP...' : 'Send OTP →'}</button>
+        </form>
+      )}
+
+      {step === 'otp' && (
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div className="flex justify-center gap-2">
+            {otp.map((digit, idx) => (
+              <input key={idx} ref={el => otpRefs.current[idx] = el}
+                type="text" inputMode="numeric" maxLength={1} value={digit}
+                onChange={e => handleOtpChange(e.target.value, idx)}
+                onKeyDown={e => handleOtpKeyDown(e, idx)}
+                className={`w-10 h-12 text-center text-xl font-bold rounded-xl border-2 focus:outline-none transition-colors ${
+                  dark ? 'bg-transparent border-white/20 text-white focus:border-[#D4AF37]' : 'bg-white border-brand-gold/20 text-brand-dark-blue focus:border-brand-gold'
+                }`}
+              />
+            ))}
+          </div>
+          {error && <p className={errCls}>{error}</p>}
+          <button type="submit" className={btnCls}>Verify OTP →</button>
+          <button type="button" onClick={() => { setStep('email'); setOtp(['','','','','','']); }}
+            className={`w-full text-xs ${dark ? 'text-white/40 hover:text-white' : 'text-brand-dark-blue/40 hover:text-brand-dark-blue'} transition-colors`}>
+            Resend OTP
+          </button>
+        </form>
+      )}
+
+      {step === 'password' && (
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div>
+            <label className={labelCls}>New Password</label>
+            <div className="relative">
+              <Lock className={`w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 ${dark ? 'text-[#D4AF37]' : 'text-brand-dark-blue/40'}`} />
+              <input type={showPass ? 'text' : 'password'} required minLength={6} value={newPassword}
+                onChange={e => setNewPassword(e.target.value)} placeholder="Min 6 characters" className={`${inputCls} pr-12`} />
+              <button type="button" onClick={() => setShowPass(p => !p)}
+                className={`absolute right-4 top-1/2 -translate-y-1/2 ${dark ? 'text-[#D4AF37]' : 'text-brand-dark-blue/40'}`}>
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          {error && <p className={errCls}>{error}</p>}
+          <button type="submit" disabled={loading} className={btnCls}>{loading ? 'Resetting...' : 'Reset Password →'}</button>
+        </form>
+      )}
+    </div>
+  );
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +169,7 @@ export function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [localError, setLocalError] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -116,7 +273,10 @@ export function LoginPage() {
               <p className="text-brand-dark-blue/60 text-sm mt-4">Enter your credentials to access your account.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            {showForgot ? (
+            <ForgotPassword onBack={() => setShowForgot(false)} dark={false} />
+          ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
                 <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Email Address</label>
@@ -162,7 +322,12 @@ export function LoginPage() {
                 >
                   {loading ? 'Signing in...' : 'Sign In →'}
                 </motion.button>
+                <button type="button" onClick={() => setShowForgot(true)}
+                  className="w-full text-center text-xs text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors mt-1">
+                  Forgot Password?
+                </button>
               </form>
+          )}
 
               {/* OR Google */}
               <div className="flex items-center gap-3 w-full my-6">
@@ -221,6 +386,11 @@ export function LoginPage() {
         </div>
 
         {/* Form */}
+        {showForgot ? (
+          <div className="w-full max-w-sm">
+            <ForgotPassword onBack={() => setShowForgot(false)} dark={true} />
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
           <div>
             <label className="text-xs font-medium text-white block mb-1.5 pl-1">Email Address</label>
@@ -263,7 +433,12 @@ export function LoginPage() {
           >
             {loading ? 'Signing in...' : 'Sign In →'}
           </button>
+          <button type="button" onClick={() => setShowForgot(true)}
+            className="w-full text-center text-xs text-white/40 hover:text-white transition-colors mt-1">
+            Forgot Password?
+          </button>
         </form>
+        )}
 
         {/* OR Google */}
         <div className="flex items-center gap-3 w-full max-w-sm my-6">

@@ -6,6 +6,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../store/useAuthStore';
 import logoImg from '../assets/image.png';
 import brandLogo from '../assets/logo.png'; // Updated logo for mobile
+import { PhoneInput, formatPhone } from '../components/PhoneInput';
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -153,17 +154,10 @@ export function SignupPage() {
                     </div>
                   </div>
 
-                  {/* Phone */}
+                  {/* Phone - Desktop */}
                   <div>
                     <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Phone Number</label>
-                    <div className="relative">
-                      <Phone className="w-4 h-4 text-brand-dark-blue/40 absolute left-4 top-1/2 -translate-y-1/2" />
-                      <input
-                        name="phone" value={form.phone} onChange={handleChange} required
-                        placeholder="+91 98765 43210"
-                        className="w-full bg-white border border-brand-gold/20 rounded-xl px-4 py-3.5 pl-11 text-sm text-brand-dark-blue placeholder:text-brand-dark-blue/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow"
-                      />
-                    </div>
+                    <PhoneInput value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
                   </div>
 
                   {/* Password */}
@@ -333,16 +327,10 @@ export function SignupPage() {
                 </div>
               </div>
 
+              {/* Phone - Mobile */}
               <div>
                 <label className="text-xs font-medium text-white block mb-1.5 pl-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-[#D4AF37] absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    name="phone" value={form.phone} onChange={handleChange} required
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-transparent border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all"
-                  />
-                </div>
+                <PhoneInput value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" dark />
               </div>
 
               <div>

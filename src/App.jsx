@@ -36,7 +36,9 @@ import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminOffersPage } from './pages/admin/AdminOffersPage';
 import { AdminShippingPage } from './pages/admin/AdminShippingPage';
 import { AdminPickupOrdersPage } from './pages/admin/AdminPickupOrdersPage';
+import { AdminReviewsPage } from './pages/admin/AdminReviewsPage';
 import { PickupPage } from './pages/PickupPage';
+import { SearchPage } from './pages/SearchPage';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -68,6 +70,7 @@ function App() {
                   <Route path="offers" element={<AdminOffersPage />} />
                   <Route path="shipping" element={<AdminShippingPage />} />
                   <Route path="pickup-orders" element={<AdminPickupOrdersPage />} />
+                  <Route path="reviews" element={<AdminReviewsPage />} />
                   <Route path="banners" element={<AdminBannersPage />} />
                   <Route path="/coupons" element={<AdminCouponsPage />} />
                   <Route path="/reports" element={<AdminReportsPage />} />
@@ -89,6 +92,7 @@ function App() {
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/pickup" element={<PickupPage />} />
+                  <Route path="/search" element={<SearchPage />} />
                   <Route path="/order-tracking/:orderId" element={<OrderTrackingPage />} />
                   <Route path="/wishlist" element={<WishlistPage />} />
                   <Route path="/profile" element={<ProfilePage />} />

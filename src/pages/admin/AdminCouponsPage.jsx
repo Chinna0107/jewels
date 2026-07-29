@@ -140,7 +140,7 @@ export function AdminCouponsPage() {
                 {coupon.discount_type === "percentage" ? `${coupon.discount_value}% OFF` : `$${coupon.discount_value} OFF`}
               </p>
               <div className="text-xs text-[#08183A]/60 font-sans space-y-1">
-                <p>Min: {coupon.min_type === 'qty' ? `${coupon.min_qty} item(s)` : `₹${coupon.min_order_value}`}</p>
+                <p>Min: {coupon.min_type === 'qty' ? `${coupon.min_qty} item(s)` : `$${coupon.min_order_value}`}</p>
                 <p>Usage: {coupon.usage_type === 'one_time' ? 'One Time' : 'Multiple'}</p>
                 <p>Customer: {coupon.user_name ? coupon.user_name : 'All Customers'}</p>
                 {coupon.expires_at && (
@@ -199,7 +199,7 @@ export function AdminCouponsPage() {
                   <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Min Requirement Based On</label>
                   <select value={formData.min_type} onChange={e => setFormData({ ...formData, min_type: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
-                    <option value="amount">Min Amount (₹)</option>
+                    <option value="amount">Min Amount ($)</option>
                     <option value="qty">Min Quantity (items)</option>
                   </select>
                 </div>
@@ -207,7 +207,7 @@ export function AdminCouponsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">
-                    {formData.min_type === 'qty' ? 'Min Quantity' : 'Min Purchase (₹)'}
+                    {formData.min_type === 'qty' ? 'Min Quantity' : 'Min Purchase ($)'}
                   </label>
                   <input type="number" min="0"
                     value={formData.min_type === 'qty' ? formData.min_qty : formData.min_order_value}

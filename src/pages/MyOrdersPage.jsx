@@ -101,7 +101,7 @@ export function MyOrdersPage() {
                       <td>
                           <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
                               <strong style="font-size: 20px;">Houra Jewels</strong><br>
-                              // GSTIN: 36BANPK1643M1ZC<br>
+                            
                               Phone: +1 940-465-6563 | Email: hourajewels@gmail.com<br/>
                           </div>
                       </td>

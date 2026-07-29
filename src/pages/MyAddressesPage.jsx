@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Plus, Trash2, Check, X, Home, Briefcase } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { Header } from '../components/Header';
+import { PhoneInput } from '../components/PhoneInput';
 
 const FIELDS = [
   ['name', 'Full Name', 'text'],
@@ -11,7 +12,6 @@ const FIELDS = [
   ['city', 'City', 'text'],
   ['state', 'State', 'text'],
   ['pincode', 'ZIP Code', 'text'],
-  ['mobile', 'Mobile Number', 'tel'],
 ];
 
 function AddressForm({ onClose, onSave, saving }) {
@@ -37,6 +37,10 @@ function AddressForm({ onClose, onSave, saving }) {
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50" />
             </div>
           ))}
+          <div className="col-span-2">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Mobile Number</label>
+            <PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} placeholder="Mobile number" />
+          </div>
         </div>
         <label className="flex items-center gap-2.5 mt-4 cursor-pointer">
           <div onClick={() => setForm({ ...form, is_default: !form.is_default })}

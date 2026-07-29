@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
@@ -24,6 +24,136 @@ const STATUS_COLORS = {
   cancelled: "bg-red-100 text-red-700",
 };
 
+function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
+  const items = (() => { try { return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) { return []; } })();
+  const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * i.qty, 0);
+  const orderTotal = parseFloat(order.total) || 0;
+  const shipping = Math.max(0, parseFloat(order.shipping_fee) || 0);
+  const tax = Math.max(0, parseFloat(order.tax_amount) || 0);
+  // fallback: derive shipping+tax from total - items
+  const derivedExtra = Math.max(0, orderTotal - itemsTotal);
+  const shippingDisplay = shipping || (tax ? derivedExtra - tax : derivedExtra);
+  const taxDisplay = tax;
+
+  const [refundItems, setRefundItems] = useState(true);
+  const [refundShipping, setRefundShipping] = useState(true);
+  const [refundTax, setRefundTax] = useState(true);
+
+  const refundTotal = (refundItems ? itemsTotal : 0) + (refundShipping ? shippingDisplay : 0) + (refundTax ? taxDisplay : 0);
+
+  const handleConfirm = () => {
+    onConfirm({
+      items: refundItems ? itemsTotal : 0,
+      shipping: refundShipping ? shippingDisplay : 0,
+      tax: refundTax ? taxDisplay : 0,
+      total: refundTotal
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+            </div>
+            <h2 className="font-serif text-lg font-bold text-[#08183A]">Cancel & Refund Order</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
+        </div>
+
+        {refundResult ? (
+          <div className="p-6 text-center">
+            {refundResult.success ? (
+              <>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <RefreshCcw className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="font-bold text-lg text-[#08183A] mb-1">Refund Issued!</h3>
+                <p className="text-sm text-gray-500 mb-2">Refund of <strong>${refundResult.amount?.toFixed(2)}</strong> has been sent back to the customer.</p>
+                <p className="text-xs text-gray-400 font-mono">Refund ID: {refundResult.refundId}</p>
+                <button onClick={onClose} className="mt-5 w-full bg-[#08183A] text-white font-bold py-2.5 rounded-xl hover:bg-[#08183A]/80 transition-colors">Done</button>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="font-bold text-lg text-[#08183A] mb-1">Refund Failed</h3>
+                <p className="text-sm text-red-500 mb-4">{refundResult.error}</p>
+                <button onClick={onClose} className="w-full bg-gray-100 text-[#08183A] font-bold py-2.5 rounded-xl">Close</button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 space-y-5">
+            <p className="text-sm text-gray-500">Select what to refund for order <strong>#{order.order_number || order.id}</strong>. The amount will be returned to the customer's original payment method via Stripe.</p>
+
+            <div className="space-y-3">
+              {/* Items */}
+              <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" checked={refundItems} onChange={e => setRefundItems(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                  <div>
+                    <p className="text-sm font-bold text-[#08183A]">Items</p>
+                    <p className="text-xs text-gray-500">{items.length} item(s) in order</p>
+                  </div>
+                </div>
+                <span className="font-bold text-[#08183A]">${itemsTotal.toFixed(2)}</span>
+              </label>
+
+              {/* Shipping */}
+              {shippingDisplay > 0 && (
+                <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={refundShipping} onChange={e => setRefundShipping(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                    <div>
+                      <p className="text-sm font-bold text-[#08183A]">Shipping Fee</p>
+                      <p className="text-xs text-gray-500">Delivery charge</p>
+                    </div>
+                  </div>
+                  <span className="font-bold text-[#08183A]">${shippingDisplay.toFixed(2)}</span>
+                </label>
+              )}
+
+              {/* Tax */}
+              {taxDisplay > 0 && (
+                <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={refundTax} onChange={e => setRefundTax(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                    <div>
+                      <p className="text-sm font-bold text-[#08183A]">Tax</p>
+                      <p className="text-xs text-gray-500">Applied tax amount</p>
+                    </div>
+                  </div>
+                  <span className="font-bold text-[#08183A]">${taxDisplay.toFixed(2)}</span>
+                </label>
+              )}
+            </div>
+
+            {/* Total */}
+            <div className="flex justify-between items-center bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <span className="font-bold text-red-700">Total Refund</span>
+              <span className="font-bold text-red-700 text-lg">${refundTotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-gray-100 text-[#08183A] rounded-xl font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={handleConfirm} disabled={refunding || refundTotal <= 0}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {refunding ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</> : 'Confirm Refund & Cancel'}
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 export function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +161,9 @@ export function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [tracking, setTracking] = useState({});
   const [shipping, setShipping] = useState({});
+  const [refundModal, setRefundModal] = useState(null); // order object
+  const [refunding, setRefunding] = useState(false);
+  const [refundResult, setRefundResult] = useState(null); // { success, refundId, amount }
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -53,6 +186,12 @@ export function AdminOrdersPage() {
   }, []);
 
   const updateStatus = async (orderId, status) => {
+    // Intercept cancellation — show refund modal first
+    if (status === 'cancelled') {
+      const order = orders.find(o => o.id === orderId);
+      setRefundModal(order);
+      return;
+    }
     const token = localStorage.getItem("token");
     await fetch(`${BACKEND_URL}/admin/orders/${orderId}/status`, {
       method: "PUT",
@@ -60,6 +199,30 @@ export function AdminOrdersPage() {
       body: JSON.stringify({ status }),
     });
     setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
+  };
+
+  const handleRefundAndCancel = async (order, refundBreakdown) => {
+    setRefunding(true);
+    setRefundResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ refund_breakdown: refundBreakdown })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled', refund_id: data.refund_id } : o));
+        setRefundResult({ success: true, refundId: data.refund_id, amount: data.amount });
+      } else {
+        setRefundResult({ success: false, error: data.error });
+      }
+    } catch (err) {
+      setRefundResult({ success: false, error: err.message });
+    } finally {
+      setRefunding(false);
+    }
   };
 
   const createShipment = async (orderId) => {
@@ -174,7 +337,7 @@ export function AdminOrdersPage() {
                       <td>
                           <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
                               <strong style="font-size: 20px;">Houra Jewels</strong><br>
-                              // GSTIN: 36BANPK1643M1ZC<br>
+                              
                               Phone: +1 940-465-6563 | Email: hourajewels@gmail.com<br/>
                           </div>
                       </td>
@@ -460,6 +623,51 @@ export function AdminOrdersPage() {
                     </div>
                   </div>
 
+                  {/* Customer Details */}
+                  <div className="pt-4 border-t border-[#08183A]/5">
+                    <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Customer Details</p>
+                    {(() => {
+                      let address = {};
+                      try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+                      const name = order.user_name || address.name || 'Guest';
+                      const email = order.user_email || '—';
+                      const phone = order.user_phone || address.mobile || '—';
+                      const addr = [address.line1, address.city, address.state, address.pincode].filter(Boolean).join(', ');
+                      return (
+                        <div className="bg-[#FDF8F0] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Name</span>
+                            <span className="text-sm font-semibold text-[#08183A]">{name}</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Phone</span>
+                            <span className="text-sm font-semibold text-[#08183A]">{phone}</span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Email</span>
+                            <span className="text-sm font-semibold text-[#08183A] break-all">{email}</span>
+                          </div>
+                          {addr && (
+                            <div className="flex items-start gap-2 sm:col-span-2">
+                              <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Address</span>
+                              <span className="text-sm font-semibold text-[#08183A]">{addr}</span>
+                            </div>
+                          )}
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Type</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ order.order_type === 'pickup' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }`}>
+                              {order.order_type === 'pickup' ? '🏪 Pickup' : '🚚 Shipping'}
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Payment</span>
+                            <span className="text-sm font-semibold text-[#08183A] capitalize">{order.payment_method === 'stripe' ? 'Online (Stripe)' : order.payment_method || '—'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   {/* Order Items List */}
                   <div className="pt-4 border-t border-[#08183A]/5">
                     <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Order Items</p>
@@ -512,6 +720,19 @@ export function AdminOrdersPage() {
           ))}
         </div>
       )}
+
+      {/* Refund Modal */}
+      <AnimatePresence>
+        {refundModal && (
+          <RefundModal
+            order={refundModal}
+            refunding={refunding}
+            refundResult={refundResult}
+            onConfirm={(breakdown) => handleRefundAndCancel(refundModal, breakdown)}
+            onClose={() => { setRefundModal(null); setRefundResult(null); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

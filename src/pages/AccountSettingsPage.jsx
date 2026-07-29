@@ -4,6 +4,7 @@ import { User, Mail, Phone, Lock, Eye, EyeOff, Check, LogOut } from 'lucide-reac
 import { useAuthStore } from '../store/useAuthStore';
 import api from '../utils/api';
 import { Header } from '../components/Header';
+import { PhoneInput } from '../components/PhoneInput';
 
 export function AccountSettingsPage() {
   const navigate = useNavigate();
@@ -86,8 +87,7 @@ export function AccountSettingsPage() {
             </div>
             <div>
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Phone</label>
-              <input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50" />
+              <PhoneInput value={profileForm.phone} onChange={v => setProfileForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
             </div>
             {profileMsg && (
               <p className={`text-xs font-semibold ${profileMsg.includes('!') ? 'text-green-600' : 'text-red-500'}`}>{profileMsg}</p>

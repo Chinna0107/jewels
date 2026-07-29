@@ -18,14 +18,52 @@ export function HomePage() {
   const { products, categories, loading } = useStoreData();
   const [banners, setBanners] = React.useState([]);
   const [currentSlide, setCurrentSlide] = React.useState(0);
+  const [reviews, setReviews] = React.useState([]);
+  const reviewTrackRef = useRef(null);
+
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
 
   React.useEffect(() => {
-    const url = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
-    fetch(`${url}/general/banners`)
+    fetch(`${BACKEND_URL}/general/banners`)
       .then(r => r.json())
       .then(d => { if (d.banners) setBanners(d.banners); })
       .catch(e => console.error(e));
+
+    fetch(`${BACKEND_URL}/general/reviews`)
+      .then(r => r.json())
+      .then(d => { if (d.reviews) setReviews(d.reviews.filter(r => r.is_active !== false)); })
+      .catch(e => console.error(e));
   }, []);
+
+  // Auto-scroll reviews
+  React.useEffect(() => {
+    const track = reviewTrackRef.current;
+    if (!track || reviews.length === 0) return;
+    let animFrame;
+    let pos = 0;
+    const speed = 0.5;
+    const step = () => {
+      pos += speed;
+      const half = track.scrollWidth / 2;
+      if (pos >= half) pos = 0;
+      track.style.transform = `translateX(-${pos}px)`;
+      animFrame = requestAnimationFrame(step);
+    };
+    animFrame = requestAnimationFrame(step);
+    const pause = () => cancelAnimationFrame(animFrame);
+    const resume = () => { animFrame = requestAnimationFrame(step); };
+    track.addEventListener('mouseenter', pause);
+    track.addEventListener('mouseleave', resume);
+    track.addEventListener('touchstart', pause);
+    track.addEventListener('touchend', resume);
+    return () => {
+      cancelAnimationFrame(animFrame);
+      track.removeEventListener('mouseenter', pause);
+      track.removeEventListener('mouseleave', resume);
+      track.removeEventListener('touchstart', pause);
+      track.removeEventListener('touchend', resume);
+    };
+  }, [reviews]);
 
   React.useEffect(() => {
     if (banners.length <= 1) return;
@@ -246,46 +284,49 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Customer Reviews */}
-        <section className="px-4 md:px-24 mb-4">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-serif font-bold text-2xl text-brand-dark-blue">What Our Clients Say</h3>
-            <span className="text-xs font-semibold text-brand-gold cursor-pointer hover:underline">View all reviews</span>
-          </div>
-          
-          <div className="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-6 px-1">
-            {[
-              { name: 'Priya Sharma', initial: 'P', text: 'The diamond set I purchased is absolutely breathtaking. The craftsmanship is flawless, and it arrived in a beautiful premium box.', rating: 5 },
-              { name: 'Ananya Reddy', initial: 'A', text: 'I wore the Kundan necklace for my wedding, and everyone was mesmerized. Truly elegant and timeless pieces!', rating: 5 },
-              { name: 'Neha Gupta', initial: 'N', text: 'Excellent customer service and secure packaging. The bracelets are even more gorgeous in person than on the website.', rating: 5 },
-              { name: 'Kavya Singh', initial: 'K', text: 'I love their daily wear collection. Minimalist, chic, and very durable. Highly recommend Houra Jewels for any occasion.', rating: 4 },
-            ].map((rev, idx) => (
-              <div key={idx} className="w-[280px] md:w-[350px] shrink-0 bg-white border border-brand-gold/20 p-6 rounded-[20px] shadow-sm hover:shadow-xl transition-all duration-300 relative group">
-                <div className="absolute top-6 right-6 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                  <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor" className="text-brand-dark-blue">
-                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-                  </svg>
-                </div>
-                <div className="flex items-center gap-4 mb-4 relative z-10">
-                  <div className="w-12 h-12 rounded-full bg-brand-dark-blue text-brand-gold flex items-center justify-center font-bold text-lg shadow-inner">
-                    {rev.initial}
-                  </div>
-                  <div>
-                    <span className="block font-bold text-brand-dark-blue">{rev.name}</span>
-                    <div className="flex mt-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-brand-gold text-brand-gold' : 'fill-gray-200 text-gray-200'}`} />
-                      ))}
+        {/* Customer Reviews — auto-scroll */}
+        {reviews.length > 0 && (
+          <section className="mb-4 overflow-hidden">
+            <div className="px-4 md:px-24 mb-6">
+              <h3 className="font-serif font-bold text-2xl text-brand-dark-blue">What Our Clients Say</h3>
+            </div>
+
+            <div className="overflow-hidden w-full">
+              <div
+                ref={reviewTrackRef}
+                className="flex gap-5 will-change-transform"
+                style={{ width: 'max-content' }}
+              >
+                {/* Duplicate for seamless loop */}
+                {[...reviews, ...reviews].map((rev, idx) => (
+                  <div key={idx} className="w-[280px] md:w-[320px] shrink-0 bg-white border border-brand-gold/20 p-6 rounded-[20px] shadow-sm hover:shadow-xl transition-shadow duration-300 relative group">
+                    <div className="absolute top-5 right-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="text-brand-dark-blue">
+                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                      </svg>
                     </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-11 h-11 rounded-full bg-brand-dark-blue text-brand-gold flex items-center justify-center font-bold text-base shrink-0">
+                        {rev.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="block font-bold text-brand-dark-blue text-sm">{rev.name}</span>
+                        <div className="flex gap-0.5 mt-1">
+                          {[1,2,3,4,5].map(i => (
+                            <Star key={i} className={`w-3 h-3 ${i <= rev.rating ? 'fill-brand-gold text-brand-gold' : 'fill-gray-200 text-gray-200'}`} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-brand-dark-blue/75 italic leading-relaxed">
+                      "{rev.review}"
+                    </p>
                   </div>
-                </div>
-                <p className="text-sm text-brand-dark-blue/80 italic leading-relaxed relative z-10">
-                  "{rev.text}"
-                </p>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
       </div>
 

@@ -121,7 +121,7 @@ export function AdminSettingsPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Free shipping on orders over ₹500!"
+                      placeholder="e.g. Free shipping on orders over $500!"
                       value={item.text}
                       onChange={(e) => updateItem(idx, 'text', e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/20 focus:outline-none focus:border-[#D4AF37] text-[#08183A] text-sm"

@@ -248,7 +248,7 @@ export function CartPage() {
             >
               Proceed to Checkout
               <span className="w-1 h-1 bg-brand-gold rounded-full mx-1 opacity-50" />
-              Step 2
+              
             </button>
           </div>
         </div>

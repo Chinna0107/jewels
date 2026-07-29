@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, UserCircle2 } from 'lucide-react';
+import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, UserCircle2, ShoppingCart } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { PhoneInput, formatPhone, parsePhone } from '../components/PhoneInput';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -9,6 +12,41 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+const COUNTRIES = [
+  'Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia','Austria','Azerbaijan',
+  'Bahrain','Bangladesh','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana',
+  'Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Chad','Chile','China',
+  'Colombia','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominican Republic',
+  'Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Gabon','Georgia','Germany','Ghana',
+  'Greece','Guatemala','Guinea','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland',
+  'Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon',
+  'Libya','Lithuania','Luxembourg','Madagascar','Malaysia','Maldives','Mali','Malta','Mexico','Moldova','Mongolia',
+  'Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria',
+  'North Korea','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal',
+  'Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia',
+  'Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan',
+  'Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates',
+  'United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
+];
+
+function StripeCardForm({ onReady }) {
+  const elements = useElements();
+  useEffect(() => {
+    if (elements) onReady(elements.getElement(CardElement));
+  }, [elements]);
+  return (
+    <div className="p-3 border border-brand-gold/30 rounded-xl bg-white">
+      <CardElement options={{
+        style: {
+          base: { fontSize: '16px', color: '#08183A', '::placeholder': { color: '#9ca3af' } },
+          invalid: { color: '#ef4444' }
+        }
+      }} />
+    </div>
+  );
+}
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -17,16 +55,28 @@ export function CheckoutPage() {
   const { token, user } = useAuthStore();
   const { showToast } = useToastStore();
   
-  const [step, setStep] = useState(token ? 2 : 1); // 1: Auth, 2: Address, 3: Payment
+  const [step, setStep] = useState(token ? 2 : 1);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [address, setAddress] = useState({
     name: user?.name || '',
     line1: '',
     city: '',
     state: '',
     pincode: '',
+    country: 'India',
     mobile: user?.phone || ''
   });
+  const [countrySearch, setCountrySearch] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const countryRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (countryRef.current && !countryRef.current.contains(e.target)) setCountryOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [stripeCardElement, setStripeCardElement] = useState(null);
   
   const overlayRef = useRef(null);
   const iconRef = useRef(null);
@@ -51,8 +101,10 @@ export function CheckoutPage() {
   // Recompute shipping fee whenever config loads
   useEffect(() => {
     if (!shippingConfig?.settings) return;
-    setShippingFee(parseFloat(shippingConfig.settings.flat_rate) || 0);
-  }, [shippingConfig]);
+    const threshold = parseFloat(shippingConfig.settings.free_shipping_threshold) || 0;
+    const flat = parseFloat(shippingConfig.settings.flat_rate) || 0;
+    setShippingFee(threshold > 0 && (subtotal - discount) >= threshold ? 0 : flat);
+  }, [shippingConfig, subtotal, discount]);
 
   // Recompute tax whenever subtotal, discount, address pincode, or config changes
   useEffect(() => {
@@ -103,17 +155,7 @@ export function CheckoutPage() {
     }
   }, { dependencies: [isPlacingOrder] });
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const createOrder = async (pMethod) => {
+  const createOrder = async (pMethod, stripePaymentIntentId = null) => {
     const endpoint = token ? `${BACKEND_URL}/auth/orders` : `${BACKEND_URL}/general/orders`;
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -126,13 +168,14 @@ export function CheckoutPage() {
         total: finalTotal,
         coupon_code: couponCode,
         payment_method: pMethod,
+        stripe_payment_intent_id: stripePaymentIntentId,
       })
     });
     return res.json();
   };
 
   const handleProceedToPayment = () => {
-    if (!address.name.trim() || !address.line1.trim() || !address.city.trim() || !address.state.trim() || !address.pincode.trim() || !address.mobile.trim()) {
+    if (!address.name.trim() || !address.line1.trim() || !address.city.trim() || !address.state.trim() || !address.pincode.trim() || !address.mobile.trim() || !address.country.trim()) {
       showToast('Please fill all details. All fields are required.', 'error');
       return;
     }
@@ -140,8 +183,8 @@ export function CheckoutPage() {
       showToast('ZIP Code must be 6 digits.', 'error');
       return;
     }
-    if (!/^\d{10}$/.test(address.mobile)) {
-      showToast('Phone number must be exactly 10 digits.', 'error');
+    if (!/^\+\d{7,15}$/.test(address.mobile)) {
+      showToast('Please enter a valid phone number.', 'error');
       return;
     }
     setStep(3);
@@ -150,86 +193,49 @@ export function CheckoutPage() {
   const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
     try {
-      const res = await loadRazorpay();
-      if (!res) {
-        showToast('Razorpay SDK failed to load. Are you online?', 'error');
-        setIsPlacingOrder(false);
-        return;
-      }
-
-      const chargeAmount = finalTotal;
-
-      // Create Razorpay Order
-      const orderRes = await fetch(`${BACKEND_URL}/general/razorpay/order`, {
+      // 1. Create PaymentIntent on backend
+      const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: chargeAmount })
+        body: JSON.stringify({ amount: finalTotal })
       });
-      const orderData = await orderRes.json();
-
-      if (!orderData.success) {
+      const intentData = await intentRes.json();
+      if (!intentData.success) {
         showToast('Failed to initialize payment', 'error');
         setIsPlacingOrder(false);
         return;
       }
 
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
-        name: 'Tradition Store',
-        description: 'Order Payment',
-        order_id: orderData.order.id,
-        handler: async function (response) {
-          try {
-            // Verify payment
-            const verifyRes = await fetch(`${BACKEND_URL}/general/razorpay/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
-            });
-            const verifyData = await verifyRes.json();
-
-            if (verifyData.success) {
-              const createOrderData = await createOrder('razorpay');
-              if (createOrderData.success) {
-                setTimeout(() => {
-                  clearCart();
-                  navigate(`/order-tracking/${createOrderData.order.order_number}`);
-                }, 2000);
-              } else {
-                showToast('Failed to place order after payment.', 'error');
-                setIsPlacingOrder(false);
-              }
-            } else {
-              showToast('Payment verification failed', 'error');
-              setIsPlacingOrder(false);
-            }
-          } catch (err) {
-            console.error(err);
-            setIsPlacingOrder(false);
-          }
-        },
-        prefill: {
-          name: address.name,
-          contact: address.mobile
-        },
-        theme: { color: '#08183A' },
-        modal: {
-          ondismiss: function () {
-            setIsPlacingOrder(false);
-          }
+      // 2. Confirm payment with Stripe
+      const stripe = await stripePromise;
+      const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
+        payment_method: {
+          card: stripeCardElement,
+          billing_details: { name: address.name }
         }
-      };
+      });
 
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
+      if (error) {
+        showToast(error.message || 'Payment failed', 'error');
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        const createOrderData = await createOrder('stripe', paymentIntent.id);
+        if (createOrderData.success) {
+          setTimeout(() => {
+            clearCart();
+            navigate(`/order-tracking/${createOrderData.order.order_number}`);
+          }, 2000);
+        } else {
+          showToast('Failed to place order after payment.', 'error');
+          setIsPlacingOrder(false);
+        }
+      }
     } catch (err) {
       console.error(err);
+      showToast('Payment error. Please try again.', 'error');
       setIsPlacingOrder(false);
     }
   };
@@ -270,6 +276,65 @@ export function CheckoutPage() {
       
       <div className="p-4 md:p-8 space-y-4 md:space-y-8 md:max-w-7xl mx-auto">
         {renderStepIndicator()}
+
+        {/* Mobile Order Summary (collapsible) */}
+        <div className="lg:hidden">
+          <button
+            onClick={() => setSummaryOpen(o => !o)}
+            className="w-full flex items-center justify-between bg-white/90 border border-brand-gold/20 rounded-2xl px-4 py-3.5 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4 text-brand-gold" />
+              <span className="text-sm font-bold text-brand-dark-blue">Order Summary</span>
+              <span className="text-xs bg-brand-gold/10 text-brand-gold font-bold px-2 py-0.5 rounded-full">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-brand-gold">${finalTotal.toFixed(2)}</span>
+              <svg className={`w-4 h-4 text-brand-dark-blue/50 transition-transform ${summaryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </button>
+
+          {summaryOpen && (
+            <div className="mt-2 bg-white/90 border border-brand-gold/20 rounded-2xl p-4 shadow-sm space-y-4">
+              <div className="space-y-3 max-h-48 overflow-y-auto">
+                {items.map(item => (
+                  <div key={`${item.product.id}-${item.variant?.size}`} className="flex gap-3">
+                    <div className="w-14 h-14 bg-white rounded-xl border border-brand-gold/10 p-1 shrink-0">
+                      <img src={item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</p>
+                      <p className="text-xs text-brand-dark-blue/60">Qty: {item.qty} | {item.variant?.size || 'Standard'}</p>
+                      <p className="text-sm font-bold text-brand-gold">${(item.variant?.price || item.product.price) * item.qty}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-dashed border-brand-gold/20 pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                  <span>Item Total</span><span className="font-medium">${subtotal.toFixed(2)}</span>
+                </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm text-brand-gold">
+                    <span>Coupon ({appliedCoupon.code})</span><span>- ${discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                  <span>Shipping</span>
+                  <span className="font-medium">{shippingFee === 0 && (parseFloat(shippingConfig?.settings?.free_shipping_threshold) || 0) > 0 ? <span className="text-green-600 font-bold">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
+                </div>
+                {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
+                  <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                    <span>{taxLabel || 'Tax'}</span><span className="font-medium">${taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-brand-dark-blue text-base pt-2 border-t border-brand-gold/20">
+                  <span>Grand Total</span><span className="text-brand-gold">${finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-12 items-start">
           {/* Left Column: Forms */}
@@ -317,43 +382,155 @@ export function CheckoutPage() {
 
             {step === 2 && (
           <div className="space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-6">
+            <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
                 <MapPin className="w-4 h-4 text-brand-gold" />
               </div>
               Shipping Address
             </h2>
             
-            <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-brand-gold/5 to-transparent rounded-bl-full pointer-events-none"></div>
-              <div className="space-y-5">
+            <div className="bg-white rounded-2xl shadow-sm border border-brand-gold/20 overflow-hidden">
+              <div className="p-4 sm:p-6 space-y-4">
+                {/* Full Name */}
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Full Name</label>
-                  <input required value={address.name} onChange={e => setAddress({...address, name: e.target.value})} className="w-full text-lg font-bold text-gray-900 border-b-2 border-gray-100 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Full Name" />
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Full Name *</label>
+                  <input
+                    required
+                    value={address.name}
+                    onChange={e => setAddress({...address, name: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                    placeholder="Enter your full name"
+                  />
                 </div>
+
+                {/* Address Line 1 */}
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Address Line 1</label>
-                  <input required value={address.line1} onChange={e => setAddress({...address, line1: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Address Line 1" />
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Address Line 1 *</label>
+                  <input
+                    required
+                    value={address.line1}
+                    onChange={e => setAddress({...address, line1: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                    placeholder="House no., Street, Area"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                {/* City + State */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">City</label>
-                    <input required value={address.city} onChange={e => setAddress({...address, city: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="City" />
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">City *</label>
+                    <input
+                      required
+                      value={address.city}
+                      onChange={e => setAddress({...address, city: e.target.value})}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                      placeholder="City"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">State</label>
-                    <input required value={address.state} onChange={e => setAddress({...address, state: e.target.value})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="State" />
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">State *</label>
+                    <input
+                      required
+                      value={address.state}
+                      onChange={e => setAddress({...address, state: e.target.value})}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                      placeholder="State"
+                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                {/* ZIP + Mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">ZIP Code</label>
-                    <input type="text" maxLength={6} required value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="ZIP Code" />
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">ZIP Code *</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      required
+                      value={address.pincode}
+                      onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                      placeholder="6-digit ZIP"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Mobile</label>
-                    <input type="text" maxLength={10} required value={address.mobile} onChange={e => setAddress({...address, mobile: e.target.value.replace(/\D/g, '')})} className="w-full text-base text-gray-700 border-b border-gray-200 py-1 focus:outline-none focus:border-brand-gold transition-colors bg-transparent" placeholder="Mobile Number" />
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Mobile *</label>
+                    <PhoneInput value={address.mobile} onChange={v => setAddress({...address, mobile: v})} placeholder="Mobile number" />
                   </div>
+                </div>
+
+                {/* Country */}
+                <div ref={countryRef} className="relative">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Country *</label>
+                  <button
+                    type="button"
+                    onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center justify-between"
+                  >
+                    <span className={address.country ? 'text-gray-700' : 'text-gray-400'}>
+                      {address.country || 'Select country'}
+                    </span>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${countryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {countryOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                      {/* Search */}
+                      <div className="p-2 border-b border-gray-100">
+                        <div className="relative">
+                          <svg className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                          </svg>
+                          <input
+                            autoFocus
+                            type="text"
+                            value={countrySearch}
+                            onChange={e => setCountrySearch(e.target.value)}
+                            placeholder="Search country..."
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
+                          />
+                        </div>
+                      </div>
+                      {/* List */}
+                      <ul className="max-h-48 overflow-y-auto">
+                        {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
+                          <li key={c}>
+                            <button
+                              type="button"
+                              onClick={() => { setAddress({...address, country: c}); setCountryOpen(false); }}
+                              className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                                address.country === c
+                                  ? 'bg-brand-gold/10 text-brand-dark-blue font-bold'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          </li>
+                        ))}
+                        {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
+                          <li className="px-4 py-3 text-sm text-gray-400 text-center">No country found</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Proceed button inside card on mobile */}
+              <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+                <button
+                  onClick={handleProceedToPayment}
+                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" /> Proceed to Payment
+                </button>
+                <div className="flex items-center justify-center gap-1.5 mt-3">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] text-gray-400">100% Secure Transaction</span>
                 </div>
               </div>
             </div>
@@ -369,15 +546,10 @@ export function CheckoutPage() {
               Payment
             </h2>
             <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
-              <div className="flex items-center p-4 rounded-xl border-2 border-brand-gold bg-gray-50/50">
-                <div className="w-9 h-9 rounded-lg bg-brand-gold/10 flex items-center justify-center mr-3 shrink-0">
-                  <CreditCard className="w-5 h-5 text-brand-dark-blue" />
-                </div>
-                <div>
-                  <span className="text-base font-bold text-brand-dark-blue block">Online Payment</span>
-                  <span className="text-xs text-brand-dark-blue/60">Credit/Debit Card, UPI, NetBanking</span>
-                </div>
-              </div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Card Details</p>
+              <Elements stripe={stripePromise}>
+                <StripeCardForm onReady={setStripeCardElement} />
+              </Elements>
             </div>
           </div>
         )}
@@ -414,12 +586,12 @@ export function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                   <span>Shipping Fee</span>
-                  <span className="font-medium text-brand-dark-blue">${shippingFee.toFixed(2)}</span>
+                  <span className="font-medium text-brand-dark-blue">{shippingFee === 0 && (parseFloat(shippingConfig?.settings?.free_shipping_threshold) || 0) > 0 ? <span className="text-green-600 font-bold">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
                 </div>
                 {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
                   <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                     <span>{taxLabel || 'Tax'}</span>
-                    <span className="font-medium text-brand-dark-blue">₹{taxAmount.toFixed(2)}</span>
+                    <span className="font-medium text-brand-dark-blue">${taxAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-brand-dark-blue text-xl pt-2 border-t border-brand-gold/20">
@@ -477,7 +649,7 @@ export function CheckoutPage() {
                 <p className="text-xs font-bold text-brand-dark-blue/60 uppercase tracking-wider mb-1">Payable Amount</p>
                 <div className="flex flex-col">
                   {appliedCoupon && <span className="text-[10px] text-brand-gold font-bold -mb-1">Code applied: {appliedCoupon.code}</span>}
-                  <p className="text-2xl font-bold text-brand-dark-blue leading-none">₹{finalTotal.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-brand-dark-blue leading-none">${finalTotal.toFixed(2)}</p>
                 </div>
               </>
             </div>
@@ -497,7 +669,7 @@ export function CheckoutPage() {
             >
               Proceed to Payment
               <span className="w-1 h-1 bg-white rounded-full mx-1 opacity-50" />
-              Step 3
+              
             </button>
           ) : (
             <button

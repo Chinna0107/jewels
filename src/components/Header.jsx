@@ -76,6 +76,28 @@ function AvatarDropdown({ user, onLogout }) {
   );
 }
 
+function DesktopSearchBar() {
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  return (
+    <div className="relative w-[280px] xl:w-[320px]">
+      <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+      <input
+        type="text"
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        placeholder="Search products, categories..."
+        onKeyDown={e => {
+          if (e.key === 'Enter' && q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+        }}
+        onFocus={() => navigate('/search')}
+        className="w-full bg-white/10 border border-white/20 text-white placeholder-gray-400 rounded-full py-2 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-gold focus:bg-white/20 transition-all cursor-pointer"
+        readOnly
+      />
+    </div>
+  );
+}
+
 function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout, categories, offers, announcement }) {
   return (
     <>
@@ -159,19 +181,7 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
               <Link to="/about" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">About</Link>
               <Link to="/contact" className="text-sm font-medium text-gray-200 hover:text-brand-gold transition-colors">Contact</Link>
             </nav>
-            <div className="relative w-[280px] xl:w-[320px]">
-              <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.target.value.trim()) {
-                    window.location.href = `/category/all?search=${encodeURIComponent(e.target.value.trim())}`;
-                  }
-                }}
-                className="w-full bg-white/10 border border-white/20 text-white placeholder-gray-400 rounded-full py-2 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-gold focus:bg-white/20 transition-all"
-              />
-            </div>
+            <DesktopSearchBar />
           </div>
 
           <div className="flex items-center gap-3">
@@ -237,7 +247,7 @@ export function Header({ variant = 'default', title, showShare = false }) {
     { label: 'Offers', to: '#' },
     { label: 'About Us', to: '/about' },
     { label: 'Contact', to: '/contact' },
-    { label: 'My Profile', to: '/profile' },
+    ...(token ? [{ label: 'My Profile', to: '/profile' }] : []),
   ];
 
   const mobileSidebarContent = (
@@ -376,8 +386,26 @@ export function Header({ variant = 'default', title, showShare = false }) {
               ))}
             </nav>
 
-            {/* Login Button */}
-            {!token && (
+            {/* Login / Logout Button */}
+            {token ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.3 }}
+                className="p-4 border-t border-brand-gold/15"
+              >
+                <div className="px-4 py-2 mb-2">
+                  <p className="text-sm font-bold text-brand-dark-blue truncate">{user?.name}</p>
+                  <p className="text-[11px] text-gray-500 truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                  className="flex items-center justify-center gap-2 w-full bg-red-50 text-red-500 font-bold py-3 rounded-xl hover:bg-red-100 transition-all"
+                >
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
+              </motion.div>
+            ) : (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -452,12 +480,20 @@ export function Header({ variant = 'default', title, showShare = false }) {
 
             {/* Right: Icons */}
             <div className="flex items-center gap-1 z-10">
-              <button onClick={() => navigate('/category/all')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+              <button onClick={() => navigate('/search')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 <Search className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
               </button>
-              <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                <User className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
-              </Link>
+              {token ? (
+                <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <div className="w-7 h-7 rounded-full bg-brand-orange text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-orange-300">
+                    {user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U'}
+                  </div>
+                </Link>
+              ) : (
+                <Link to="/login" className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <LogIn className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
+                </Link>
+              )}
               <Link to="/cart" className="relative p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
                 <ShoppingCart className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
                 {cartCount > 0 && (
