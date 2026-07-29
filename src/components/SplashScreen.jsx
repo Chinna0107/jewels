@@ -102,6 +102,10 @@ export function SplashScreen({ onComplete }) {
           <span className="text-white text-xs md:text-sm tracking-[0.3em] mt-2 uppercase font-medium">
             By S & M
           </span>
+          <span className="text-white text-sm md:text-base tracking-[0.15em] mt-3 font-bold" style={{ fontFamily: 'serif', letterSpacing: '0.08em' }}>
+            Wear it once,{' '}
+            <span className="text-[#D4AF37]">love it forever</span>
+          </span>
         </div>
       </div>
     </div>

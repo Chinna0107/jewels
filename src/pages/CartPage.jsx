@@ -295,8 +295,8 @@ export function CartPage() {
                   <Truck className="w-6 h-6 text-brand-dark-blue" />
                 </div>
                 <div>
-                  <p className="font-bold text-brand-dark-blue">Home Delivery</p>
-                  <p className="text-xs text-brand-dark-blue/60 mt-0.5">Delivered to your address • Shipping fee applies</p>
+                  <p className="font-bold text-brand-dark-blue">Shipping</p>
+                  <p className="text-xs text-brand-dark-blue/60 mt-0.5">Shipped to your address • Shipping fee applies</p>
                 </div>
               </button>
             </div>
