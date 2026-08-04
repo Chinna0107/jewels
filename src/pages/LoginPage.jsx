@@ -100,7 +100,7 @@ function ForgotPassword({ onBack, dark = false }) {
           {step === 'email' ? 'Forgot Password' : step === 'otp' ? 'Verify OTP' : 'New Password'}
         </h2>
         <p className={`text-xs ${dark ? 'text-white/50' : 'text-brand-dark-blue/60'}`}>
-          {step === 'email' ? 'Enter your email to receive a reset OTP.' : step === 'otp' ? `OTP sent to ${email}` : 'Enter your new password.'}
+          {step === 'email' ? 'Enter your email to receive a reset OTP.' : step === 'otp' ? `OTP sent to ${email} and your phone.` : 'Enter your new password.'}
         </p>
       </div>
 

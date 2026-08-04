@@ -311,6 +311,12 @@ export function MyOrdersPage() {
 
                 {/* Footer Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-end gap-3 px-6 py-4 bg-[#FDF8F0] border-t border-[#08183A]/10">
+                  {order.tracking_link && (
+                    <a href={order.tracking_link} target="_blank" rel="noopener noreferrer"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#08183A] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-900 transition-colors shadow-sm sm:mr-auto">
+                      📦 Track Order
+                    </a>
+                  )}
                   <button onClick={() => openInvoice(order)}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#08183A] border border-[#08183A]/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#08183A]/5 transition-colors shadow-sm">
                     <FileText className="w-4 h-4 text-[#08183A]" /> Download Invoice

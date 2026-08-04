@@ -42,7 +42,8 @@ export function SearchPage() {
   const results = trimmed
     ? products.filter(p => {
         const nameMatch = p.name?.toLowerCase().includes(trimmed);
-        const codeMatch = p.product_code?.toLowerCase().includes(trimmed);
+        const codeMatch = p.product_code?.toLowerCase().includes(trimmed) || 
+                          (p.variants && p.variants.some(v => v.code?.toLowerCase().includes(trimmed)));
         const catMatch = p.category?.toLowerCase().includes(trimmed);
         return nameMatch || codeMatch || catMatch;
       })
@@ -76,7 +77,7 @@ export function SearchPage() {
     <div className="min-h-screen bg-brand-beige pb-24 font-sans">
       <Header />
 
-      <div className="max-w-3xl mx-auto px-4 pt-4 pb-6">
+      <div className="max-w-3xl mx-auto px-4 pt-12 pb-6">
         {/* Search Input */}
         <div className="relative flex items-center gap-3 mb-6">
           <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-brand-dark-blue/10 transition-colors shrink-0">
@@ -164,7 +165,7 @@ export function SearchPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 {results.map(product => (
                   <div key={product.id} onClick={handleProductClick}>
-                    <ProductCard product={product} />
+                    <ProductCard product={product} searchQuery={trimmed} />
                   </div>
                 ))}
               </div>

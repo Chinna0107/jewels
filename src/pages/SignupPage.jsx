@@ -210,10 +210,10 @@ export function SignupPage() {
               <>
                 <div className="mb-8">
                   <h4 className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-2">Almost there!</h4>
-                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Verify Email</h2>
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Verify Email & Phone</h2>
                   <div className="w-14 h-1 bg-brand-gold rounded-full"></div>
                   <p className="text-brand-dark-blue/60 text-sm mt-4">
-                    We sent a 6-digit OTP to <strong className="text-brand-dark-blue">{form.email}</strong>
+                    We sent a 6-digit OTP to <strong className="text-brand-dark-blue">{form.email}</strong> and your phone.
                   </p>
                 </div>
 
@@ -280,7 +280,7 @@ export function SignupPage() {
           <p className="text-white/70 text-xs text-center leading-relaxed max-w-[260px] mt-4">
             {step === 'form' 
               ? 'Premium Stainless Steel PVD Gold Plated Jewelry — Waterproof, Tarnish-Free, and made for Everyday Luxury.'
-              : `We sent a 6-digit OTP to ${form.email}`
+              : `We sent a 6-digit OTP to ${form.email} and your phone.`
             }
           </p>
         </div>
@@ -380,7 +380,7 @@ export function SignupPage() {
           <>
             <div className="text-center mb-8">
               <h2 className="text-4xl font-serif font-bold text-white mb-2">
-                Verify <span className="text-[#D4AF37]">Email</span>
+                Verify <span className="text-[#D4AF37]">OTP</span>
               </h2>
               <div className="w-8 h-1 bg-[#D4AF37] mx-auto rounded-full mb-3"></div>
             </div>

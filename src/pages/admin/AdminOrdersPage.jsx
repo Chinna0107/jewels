@@ -164,6 +164,7 @@ export function AdminOrdersPage() {
   const [refundModal, setRefundModal] = useState(null); // order object
   const [refunding, setRefunding] = useState(false);
   const [refundResult, setRefundResult] = useState(null); // { success, refundId, amount }
+  const [ratesModal, setRatesModal] = useState(null); // { orderId, rates }
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -225,24 +226,54 @@ export function AdminOrdersPage() {
     }
   };
 
-  const createShipment = async (orderId) => {
+
+  const fetchShippoRates = async (orderId) => {
     const token = localStorage.getItem("token");
-    setShipping((p) => ({ ...p, [orderId]: true }));
+    setShipping((p) => ({ ...p, [`shippo_${orderId}`]: true }));
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/ship`, {
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/shippo-rates`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed. Backend shipment route might not be configured yet.");
+      if (!res.ok) throw new Error(data.error || "Failed to fetch Shippo rates");
       
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, tracking_id: data.awb, tracking_link: data.tracking_link, status: "shipped" } : o));
-      setTracking((p) => ({ ...p, [orderId]: { id: data.awb, link: data.tracking_link } }));
-      alert(`Shipment created! AWB: ${data.awb}`);
+      setRatesModal({ orderId, rates: data.rates });
     } catch (err) {
-      alert(`Shipment status: ${err.message}`);
+      alert(`Shippo Error: ${err.message}`);
     } finally {
-      setShipping((p) => ({ ...p, [orderId]: false }));
+      setShipping((p) => ({ ...p, [`shippo_${orderId}`]: false }));
+    }
+  };
+
+  const purchaseShippoLabel = async (orderId, rateObjectId) => {
+    const token = localStorage.getItem("token");
+    setShipping((p) => ({ ...p, [`shippo_buy_${orderId}`]: true }));
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/shippo-label`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rateObjectId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create Shippo label");
+      
+      setOrders((prev) => prev.map((o) => o.id === orderId ? { 
+        ...o, 
+        tracking_number: data.tracking_number, 
+        tracking_url: data.tracking_url, 
+        shipping_label_url: data.label_url,
+        tracking_id: data.tracking_number,
+        tracking_link: data.tracking_url,
+        status: "shipped" 
+      } : o));
+      setTracking((p) => ({ ...p, [orderId]: { id: data.tracking_number, link: data.tracking_url } }));
+      setRatesModal(null);
+      alert(`Shippo label created! Tracking: ${data.tracking_number}`);
+    } catch (err) {
+      alert(`Shippo Error: ${err.message}`);
+    } finally {
+      setShipping((p) => ({ ...p, [`shippo_buy_${orderId}`]: false }));
     }
   };
 
@@ -609,16 +640,25 @@ export function AdminOrdersPage() {
                               </a>
                             )}
                           </div>
-                          <button onClick={() => createShipment(order.id)} disabled={shipping[order.id]}
-                            className="text-xs font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline">
-                            Re-create shipment
-                          </button>
+                          {order.shipping_label_url && (
+                             <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" className="mt-2 w-full flex items-center justify-center gap-2 bg-[#08183A] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90">
+                               📄 Download Label
+                             </a>
+                          )}
+                          <div className="flex justify-between mt-2">
+                            <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`]}
+                              className="text-[10px] font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline w-full text-center">
+                              {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "Re-create Label (Shippo)"}
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <button onClick={() => createShipment(order.id)} disabled={shipping[order.id]}
-                          className="w-full flex items-center justify-center gap-2 bg-[#08183A]/10 hover:bg-[#08183A]/20 text-[#08183A] px-4 py-2.5 rounded-xl text-sm font-semibold font-sans transition-colors disabled:opacity-50">
-                          {shipping[order.id] ? "Creating..." : "🚚 Create Shipment"}
-                        </button>
+                        <div className="space-y-2">
+                          <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`]}
+                            className="w-full flex items-center justify-center gap-2 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#08183A] px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors disabled:opacity-50">
+                            {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "📦 Select Shipping Rate (Shippo)"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -731,6 +771,46 @@ export function AdminOrdersPage() {
             onConfirm={(breakdown) => handleRefundAndCancel(refundModal, breakdown)}
             onClose={() => { setRefundModal(null); setRefundResult(null); }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Rates Modal */}
+      <AnimatePresence>
+        {ratesModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h2 className="font-serif text-lg font-bold text-[#08183A]">Select Shipping Rate</h2>
+                <button onClick={() => setRatesModal(null)} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-3">
+                {ratesModal.rates.length === 0 ? (
+                  <p className="text-center text-gray-500 py-10">No rates available for this address.</p>
+                ) : (
+                  ratesModal.rates.map(rate => (
+                    <div key={rate.objectId} className="border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 hover:border-[#D4AF37] transition-colors">
+                      <div className="flex items-center gap-3">
+                        {rate.providerImage75 && <img src={rate.providerImage75} alt={rate.provider} className="h-8 w-8 object-contain" />}
+                        <div>
+                          <p className="font-bold text-[#08183A] text-sm">{rate.provider} - {rate.servicelevel?.name}</p>
+                          <p className="text-xs text-gray-500">Est. {rate.estimatedDays || '?'} days</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-[#D4AF37]">${rate.amount}</p>
+                        <button onClick={() => purchaseShippoLabel(ratesModal.orderId, rate.objectId)}
+                          disabled={shipping[`shippo_buy_${ratesModal.orderId}`]}
+                          className="mt-1 text-xs bg-[#08183A] text-white px-3 py-1.5 rounded-lg hover:bg-blue-900 disabled:opacity-50">
+                          {shipping[`shippo_buy_${ratesModal.orderId}`] ? 'Buying...' : 'Buy Label'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

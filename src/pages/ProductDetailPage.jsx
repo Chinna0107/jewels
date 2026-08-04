@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Truck, RefreshCcw, Check, ChevronRight, User } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
@@ -14,6 +14,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const variantCode = searchParams.get('variantCode');
   const { products, loading, fetchData } = useStoreData();
   const product = products.find(p => p.id.toString() === id);
   const { addToCart } = useCartStore();
@@ -55,9 +57,13 @@ export function ProductDetailPage() {
 
   useEffect(() => {
     if (variants && variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(variants[0]);
+      let match = null;
+      if (variantCode) {
+        match = variants.find(v => v.code === variantCode);
+      }
+      setSelectedVariant(match || variants[0]);
     }
-  }, [variants, selectedVariant]);
+  }, [variants, selectedVariant, variantCode]);
 
   useEffect(() => {
     if (selectedVariant && selectedVariant.sizes && selectedVariant.sizes.length > 0) {
@@ -243,8 +249,8 @@ export function ProductDetailPage() {
               <h1 className="text-3xl md:text-[40px] font-serif font-bold text-brand-dark-blue leading-tight">
                 {product.name}
               </h1>
-              {product.product_code && (
-                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {product.product_code}</p>
+              {(selectedVariant?.code || product.product_code) && (
+                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {selectedVariant?.code || product.product_code}</p>
               )}
               
               {reviewCount > 0 && (

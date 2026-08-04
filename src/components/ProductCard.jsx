@@ -5,7 +5,7 @@ import { useWishlistStore } from '../store/useWishlistStore';
 import { useCartStore } from '../store/useCartStore';
 import { useStoreData } from '../store/useStoreData';
 
-export function ProductCard({ product, layout = 'grid' }) {
+export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
   const navigate = useNavigate();
   const { toggleWishlist, items: wishlistItems } = useWishlistStore();
   const { addToCart } = useCartStore();
@@ -23,7 +23,14 @@ export function ProductCard({ product, layout = 'grid' }) {
     }];
   }
 
-  const firstVariant = variants[0] || { color: "", images: [], sizes: [] };
+  let firstVariant = variants[0] || { color: "", images: [], sizes: [] };
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const matched = variants.find(v => v.code?.toLowerCase().includes(q) || v.color?.toLowerCase().includes(q));
+    if (matched) {
+      firstVariant = matched;
+    }
+  }
   const firstImg = firstVariant.images && firstVariant.images.length > 0 ? firstVariant.images[0] : "";
   const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0 ? firstVariant.sizes[0] : { size: 'Standard', mrp: 0, our_price: 0 };
   
@@ -66,7 +73,8 @@ export function ProductCard({ product, layout = 'grid' }) {
   };
 
   const handleCardClick = () => {
-    navigate(`/product/${product.id}`);
+    const queryParam = firstVariant.code ? `?variantCode=${encodeURIComponent(firstVariant.code)}` : '';
+    navigate(`/product/${product.id}${queryParam}`);
   };
 
   // Determine reviews average
@@ -80,15 +88,15 @@ export function ProductCard({ product, layout = 'grid' }) {
 
   if (layout === 'list') {
     return (
-      <Link to={`/product/${product.id}`} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm mb-4 relative hover:shadow-md transition-shadow">
+      <Link to={`/product/${product.id}${firstVariant.code ? `?variantCode=${encodeURIComponent(firstVariant.code)}` : ''}`} className="flex gap-4 p-4 bg-white rounded-xl shadow-sm mb-4 relative hover:shadow-md transition-shadow">
         <div className="w-24 h-24 bg-white rounded-lg flex-shrink-0 p-2 relative border border-[#08183A]/10">
           <img src={firstImg} alt={product.name} className="w-full h-full object-contain" />
         </div>
         <div className="flex flex-col justify-center flex-grow">
           <div className="flex justify-between items-start">
             <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
-            {product.product_code && (
-               <span className="text-[9px] text-gray-400 font-mono ml-2 shrink-0">{product.product_code}</span>
+            {(firstVariant.code || product.product_code) && (
+               <span className="text-[9px] text-gray-400 font-mono ml-2 shrink-0">{firstVariant.code || product.product_code}</span>
             )}
           </div>
           
@@ -166,8 +174,8 @@ export function ProductCard({ product, layout = 'grid' }) {
         <div className="flex justify-between items-start mb-1.5">
           <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{product.name}</h3>
         </div>
-        {product.product_code && (
-           <div className="text-[10px] text-gray-400 font-mono mb-1">{product.product_code}</div>
+        {(firstVariant.code || product.product_code) && (
+           <div className="text-[10px] text-gray-400 font-mono mb-1">{firstVariant.code || product.product_code}</div>
         )}
         
         <div className="flex items-center gap-1 mb-2">

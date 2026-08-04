@@ -14,7 +14,7 @@ export function AdminProductsPage() {
   const initialFormData = { 
     name: "", description: "", product_code: "", stock: 0, category: "", model: "", is_active: true, offer_id: "",
     variants: [
-      { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }
+      { color: "", code: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }
     ],
     details: [],
     reviews: []
@@ -117,6 +117,7 @@ export function AdminProductsPage() {
       
       variants = [{
         color: product.color || "",
+        code: product.code || "",
         images: images,
         sizes: sizes
       }];
@@ -172,7 +173,7 @@ export function AdminProductsPage() {
   };
 
   const addVariant = () => {
-    setFormData({ ...formData, variants: [...formData.variants, { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }] });
+    setFormData({ ...formData, variants: [...formData.variants, { color: "", code: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }] });
   };
   
   const removeVariant = (index) => {
@@ -240,7 +241,13 @@ export function AdminProductsPage() {
   const selectedCatObj = categories.find(c => c.name === formData.category);
   const availableModels = selectedCatObj?.models || [];
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter(p => {
+    const s = search.toLowerCase();
+    const nameMatch = p.name?.toLowerCase().includes(s);
+    const catMatch = p.category?.toLowerCase().includes(s);
+    const codeMatch = p.product_code?.toLowerCase().includes(s) || (p.variants && p.variants.some(v => v.code?.toLowerCase().includes(s)));
+    return nameMatch || catMatch || codeMatch;
+  });
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -411,10 +418,17 @@ export function AdminProductsPage() {
                     <div key={vIndex} className="bg-gray-50 border border-gray-200 p-4 rounded-xl relative">
                       <button onClick={() => removeVariant(vIndex)} className="absolute top-3 right-3 text-red-500 hover:bg-red-100 p-1.5 rounded"><Trash2 className="w-4 h-4"/></button>
                       
-                      <div className="mb-4 pr-10">
-                        <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Color Name</label>
-                        <input value={variant.color} onChange={(e) => updateVariantField(vIndex, 'color', e.target.value)} placeholder="e.g. Gold, Rose Gold"
-                          className="w-full sm:w-1/2 px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
+                      <div className="grid grid-cols-2 gap-4 mb-4 pr-10">
+                        <div>
+                          <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Color Name</label>
+                          <input value={variant.color} onChange={(e) => updateVariantField(vIndex, 'color', e.target.value)} placeholder="e.g. Gold, Rose Gold"
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Variant Code</label>
+                          <input value={variant.code || ""} onChange={(e) => updateVariantField(vIndex, 'code', e.target.value)} placeholder="e.g. RING-001"
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
+                        </div>
                       </div>
 
                       {/* Images for this variant */}
