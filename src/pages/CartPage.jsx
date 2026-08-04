@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart, Store, Truck, X } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
@@ -160,7 +160,7 @@ export function CartPage() {
                 
                 <div className="flex flex-col justify-between py-1 flex-grow pr-6">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1">{item.product.name}</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1"><Link to={`/product/${item.product.id}`} className="hover:text-brand-gold transition-colors">{item.product.name}</Link></h3>
                     <div className="flex gap-1 flex-wrap">
                       <p className="text-[10px] text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded inline-block">
                         {item.variant?.size || 'Standard'}

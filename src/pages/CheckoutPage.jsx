@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, UserCircle2, ShoppingCart } from 'lucide-react';
+import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, ShoppingCart } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { PhoneInput, formatPhone, parsePhone } from '../components/PhoneInput';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
@@ -10,41 +9,257 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { useLoadScript } from '@react-google-maps/api';
+import usePlacesAutocomplete, { getDetails } from 'use-places-autocomplete';
 
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const COUNTRIES = [
-  'Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia','Austria','Azerbaijan',
-  'Bahrain','Bangladesh','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana',
-  'Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Chad','Chile','China',
-  'Colombia','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominican Republic',
-  'Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Gabon','Georgia','Germany','Ghana',
-  'Greece','Guatemala','Guinea','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland',
-  'Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon',
-  'Libya','Lithuania','Luxembourg','Madagascar','Malaysia','Maldives','Mali','Malta','Mexico','Moldova','Mongolia',
-  'Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria',
-  'North Korea','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal',
-  'Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia',
-  'Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan',
-  'Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates',
-  'United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
+  { name: 'Afghanistan', code: 'AF', dial: '+93' },
+  { name: 'Albania', code: 'AL', dial: '+355' },
+  { name: 'Algeria', code: 'DZ', dial: '+213' },
+  { name: 'Argentina', code: 'AR', dial: '+54' },
+  { name: 'Armenia', code: 'AM', dial: '+374' },
+  { name: 'Australia', code: 'AU', dial: '+61' },
+  { name: 'Austria', code: 'AT', dial: '+43' },
+  { name: 'Azerbaijan', code: 'AZ', dial: '+994' },
+  { name: 'Bahrain', code: 'BH', dial: '+973' },
+  { name: 'Bangladesh', code: 'BD', dial: '+880' },
+  { name: 'Belarus', code: 'BY', dial: '+375' },
+  { name: 'Belgium', code: 'BE', dial: '+32' },
+  { name: 'Bolivia', code: 'BO', dial: '+591' },
+  { name: 'Brazil', code: 'BR', dial: '+55' },
+  { name: 'Bulgaria', code: 'BG', dial: '+359' },
+  { name: 'Cambodia', code: 'KH', dial: '+855' },
+  { name: 'Cameroon', code: 'CM', dial: '+237' },
+  { name: 'Canada', code: 'CA', dial: '+1' },
+  { name: 'Chile', code: 'CL', dial: '+56' },
+  { name: 'China', code: 'CN', dial: '+86' },
+  { name: 'Colombia', code: 'CO', dial: '+57' },
+  { name: 'Croatia', code: 'HR', dial: '+385' },
+  { name: 'Cuba', code: 'CU', dial: '+53' },
+  { name: 'Cyprus', code: 'CY', dial: '+357' },
+  { name: 'Czech Republic', code: 'CZ', dial: '+420' },
+  { name: 'Denmark', code: 'DK', dial: '+45' },
+  { name: 'Ecuador', code: 'EC', dial: '+593' },
+  { name: 'Egypt', code: 'EG', dial: '+20' },
+  { name: 'Estonia', code: 'EE', dial: '+372' },
+  { name: 'Ethiopia', code: 'ET', dial: '+251' },
+  { name: 'Finland', code: 'FI', dial: '+358' },
+  { name: 'France', code: 'FR', dial: '+33' },
+  { name: 'Georgia', code: 'GE', dial: '+995' },
+  { name: 'Germany', code: 'DE', dial: '+49' },
+  { name: 'Ghana', code: 'GH', dial: '+233' },
+  { name: 'Greece', code: 'GR', dial: '+30' },
+  { name: 'Guatemala', code: 'GT', dial: '+502' },
+  { name: 'Hungary', code: 'HU', dial: '+36' },
+  { name: 'Iceland', code: 'IS', dial: '+354' },
+  { name: 'India', code: 'IN', dial: '+91' },
+  { name: 'Indonesia', code: 'ID', dial: '+62' },
+  { name: 'Iran', code: 'IR', dial: '+98' },
+  { name: 'Iraq', code: 'IQ', dial: '+964' },
+  { name: 'Ireland', code: 'IE', dial: '+353' },
+  { name: 'Israel', code: 'IL', dial: '+972' },
+  { name: 'Italy', code: 'IT', dial: '+39' },
+  { name: 'Jamaica', code: 'JM', dial: '+1-876' },
+  { name: 'Japan', code: 'JP', dial: '+81' },
+  { name: 'Jordan', code: 'JO', dial: '+962' },
+  { name: 'Kazakhstan', code: 'KZ', dial: '+7' },
+  { name: 'Kenya', code: 'KE', dial: '+254' },
+  { name: 'Kuwait', code: 'KW', dial: '+965' },
+  { name: 'Kyrgyzstan', code: 'KG', dial: '+996' },
+  { name: 'Latvia', code: 'LV', dial: '+371' },
+  { name: 'Lebanon', code: 'LB', dial: '+961' },
+  { name: 'Libya', code: 'LY', dial: '+218' },
+  { name: 'Lithuania', code: 'LT', dial: '+370' },
+  { name: 'Luxembourg', code: 'LU', dial: '+352' },
+  { name: 'Malaysia', code: 'MY', dial: '+60' },
+  { name: 'Maldives', code: 'MV', dial: '+960' },
+  { name: 'Mexico', code: 'MX', dial: '+52' },
+  { name: 'Moldova', code: 'MD', dial: '+373' },
+  { name: 'Mongolia', code: 'MN', dial: '+976' },
+  { name: 'Morocco', code: 'MA', dial: '+212' },
+  { name: 'Myanmar', code: 'MM', dial: '+95' },
+  { name: 'Nepal', code: 'NP', dial: '+977' },
+  { name: 'Netherlands', code: 'NL', dial: '+31' },
+  { name: 'New Zealand', code: 'NZ', dial: '+64' },
+  { name: 'Nigeria', code: 'NG', dial: '+234' },
+  { name: 'Norway', code: 'NO', dial: '+47' },
+  { name: 'Oman', code: 'OM', dial: '+968' },
+  { name: 'Pakistan', code: 'PK', dial: '+92' },
+  { name: 'Palestine', code: 'PS', dial: '+970' },
+  { name: 'Panama', code: 'PA', dial: '+507' },
+  { name: 'Peru', code: 'PE', dial: '+51' },
+  { name: 'Philippines', code: 'PH', dial: '+63' },
+  { name: 'Poland', code: 'PL', dial: '+48' },
+  { name: 'Portugal', code: 'PT', dial: '+351' },
+  { name: 'Qatar', code: 'QA', dial: '+974' },
+  { name: 'Romania', code: 'RO', dial: '+40' },
+  { name: 'Russia', code: 'RU', dial: '+7' },
+  { name: 'Rwanda', code: 'RW', dial: '+250' },
+  { name: 'Saudi Arabia', code: 'SA', dial: '+966' },
+  { name: 'Serbia', code: 'RS', dial: '+381' },
+  { name: 'Singapore', code: 'SG', dial: '+65' },
+  { name: 'Slovakia', code: 'SK', dial: '+421' },
+  { name: 'Slovenia', code: 'SI', dial: '+386' },
+  { name: 'South Africa', code: 'ZA', dial: '+27' },
+  { name: 'South Korea', code: 'KR', dial: '+82' },
+  { name: 'Spain', code: 'ES', dial: '+34' },
+  { name: 'Sri Lanka', code: 'LK', dial: '+94' },
+  { name: 'Sweden', code: 'SE', dial: '+46' },
+  { name: 'Switzerland', code: 'CH', dial: '+41' },
+  { name: 'Taiwan', code: 'TW', dial: '+886' },
+  { name: 'Tanzania', code: 'TZ', dial: '+255' },
+  { name: 'Thailand', code: 'TH', dial: '+66' },
+  { name: 'Tunisia', code: 'TN', dial: '+216' },
+  { name: 'Turkey', code: 'TR', dial: '+90' },
+  { name: 'Uganda', code: 'UG', dial: '+256' },
+  { name: 'Ukraine', code: 'UA', dial: '+380' },
+  { name: 'United Arab Emirates', code: 'AE', dial: '+971' },
+  { name: 'United Kingdom', code: 'GB', dial: '+44' },
+  { name: 'United States', code: 'US', dial: '+1' },
+  { name: 'Uruguay', code: 'UY', dial: '+598' },
+  { name: 'Uzbekistan', code: 'UZ', dial: '+998' },
+  { name: 'Venezuela', code: 'VE', dial: '+58' },
+  { name: 'Vietnam', code: 'VN', dial: '+84' },
+  { name: 'Yemen', code: 'YE', dial: '+967' },
+  { name: 'Zambia', code: 'ZM', dial: '+260' },
+  { name: 'Zimbabwe', code: 'ZW', dial: '+263' },
 ];
 
-function StripeCardForm({ onReady }) {
-  const elements = useElements();
-  useEffect(() => {
-    if (elements) onReady(elements.getElement(CardElement));
-  }, [elements]);
+function flag(code) {
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+function AddressAutocomplete({ value, onChange, onSelect }) {
+  const {
+    ready,
+    value: inputVal,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({ debounce: 300, defaultValue: value });
+
+  const handleInput = (e) => {
+    setValue(e.target.value);
+    onChange(e.target.value);
+  };
+
+  const handleSelect = async (suggestion) => {
+    setValue(suggestion.description, false);
+    onChange(suggestion.description);
+    clearSuggestions();
+    try {
+      const details = await getDetails({
+        placeId: suggestion.place_id,
+        fields: ['address_components', 'formatted_address'],
+      });
+      const components = details.address_components || [];
+      const get = (type) => components.find(c => c.types.includes(type))?.long_name || '';
+      onSelect({
+        line1: `${get('street_number')} ${get('route')}`.trim() || suggestion.description,
+        city: get('locality') || get('administrative_area_level_2') || get('postal_town'),
+        state: get('administrative_area_level_1'),
+        pincode: get('postal_code'),
+        country: get('country'),
+      });
+    } catch (e) { console.error(e); }
+  };
+
   return (
-    <div className="p-3 border border-brand-gold/30 rounded-xl bg-white">
-      <CardElement options={{
-        style: {
-          base: { fontSize: '16px', color: '#08183A', '::placeholder': { color: '#9ca3af' } },
-          invalid: { color: '#ef4444' }
-        }
-      }} />
+    <div className="relative">
+      <MapPin className="w-4 h-4 text-brand-gold absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <input
+        value={inputVal}
+        onChange={handleInput}
+        disabled={!ready}
+        placeholder="Start typing your address..."
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+      />
+      {status === 'OK' && data.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          {data.map((s) => (
+            <li key={s.place_id}>
+              <button
+                type="button"
+                onClick={() => handleSelect(s)}
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-brand-gold/5 flex items-start gap-2.5 border-b border-gray-50 last:border-0"
+              >
+                <MapPin className="w-3.5 h-3.5 text-brand-gold shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium">{s.structured_formatting.main_text}</span>
+                  <span className="text-gray-400 text-xs block">{s.structured_formatting.secondary_text}</span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
+  );
+}
+
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: '15px',
+      color: '#08183A',
+      fontFamily: 'inherit',
+      '::placeholder': { color: '#9ca3af' },
+    },
+    invalid: { color: '#ef4444' },
+  },
+};
+
+function StripePaymentForm({ finalTotal, isPlacingOrder, handlePlaceOrder }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  return (
+    <div className="space-y-4 max-w-3xl mx-auto">
+      <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
+        <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
+          <CreditCard className="w-4 h-4 text-brand-gold" />
+        </div>
+        Payment
+      </h2>
+      <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
+        <p className="text-xs text-brand-dark-blue/60 font-medium">Enter your card details to complete the payment</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5">
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
+        <button
+          onClick={() => handlePlaceOrder(stripe, elements)}
+          disabled={isPlacingOrder || !stripe}
+          className={`w-full font-bold text-sm rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
+            isPlacingOrder || !stripe ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg hover:opacity-90'
+          }`}
+        >
+          {isPlacingOrder ? (
+            <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Processing...</>
+          ) : `Pay $${finalTotal.toFixed(2)}`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StripeSubmitButton({ isPlacingOrder, handlePlaceOrder, label = 'Confirm & Pay' }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  return (
+    <button
+      onClick={() => handlePlaceOrder(stripe, elements)}
+      disabled={isPlacingOrder || !stripe}
+      className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
+        isPlacingOrder || !stripe ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
+      }`}
+    >
+      {isPlacingOrder ? (
+        <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Placing Order...</>
+      ) : label}
+    </button>
   );
 }
 
@@ -54,8 +269,20 @@ export function CheckoutPage() {
   const { items, getTotal, getSubtotal, getDiscount, appliedCoupon, clearCart } = useCartStore();
   const { token, user } = useAuthStore();
   const { showToast } = useToastStore();
+
+  const { isLoaded: mapsLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
   
   const [step, setStep] = useState(token ? 2 : 1);
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!token) {
+      navigate('/login?redirect=/checkout');
+    }
+  }, []);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [address, setAddress] = useState({
     name: user?.name || '',
@@ -66,17 +293,23 @@ export function CheckoutPage() {
     country: 'India',
     mobile: user?.phone || ''
   });
+  const [dialCode, setDialCode] = useState('+91');
+  const [dialSearch, setDialSearch] = useState('');
+  const [dialOpen, setDialOpen] = useState(false);
+  const dialRef = useRef(null);
   const [countrySearch, setCountrySearch] = useState('');
   const [countryOpen, setCountryOpen] = useState(false);
   const countryRef = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => { if (countryRef.current && !countryRef.current.contains(e.target)) setCountryOpen(false); };
+    const handler = (e) => {
+      if (countryRef.current && !countryRef.current.contains(e.target)) setCountryOpen(false);
+      if (dialRef.current && !dialRef.current.contains(e.target)) setDialOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [stripeCardElement, setStripeCardElement] = useState(null);
   
   const overlayRef = useRef(null);
   const iconRef = useRef(null);
@@ -155,21 +388,14 @@ export function CheckoutPage() {
     }
   }, { dependencies: [isPlacingOrder] });
 
-  const createOrder = async (pMethod, stripePaymentIntentId = null) => {
+  const createOrder = async (pMethod, stripePaymentIntentId) => {
     const endpoint = token ? `${BACKEND_URL}/auth/orders` : `${BACKEND_URL}/general/orders`;
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        items,
-        address,
-        total: finalTotal,
-        coupon_code: couponCode,
-        payment_method: pMethod,
-        stripe_payment_intent_id: stripePaymentIntentId,
-      })
+      body: JSON.stringify({ items, address, total: finalTotal, coupon_code: couponCode, payment_method: pMethod, stripe_payment_intent_id: stripePaymentIntentId })
     });
     return res.json();
   };
@@ -183,51 +409,35 @@ export function CheckoutPage() {
       showToast('ZIP Code must be 6 digits.', 'error');
       return;
     }
-    if (!/^\+\d{7,15}$/.test(address.mobile)) {
-      showToast('Please enter a valid phone number.', 'error');
+    if (address.mobile.replace(/\D/g, '').length < 5) {
+      showToast('Please enter a valid mobile number.', 'error');
       return;
     }
     setStep(3);
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (stripe, elements) => {
+    if (!stripe || !elements) return;
     setIsPlacingOrder(true);
     try {
-      // 1. Create PaymentIntent on backend
       const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal })
       });
       const intentData = await intentRes.json();
-      if (!intentData.success) {
-        showToast('Failed to initialize payment', 'error');
-        setIsPlacingOrder(false);
-        return;
-      }
+      if (!intentData.success) { showToast('Failed to initialize payment', 'error'); setIsPlacingOrder(false); return; }
 
-      // 2. Confirm payment with Stripe
-      const stripe = await stripePromise;
       const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
-        payment_method: {
-          card: stripeCardElement,
-          billing_details: { name: address.name }
-        }
+        payment_method: { card: elements.getElement(CardElement), billing_details: { name: address.name } }
       });
 
-      if (error) {
-        showToast(error.message || 'Payment failed', 'error');
-        setIsPlacingOrder(false);
-        return;
-      }
+      if (error) { showToast(error.message, 'error'); setIsPlacingOrder(false); return; }
 
       if (paymentIntent.status === 'succeeded') {
         const createOrderData = await createOrder('stripe', paymentIntent.id);
         if (createOrderData.success) {
-          setTimeout(() => {
-            clearCart();
-            navigate(`/order-tracking/${createOrderData.order.order_number}`);
-          }, 2000);
+          setTimeout(() => { clearCart(); navigate(`/order-tracking/${createOrderData.order.order_number}`); }, 2000);
         } else {
           showToast('Failed to place order after payment.', 'error');
           setIsPlacingOrder(false);
@@ -235,7 +445,6 @@ export function CheckoutPage() {
       }
     } catch (err) {
       console.error(err);
-      showToast('Payment error. Please try again.', 'error');
       setIsPlacingOrder(false);
     }
   };
@@ -339,46 +548,7 @@ export function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-12 items-start">
           {/* Left Column: Forms */}
           <div className="lg:col-span-8 space-y-6">
-            {step === 1 && (
-              <div className="space-y-4 max-w-3xl mx-auto">
-                <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                    <UserCircle2 className="w-4 h-4 text-brand-gold" />
-                  </div>
-                  Authentication
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Login Option */}
-                  <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg text-brand-dark-blue mb-2">Login / Sign Up</h3>
-                      <p className="text-sm text-brand-dark-blue/60 mb-6">Access your saved addresses, track orders easily, and get exclusive offers.</p>
-                    </div>
-                    <button 
-                      onClick={() => navigate('/login?redirect=/checkout')}
-                      className="w-full bg-brand-dark-blue text-brand-gold font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
-                    >
-                      Login to Continue
-                    </button>
-                  </div>
-                  
-                  {/* Guest Checkout Option */}
-                  <div className="bg-white/80 p-6 rounded-2xl shadow-sm border border-brand-gold/20 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg text-brand-dark-blue mb-2">Guest Checkout</h3>
-                      <p className="text-sm text-brand-dark-blue/60 mb-6">Proceed without an account. You can track your order using the order ID.</p>
-                    </div>
-                    <button 
-                      onClick={() => setStep(2)}
-                      className="w-full bg-brand-beige-darker text-brand-dark-blue border border-brand-dark-blue/10 font-bold py-3 rounded-xl hover:bg-brand-beige transition-colors"
-                    >
-                      Checkout as Guest
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {step === 2 && (
           <div className="space-y-4 max-w-3xl mx-auto">
@@ -403,16 +573,36 @@ export function CheckoutPage() {
                   />
                 </div>
 
-                {/* Address Line 1 */}
+                {/* Address Line 1 — Google Places Autocomplete */}
                 <div>
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Address Line 1 *</label>
-                  <input
-                    required
-                    value={address.line1}
-                    onChange={e => setAddress({...address, line1: e.target.value})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                    placeholder="House no., Street, Area"
-                  />
+                  {mapsLoaded ? (
+                    <AddressAutocomplete
+                      value={address.line1}
+                      onChange={v => setAddress(a => ({ ...a, line1: v }))}
+                      onSelect={({ line1, city, state, pincode, country }) =>
+                        setAddress(a => ({
+                          ...a,
+                          line1: line1 || a.line1,
+                          city: city || a.city,
+                          state: state || a.state,
+                          pincode: pincode || a.pincode,
+                          country: country || a.country,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      value={address.line1}
+                      onChange={e => setAddress(a => ({ ...a, line1: e.target.value }))}
+                      placeholder="House no., Street, Area"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                    />
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Selecting a suggestion auto-fills city, state, ZIP & country
+                  </p>
                 </div>
 
                 {/* City + State */}
@@ -456,7 +646,64 @@ export function CheckoutPage() {
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Mobile *</label>
-                    <PhoneInput value={address.mobile} onChange={v => setAddress({...address, mobile: v})} placeholder="Mobile number" />
+                    <div className="flex gap-2">
+                      {/* Dial code picker */}
+                      <div ref={dialRef} className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => { setDialOpen(o => !o); setDialSearch(''); }}
+                          className="h-full min-w-[80px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm flex items-center gap-1.5 focus:outline-none focus:border-brand-gold hover:border-brand-gold/50 transition-all"
+                        >
+                          <span>{flag(COUNTRIES.find(c => c.dial === dialCode)?.code || 'IN')}</span>
+                          <span className="font-bold text-gray-700">{dialCode}</span>
+                          <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${dialOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        {dialOpen && (
+                          <div className="absolute z-50 mt-1 left-0 w-64 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                            <div className="p-2 border-b border-gray-100">
+                              <input
+                                autoFocus
+                                type="text"
+                                value={dialSearch}
+                                onChange={e => setDialSearch(e.target.value)}
+                                placeholder="Search country..."
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
+                              />
+                            </div>
+                            <ul className="max-h-52 overflow-y-auto">
+                              {COUNTRIES.filter(c =>
+                                c.name.toLowerCase().includes(dialSearch.toLowerCase()) ||
+                                c.dial.includes(dialSearch)
+                              ).map(c => (
+                                <li key={c.code}>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setDialCode(c.dial); setDialOpen(false); }}
+                                    className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
+                                      dialCode === c.dial ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <span className="text-base">{flag(c.code)}</span>
+                                    <span className="flex-1 truncate">{c.name}</span>
+                                    <span className="text-gray-400 font-mono text-xs shrink-0">{c.dial}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      {/* Number input */}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        value={address.mobile}
+                        onChange={e => setAddress({...address, mobile: e.target.value.replace(/\D/g, '')})}
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                        placeholder={dialCode === '+91' ? '10-digit number' : 'Phone number'}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -466,52 +713,49 @@ export function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center justify-between"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center gap-2 justify-between"
                   >
-                    <span className={address.country ? 'text-gray-700' : 'text-gray-400'}>
-                      {address.country || 'Select country'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {address.country && (() => { const c = COUNTRIES.find(c => c.name === address.country); return c ? <span className="text-base">{flag(c.code)}</span> : null; })()}
+                      <span className={address.country ? 'text-gray-700' : 'text-gray-400'}>{address.country || 'Select country'}</span>
+                    </div>
                     <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${countryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-
                   {countryOpen && (
                     <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                      {/* Search */}
                       <div className="p-2 border-b border-gray-100">
-                        <div className="relative">
-                          <svg className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                          </svg>
-                          <input
-                            autoFocus
-                            type="text"
-                            value={countrySearch}
-                            onChange={e => setCountrySearch(e.target.value)}
-                            placeholder="Search country..."
-                            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
-                          />
-                        </div>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={countrySearch}
+                          onChange={e => setCountrySearch(e.target.value)}
+                          placeholder="Search country..."
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
+                        />
                       </div>
-                      {/* List */}
                       <ul className="max-h-48 overflow-y-auto">
-                        {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
-                          <li key={c}>
+                        {COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
+                          <li key={c.code}>
                             <button
                               type="button"
-                              onClick={() => { setAddress({...address, country: c}); setCountryOpen(false); }}
-                              className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                                address.country === c
-                                  ? 'bg-brand-gold/10 text-brand-dark-blue font-bold'
-                                  : 'text-gray-700 hover:bg-gray-50'
+                              onClick={() => {
+                                setAddress({...address, country: c.name});
+                                setDialCode(c.dial);
+                                setCountryOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
+                                address.country === c.name ? 'bg-brand-gold/10 text-brand-dark-blue font-bold' : 'text-gray-700 hover:bg-gray-50'
                               }`}
                             >
-                              {c}
+                              <span className="text-base">{flag(c.code)}</span>
+                              <span className="flex-1">{c.name}</span>
+                              <span className="text-gray-400 font-mono text-xs">{c.dial}</span>
                             </button>
                           </li>
                         ))}
-                        {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
+                        {COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
                           <li className="px-4 py-3 text-sm text-gray-400 text-center">No country found</li>
                         )}
                       </ul>
@@ -538,20 +782,13 @@ export function CheckoutPage() {
         )}
 
         {step === 3 && (
-          <div className="space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-brand-gold" />
-              </div>
-              Payment
-            </h2>
-            <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Card Details</p>
-              <Elements stripe={stripePromise}>
-                <StripeCardForm onReady={setStripeCardElement} />
-              </Elements>
-            </div>
-          </div>
+          <Elements stripe={stripePromise}>
+            <StripePaymentForm
+              finalTotal={finalTotal}
+              isPlacingOrder={isPlacingOrder}
+              handlePlaceOrder={handlePlaceOrder}
+            />
+          </Elements>
         )}
       </div>          {/* Right Column: Order Summary (Desktop) */}
           <div className="hidden lg:block lg:col-span-4 sticky top-24">
@@ -600,14 +837,7 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              {step === 1 ? (
-                <button 
-                  disabled
-                  className="w-full bg-brand-beige-darker text-brand-dark-blue/50 font-bold text-base rounded-xl py-4 flex items-center justify-center cursor-not-allowed"
-                >
-                  Select Checkout Method
-                </button>
-              ) : step === 2 ? (
+              {step === 2 ? (
                 <button 
                   onClick={handleProceedToPayment}
                   className="w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
@@ -615,20 +845,9 @@ export function CheckoutPage() {
                   Proceed to Payment
                 </button>
               ) : (
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={isPlacingOrder}
-                  className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
-                    isPlacingOrder ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
-                  }`}
-                >
-                  {isPlacingOrder ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      Placing Order...
-                    </div>
-                  ) : 'Confirm & Pay'}
-                </button>
+                <Elements stripe={stripePromise}>
+                  <StripeSubmitButton isPlacingOrder={isPlacingOrder} handlePlaceOrder={handlePlaceOrder} />
+                </Elements>
               )}
               
               <div className="flex items-center justify-center gap-2 mt-4 text-gray-400">
@@ -655,14 +874,7 @@ export function CheckoutPage() {
             </div>
           </div>
           
-          {step === 1 ? (
-            <button 
-              disabled
-              className="w-full bg-gray-100 text-gray-400 font-bold text-base rounded-xl py-4 flex items-center justify-center cursor-not-allowed"
-            >
-              Select Checkout Method
-            </button>
-          ) : step === 2 ? (
+          {step === 2 ? (
             <button 
               onClick={handleProceedToPayment}
               className="w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
@@ -672,20 +884,9 @@ export function CheckoutPage() {
               
             </button>
           ) : (
-            <button
-              onClick={handlePlaceOrder}
-              disabled={isPlacingOrder}
-              className={`w-full font-bold text-base rounded-xl py-4 shadow-lg flex items-center justify-center gap-2 transition-all ${
-                isPlacingOrder ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50 shadow-none' : 'bg-brand-dark-blue text-brand-gold shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
-              }`}
-            >
-              {isPlacingOrder ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Placing Order...
-                </div>
-              ) : 'Confirm Order'}
-            </button>
+            <Elements stripe={stripePromise}>
+              <StripeSubmitButton isPlacingOrder={isPlacingOrder} handlePlaceOrder={handlePlaceOrder} label="Confirm Order" />
+            </Elements>
           )}
         
         <div className="flex items-center justify-center gap-1 mt-3">

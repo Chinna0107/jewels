@@ -291,7 +291,11 @@ export function MyOrdersPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pt-1">
-                          <p className="text-sm font-bold text-[#08183A] line-clamp-1">{item.name || item.product?.name || 'Product'}</p>
+                          <p className="text-sm font-bold text-[#08183A] line-clamp-1">
+                            <Link to={`/product/${item.product?.id || item.id}`} className="hover:text-[#D4AF37] transition-colors">
+                              {item.name || item.product?.name || 'Product'}
+                            </Link>
+                          </p>
                           <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">Qty: {item.qty || 1}</span>
                             {(item.size || item.variant?.size) && (
