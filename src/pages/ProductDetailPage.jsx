@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Truck, RefreshCcw, Check, ChevronRight, User } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
+import { ImageZoom } from '../components/ImageZoom';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useStoreData } from '../store/useStoreData';
@@ -215,11 +216,13 @@ export function ProductDetailPage() {
                 </div>
               )}
               {mainImg ? (
-                <img 
-                  src={mainImg} 
-                  alt={product.name} 
-                  className="w-full h-full object-contain p-4" 
-                />
+                <div className="w-full h-full p-4">
+                  <ImageZoom 
+                    src={mainImg} 
+                    alt={product.name} 
+                    className="w-full h-full rounded-xl" 
+                  />
+                </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">No Image Available</div>
               )}

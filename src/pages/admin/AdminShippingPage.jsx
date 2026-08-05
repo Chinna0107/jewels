@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Trash2, Save, Loader, AlertCircle, Check, Store } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { COUNTRIES } from '../../data/countries';
 
 export function AdminShippingPage() {
   const [loading, setLoading] = useState(true);
@@ -13,6 +14,7 @@ export function AdminShippingPage() {
   // Shipping
   const [flatShippingRate, setFlatShippingRate] = useState(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
+  const [allowedCountries, setAllowedCountries] = useState([]);
   const [savingShipping, setSavingShipping] = useState(false);
 
   // Tax
@@ -43,6 +45,7 @@ export function AdminShippingPage() {
       const s = data.settings || {};
       setFlatShippingRate(s.flat_rate ?? 0);
       setFreeShippingThreshold(s.free_shipping_threshold ?? '');
+      setAllowedCountries(s.allowed_countries || []);
       setTaxMode(s.tax_mode || 'flat');
       setFlatTaxPercentage(s.tax_percentage ?? 0);
       setPickupEnabled(s.pickup_enabled ?? false);
@@ -68,8 +71,8 @@ export function AdminShippingPage() {
   const handleSaveShipping = async () => {
     setSavingShipping(true); setError(null);
     try {
-      await saveSettings({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold) });
-      showSuccess('Shipping rate saved');
+      await saveSettings({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold), allowed_countries: allowedCountries });
+      showSuccess('Shipping settings saved');
     } catch (err) { setError(err.message); }
     finally { setSavingShipping(false); }
   };
@@ -194,6 +197,26 @@ export function AdminShippingPage() {
             className="flex items-center gap-2 bg-brand-dark-blue text-brand-gold px-5 py-2.5 rounded-xl font-bold hover:bg-brand-dark-blue/90 transition-all disabled:opacity-50">
             <Save className="w-4 h-4" /> {savingShipping ? 'Saving...' : 'Save'}
           </button>
+        </div>
+        <div className="mt-6 border-t border-gray-100 pt-6">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Allowed Shipping Countries</h3>
+          <p className="text-xs text-gray-500 mb-4">Select the countries you ship to. If none are selected, all countries will be available at checkout.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-4 border border-gray-100 rounded-xl bg-gray-50/50">
+            {COUNTRIES.map(c => (
+              <label key={c.code} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
+                <input
+                  type="checkbox"
+                  checked={allowedCountries.includes(c.name)}
+                  onChange={(e) => {
+                    if (e.target.checked) setAllowedCountries([...allowedCountries, c.name]);
+                    else setAllowedCountries(allowedCountries.filter(name => name !== c.name));
+                  }}
+                  className="w-4 h-4 accent-brand-dark-blue cursor-pointer rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700 select-none">{c.name}</span>
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 

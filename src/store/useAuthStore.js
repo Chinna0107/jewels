@@ -41,6 +41,19 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  verifyPhoneOtp: async (email, otp) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await api.post('/auth/verify-phone-otp', { email, otp });
+      set({ loading: false });
+      return { success: true };
+    } catch (err) {
+      const error = err.response?.data?.error || 'Phone OTP verification failed';
+      set({ loading: false, error });
+      return { success: false, error };
+    }
+  },
+
   verifyOtp: async (email, otp) => {
     set({ loading: true, error: null });
     try {

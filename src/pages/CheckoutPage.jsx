@@ -16,118 +16,7 @@ const GOOGLE_MAPS_LIBRARIES = ['places'];
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const COUNTRIES = [
-  { name: 'Afghanistan', code: 'AF', dial: '+93' },
-  { name: 'Albania', code: 'AL', dial: '+355' },
-  { name: 'Algeria', code: 'DZ', dial: '+213' },
-  { name: 'Argentina', code: 'AR', dial: '+54' },
-  { name: 'Armenia', code: 'AM', dial: '+374' },
-  { name: 'Australia', code: 'AU', dial: '+61' },
-  { name: 'Austria', code: 'AT', dial: '+43' },
-  { name: 'Azerbaijan', code: 'AZ', dial: '+994' },
-  { name: 'Bahrain', code: 'BH', dial: '+973' },
-  { name: 'Bangladesh', code: 'BD', dial: '+880' },
-  { name: 'Belarus', code: 'BY', dial: '+375' },
-  { name: 'Belgium', code: 'BE', dial: '+32' },
-  { name: 'Bolivia', code: 'BO', dial: '+591' },
-  { name: 'Brazil', code: 'BR', dial: '+55' },
-  { name: 'Bulgaria', code: 'BG', dial: '+359' },
-  { name: 'Cambodia', code: 'KH', dial: '+855' },
-  { name: 'Cameroon', code: 'CM', dial: '+237' },
-  { name: 'Canada', code: 'CA', dial: '+1' },
-  { name: 'Chile', code: 'CL', dial: '+56' },
-  { name: 'China', code: 'CN', dial: '+86' },
-  { name: 'Colombia', code: 'CO', dial: '+57' },
-  { name: 'Croatia', code: 'HR', dial: '+385' },
-  { name: 'Cuba', code: 'CU', dial: '+53' },
-  { name: 'Cyprus', code: 'CY', dial: '+357' },
-  { name: 'Czech Republic', code: 'CZ', dial: '+420' },
-  { name: 'Denmark', code: 'DK', dial: '+45' },
-  { name: 'Ecuador', code: 'EC', dial: '+593' },
-  { name: 'Egypt', code: 'EG', dial: '+20' },
-  { name: 'Estonia', code: 'EE', dial: '+372' },
-  { name: 'Ethiopia', code: 'ET', dial: '+251' },
-  { name: 'Finland', code: 'FI', dial: '+358' },
-  { name: 'France', code: 'FR', dial: '+33' },
-  { name: 'Georgia', code: 'GE', dial: '+995' },
-  { name: 'Germany', code: 'DE', dial: '+49' },
-  { name: 'Ghana', code: 'GH', dial: '+233' },
-  { name: 'Greece', code: 'GR', dial: '+30' },
-  { name: 'Guatemala', code: 'GT', dial: '+502' },
-  { name: 'Hungary', code: 'HU', dial: '+36' },
-  { name: 'Iceland', code: 'IS', dial: '+354' },
-  { name: 'India', code: 'IN', dial: '+91' },
-  { name: 'Indonesia', code: 'ID', dial: '+62' },
-  { name: 'Iran', code: 'IR', dial: '+98' },
-  { name: 'Iraq', code: 'IQ', dial: '+964' },
-  { name: 'Ireland', code: 'IE', dial: '+353' },
-  { name: 'Israel', code: 'IL', dial: '+972' },
-  { name: 'Italy', code: 'IT', dial: '+39' },
-  { name: 'Jamaica', code: 'JM', dial: '+1-876' },
-  { name: 'Japan', code: 'JP', dial: '+81' },
-  { name: 'Jordan', code: 'JO', dial: '+962' },
-  { name: 'Kazakhstan', code: 'KZ', dial: '+7' },
-  { name: 'Kenya', code: 'KE', dial: '+254' },
-  { name: 'Kuwait', code: 'KW', dial: '+965' },
-  { name: 'Kyrgyzstan', code: 'KG', dial: '+996' },
-  { name: 'Latvia', code: 'LV', dial: '+371' },
-  { name: 'Lebanon', code: 'LB', dial: '+961' },
-  { name: 'Libya', code: 'LY', dial: '+218' },
-  { name: 'Lithuania', code: 'LT', dial: '+370' },
-  { name: 'Luxembourg', code: 'LU', dial: '+352' },
-  { name: 'Malaysia', code: 'MY', dial: '+60' },
-  { name: 'Maldives', code: 'MV', dial: '+960' },
-  { name: 'Mexico', code: 'MX', dial: '+52' },
-  { name: 'Moldova', code: 'MD', dial: '+373' },
-  { name: 'Mongolia', code: 'MN', dial: '+976' },
-  { name: 'Morocco', code: 'MA', dial: '+212' },
-  { name: 'Myanmar', code: 'MM', dial: '+95' },
-  { name: 'Nepal', code: 'NP', dial: '+977' },
-  { name: 'Netherlands', code: 'NL', dial: '+31' },
-  { name: 'New Zealand', code: 'NZ', dial: '+64' },
-  { name: 'Nigeria', code: 'NG', dial: '+234' },
-  { name: 'Norway', code: 'NO', dial: '+47' },
-  { name: 'Oman', code: 'OM', dial: '+968' },
-  { name: 'Pakistan', code: 'PK', dial: '+92' },
-  { name: 'Palestine', code: 'PS', dial: '+970' },
-  { name: 'Panama', code: 'PA', dial: '+507' },
-  { name: 'Peru', code: 'PE', dial: '+51' },
-  { name: 'Philippines', code: 'PH', dial: '+63' },
-  { name: 'Poland', code: 'PL', dial: '+48' },
-  { name: 'Portugal', code: 'PT', dial: '+351' },
-  { name: 'Qatar', code: 'QA', dial: '+974' },
-  { name: 'Romania', code: 'RO', dial: '+40' },
-  { name: 'Russia', code: 'RU', dial: '+7' },
-  { name: 'Rwanda', code: 'RW', dial: '+250' },
-  { name: 'Saudi Arabia', code: 'SA', dial: '+966' },
-  { name: 'Serbia', code: 'RS', dial: '+381' },
-  { name: 'Singapore', code: 'SG', dial: '+65' },
-  { name: 'Slovakia', code: 'SK', dial: '+421' },
-  { name: 'Slovenia', code: 'SI', dial: '+386' },
-  { name: 'South Africa', code: 'ZA', dial: '+27' },
-  { name: 'South Korea', code: 'KR', dial: '+82' },
-  { name: 'Spain', code: 'ES', dial: '+34' },
-  { name: 'Sri Lanka', code: 'LK', dial: '+94' },
-  { name: 'Sweden', code: 'SE', dial: '+46' },
-  { name: 'Switzerland', code: 'CH', dial: '+41' },
-  { name: 'Taiwan', code: 'TW', dial: '+886' },
-  { name: 'Tanzania', code: 'TZ', dial: '+255' },
-  { name: 'Thailand', code: 'TH', dial: '+66' },
-  { name: 'Tunisia', code: 'TN', dial: '+216' },
-  { name: 'Turkey', code: 'TR', dial: '+90' },
-  { name: 'Uganda', code: 'UG', dial: '+256' },
-  { name: 'Ukraine', code: 'UA', dial: '+380' },
-  { name: 'United Arab Emirates', code: 'AE', dial: '+971' },
-  { name: 'United Kingdom', code: 'GB', dial: '+44' },
-  { name: 'United States', code: 'US', dial: '+1' },
-  { name: 'Uruguay', code: 'UY', dial: '+598' },
-  { name: 'Uzbekistan', code: 'UZ', dial: '+998' },
-  { name: 'Venezuela', code: 'VE', dial: '+58' },
-  { name: 'Vietnam', code: 'VN', dial: '+84' },
-  { name: 'Yemen', code: 'YE', dial: '+967' },
-  { name: 'Zambia', code: 'ZM', dial: '+260' },
-  { name: 'Zimbabwe', code: 'ZW', dial: '+263' },
-];
+import { COUNTRIES } from '../data/countries';
 
 function flag(code) {
   return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
@@ -287,13 +176,15 @@ export function CheckoutPage() {
   const [address, setAddress] = useState({
     name: user?.name || '',
     line1: '',
+    line2: '',
     city: '',
     state: '',
     pincode: '',
-    country: 'India',
+    country: 'United States',
     mobile: user?.phone || ''
   });
-  const [dialCode, setDialCode] = useState('+91');
+  const [dialCountryCode, setDialCountryCode] = useState('US');
+  const dialCode = COUNTRIES.find(c => c.code === dialCountryCode)?.dial || '+1';
   const [dialSearch, setDialSearch] = useState('');
   const [dialOpen, setDialOpen] = useState(false);
   const dialRef = useRef(null);
@@ -327,7 +218,16 @@ export function CheckoutPage() {
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/shipping`)
       .then(r => r.json())
-      .then(d => setShippingConfig(d))
+      .then(d => {
+        setShippingConfig(d);
+        const allowed = d?.settings?.allowed_countries || [];
+        if (allowed.length > 0 && !allowed.includes(address.country)) {
+          const defaultCountryName = allowed[0];
+          setAddress(a => ({ ...a, country: defaultCountryName }));
+          const cObj = COUNTRIES.find(c => c.name === defaultCountryName);
+          if (cObj) setDialCountryCode(cObj.code);
+        }
+      })
       .catch(console.error);
   }, []);
 
@@ -409,7 +309,13 @@ export function CheckoutPage() {
       showToast('ZIP Code must be 6 digits.', 'error');
       return;
     }
-    if (address.mobile.replace(/\D/g, '').length < 5) {
+    const mobileDigits = address.mobile.replace(/\D/g, '');
+    if (['US', 'CA', 'IN'].includes(dialCountryCode)) {
+      if (mobileDigits.length !== 10) {
+        showToast(`Please enter a valid 10-digit mobile number for ${dialCountryCode === 'IN' ? 'India' : 'US/Canada'}.`, 'error');
+        return;
+      }
+    } else if (mobileDigits.length < 5 || mobileDigits.length > 15) {
       showToast('Please enter a valid mobile number.', 'error');
       return;
     }
@@ -478,6 +384,11 @@ export function CheckoutPage() {
       </div>
     </div>
   );
+
+  const allowedCountries = shippingConfig?.settings?.allowed_countries || [];
+  const displayCountries = allowedCountries.length > 0 
+    ? COUNTRIES.filter(c => allowedCountries.includes(c.name))
+    : COUNTRIES;
 
   return (
     <div className="min-h-screen bg-brand-beige pb-36 font-sans">
@@ -605,6 +516,17 @@ export function CheckoutPage() {
                   </p>
                 </div>
 
+                {/* Apartment */}
+                <div>
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Apartment, suite, etc. (optional)</label>
+                  <input
+                    value={address.line2}
+                    onChange={e => setAddress(a => ({ ...a, line2: e.target.value }))}
+                    placeholder="Apartment, suite, unit, building, floor, etc."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                  />
+                </div>
+
                 {/* City + State */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -645,7 +567,7 @@ export function CheckoutPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Mobile *</label>
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Phone *</label>
                     <div className="flex gap-2">
                       {/* Dial code picker */}
                       <div ref={dialRef} className="relative shrink-0">
@@ -654,7 +576,7 @@ export function CheckoutPage() {
                           onClick={() => { setDialOpen(o => !o); setDialSearch(''); }}
                           className="h-full min-w-[80px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm flex items-center gap-1.5 focus:outline-none focus:border-brand-gold hover:border-brand-gold/50 transition-all"
                         >
-                          <span>{flag(COUNTRIES.find(c => c.dial === dialCode)?.code || 'IN')}</span>
+                          <span>{flag(dialCountryCode)}</span>
                           <span className="font-bold text-gray-700">{dialCode}</span>
                           <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${dialOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </button>
@@ -671,16 +593,16 @@ export function CheckoutPage() {
                               />
                             </div>
                             <ul className="max-h-52 overflow-y-auto">
-                              {COUNTRIES.filter(c =>
+                              {displayCountries.filter(c =>
                                 c.name.toLowerCase().includes(dialSearch.toLowerCase()) ||
                                 c.dial.includes(dialSearch)
                               ).map(c => (
                                 <li key={c.code}>
                                   <button
                                     type="button"
-                                    onClick={() => { setDialCode(c.dial); setDialOpen(false); }}
+                                    onClick={() => { setDialCountryCode(c.code); setDialOpen(false); }}
                                     className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
-                                      dialCode === c.dial ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
+                                      dialCountryCode === c.code ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
                                     }`}
                                   >
                                     <span className="text-base">{flag(c.code)}</span>
@@ -699,9 +621,13 @@ export function CheckoutPage() {
                         inputMode="numeric"
                         required
                         value={address.mobile}
-                        onChange={e => setAddress({...address, mobile: e.target.value.replace(/\D/g, '')})}
+                        maxLength={['IN', 'US', 'CA'].includes(dialCountryCode) ? 10 : 15}
+                        onChange={e => {
+                          const limit = ['IN', 'US', 'CA'].includes(dialCountryCode) ? 10 : 15;
+                          setAddress({...address, mobile: e.target.value.replace(/\D/g, '').slice(0, limit)});
+                        }}
                         className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                        placeholder={dialCode === '+91' ? '10-digit number' : 'Phone number'}
+                        placeholder={['IN', 'US', 'CA'].includes(dialCountryCode) ? '10-digit number' : 'Phone number'}
                       />
                     </div>
                   </div>
@@ -715,16 +641,16 @@ export function CheckoutPage() {
                     onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center gap-2 justify-between"
                   >
-                    <div className="flex items-center gap-2">
-                      {address.country && (() => { const c = COUNTRIES.find(c => c.name === address.country); return c ? <span className="text-base">{flag(c.code)}</span> : null; })()}
-                      <span className={address.country ? 'text-gray-700' : 'text-gray-400'}>{address.country || 'Select country'}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {address.country && (() => { const c = COUNTRIES.find(c => c.name === address.country); return c ? <span className="text-base shrink-0">{flag(c.code)}</span> : null; })()}
+                      <span className={`truncate ${address.country ? 'text-gray-700' : 'text-gray-400'}`}>{address.country || 'Select country'}</span>
                     </div>
                     <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${countryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
                   {countryOpen && (
-                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    <div className="absolute z-[200] bottom-full mb-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
                       <div className="p-2 border-b border-gray-100">
                         <input
                           autoFocus
@@ -735,23 +661,23 @@ export function CheckoutPage() {
                           className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
                         />
                       </div>
-                      <ul className="max-h-48 overflow-y-auto">
-                        {COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
+                      <ul className="max-h-52 overflow-y-auto">
+                        {displayCountries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
                           <li key={c.code}>
                             <button
                               type="button"
                               onClick={() => {
                                 setAddress({...address, country: c.name});
-                                setDialCode(c.dial);
+                                setDialCountryCode(c.code);
                                 setCountryOpen(false);
                               }}
                               className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
                                 address.country === c.name ? 'bg-brand-gold/10 text-brand-dark-blue font-bold' : 'text-gray-700 hover:bg-gray-50'
                               }`}
                             >
-                              <span className="text-base">{flag(c.code)}</span>
-                              <span className="flex-1">{c.name}</span>
-                              <span className="text-gray-400 font-mono text-xs">{c.dial}</span>
+                              <span className="text-base shrink-0">{flag(c.code)}</span>
+                              <span className="flex-1 truncate">{c.name}</span>
+                              <span className="text-gray-400 font-mono text-xs shrink-0">{c.dial}</span>
                             </button>
                           </li>
                         ))}

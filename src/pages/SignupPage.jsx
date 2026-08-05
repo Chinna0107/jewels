@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ShieldCheck, Droplet, Feather } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -8,16 +8,32 @@ import logoImg from '../assets/image.png';
 import brandLogo from '../assets/logo.png'; // Updated logo for mobile
 import { PhoneInput, formatPhone } from '../components/PhoneInput';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+
 export function SignupPage() {
   const navigate = useNavigate();
-  const { signup, verifyOtp, googleLogin, loading, error } = useAuthStore();
+  const { signup, verifyPhoneOtp, verifyOtp, googleLogin, loading, error } = useAuthStore();
 
-  const [step, setStep] = useState('form'); // 'form' | 'otp'
+  const [step, setStep] = useState('form'); // 'form' | 'phone_otp' | 'email_otp' | 'done'
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [phoneOtp, setPhoneOtp] = useState(['', '', '', '', '', '']);
+  const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [localError, setLocalError] = useState('');
-  const otpRefs = useRef([]);
+  const [allowedCountries, setAllowedCountries] = useState([]);
+  const phoneOtpRefs = useRef([]);
+  const emailOtpRefs = useRef([]);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/general/shipping`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.settings?.allowed_countries) {
+          setAllowedCountries(d.settings.allowed_countries);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -25,29 +41,37 @@ export function SignupPage() {
     e.preventDefault();
     setLocalError('');
     const res = await signup(form.name, form.email, form.phone, form.password);
-    if (res.success) setStep('otp');
+    if (res.success) setStep('phone_otp');
     else setLocalError(res.error);
   };
 
-  const handleOtpChange = (val, idx) => {
+  const handleOtpChange = (val, idx, setter, refs) => {
     if (!/^\d?$/.test(val)) return;
-    const next = [...otp];
-    next[idx] = val;
-    setOtp(next);
-    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
+    setter(prev => { const next = [...prev]; next[idx] = val; return next; });
+    if (val && idx < 5) refs.current[idx + 1]?.focus();
   };
 
-  const handleOtpKeyDown = (e, idx) => {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
+  const handleOtpKeyDown = (e, idx, otp, refs) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) refs.current[idx - 1]?.focus();
   };
 
-  const handleVerify = async (e) => {
+  const handleVerifyPhone = async (e) => {
     e.preventDefault();
     setLocalError('');
-    const code = otp.join('');
+    const code = phoneOtp.join('');
+    if (code.length < 6) return setLocalError('Enter all 6 digits');
+    const res = await verifyPhoneOtp(form.email, code);
+    if (res.success) setStep('email_otp');
+    else setLocalError(res.error);
+  };
+
+  const handleVerifyEmail = async (e) => {
+    e.preventDefault();
+    setLocalError('');
+    const code = emailOtp.join('');
     if (code.length < 6) return setLocalError('Enter all 6 digits');
     const res = await verifyOtp(form.email, code);
-    if (res.success) navigate('/');
+    if (res.success) { setStep('done'); setTimeout(() => navigate('/'), 2000); }
     else setLocalError(res.error);
   };
 
@@ -157,7 +181,7 @@ export function SignupPage() {
                   {/* Phone - Desktop */}
                   <div>
                     <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Phone Number</label>
-                    <PhoneInput value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
+                    <PhoneInput allowedCountries={allowedCountries} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
                   </div>
 
                   {/* Password */}
@@ -206,52 +230,74 @@ export function SignupPage() {
                   Continue with Google
                 </button>
               </>
-            ) : (
+            ) : step === 'phone_otp' ? (
               <>
                 <div className="mb-8">
-                  <h4 className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-2">Almost there!</h4>
-                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Verify Email & Phone</h2>
+                  <h4 className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-2">Step 1 of 2</h4>
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Verify Mobile</h2>
                   <div className="w-14 h-1 bg-brand-gold rounded-full"></div>
                   <p className="text-brand-dark-blue/60 text-sm mt-4">
-                    We sent a 6-digit OTP to <strong className="text-brand-dark-blue">{form.email}</strong> and your phone.
+                    We sent a 6-digit OTP to <strong className="text-brand-dark-blue">{form.phone}</strong>
                   </p>
                 </div>
-
-                <form onSubmit={handleVerify} className="space-y-6">
+                <form onSubmit={handleVerifyPhone} className="space-y-6">
                   <div className="flex justify-center gap-3">
-                    {otp.map((digit, idx) => (
-                      <input
-                        key={idx}
-                        ref={(el) => (otpRefs.current[idx] = el)}
+                    {phoneOtp.map((digit, idx) => (
+                      <input key={idx} ref={el => phoneOtpRefs.current[idx] = el}
                         type="text" inputMode="numeric" maxLength={1} value={digit}
-                        onChange={(e) => handleOtpChange(e.target.value, idx)}
-                        onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                        onChange={e => handleOtpChange(e.target.value, idx, setPhoneOtp, phoneOtpRefs)}
+                        onKeyDown={e => handleOtpKeyDown(e, idx, phoneOtp, phoneOtpRefs)}
                         className="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors"
                       />
                     ))}
                   </div>
-
-                  {displayError && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">
-                      {displayError}
-                    </div>
-                  )}
-
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
+                  {(localError || error) && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">{localError || error}</div>}
+                  <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
                     type="submit" disabled={loading}
-                    className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 shadow-lg"
-                  >
-                    {loading ? 'Verifying...' : 'Verify & Create Account →'}
+                    className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 shadow-lg">
+                    {loading ? 'Verifying...' : 'Verify Mobile →'}
                   </motion.button>
-
-                  <button type="button" onClick={() => setStep('form')}
-                    className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors">
-                    ← Change details
-                  </button>
+                  <button type="button" onClick={() => setStep('form')} className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors">← Change details</button>
                 </form>
               </>
+            ) : step === 'email_otp' ? (
+              <>
+                <div className="mb-8">
+                  <h4 className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-2">Step 2 of 2</h4>
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Verify Email</h2>
+                  <div className="w-14 h-1 bg-brand-gold rounded-full"></div>
+                  <p className="text-brand-dark-blue/60 text-sm mt-4">
+                    We sent a 6-digit OTP to <strong className="text-brand-dark-blue">{form.email}</strong>
+                  </p>
+                </div>
+                <form onSubmit={handleVerifyEmail} className="space-y-6">
+                  <div className="flex justify-center gap-3">
+                    {emailOtp.map((digit, idx) => (
+                      <input key={idx} ref={el => emailOtpRefs.current[idx] = el}
+                        type="text" inputMode="numeric" maxLength={1} value={digit}
+                        onChange={e => handleOtpChange(e.target.value, idx, setEmailOtp, emailOtpRefs)}
+                        onKeyDown={e => handleOtpKeyDown(e, idx, emailOtp, emailOtpRefs)}
+                        className="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors"
+                      />
+                    ))}
+                  </div>
+                  {(localError || error) && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">{localError || error}</div>}
+                  <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                    type="submit" disabled={loading}
+                    className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 shadow-lg">
+                    {loading ? 'Verifying...' : 'Verify Email & Create Account →'}
+                  </motion.button>
+                  <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors">← Back</button>
+                </form>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                  <ShieldCheck className="w-10 h-10 text-green-600" />
+                </div>
+                <h2 className="text-2xl font-serif font-bold text-brand-dark-blue">Account Created!</h2>
+                <p className="text-brand-dark-blue/60 text-sm">Redirecting you to the store...</p>
+              </div>
             )}
 
             <p className="text-center text-sm text-brand-dark-blue/60 mt-8">
@@ -275,13 +321,14 @@ export function SignupPage() {
             HOURA JEWELS
           </span>
           <span className="text-[#D4AF37] text-[10px] font-bold tracking-widest uppercase mt-6">
-            {step === 'form' ? 'Get Started' : 'Almost There!'}
+            {step === 'form' ? 'Get Started' : step === 'phone_otp' ? 'Step 1 of 2' : step === 'email_otp' ? 'Step 2 of 2' : 'Welcome!'}
           </span>
           <p className="text-white/70 text-xs text-center leading-relaxed max-w-[260px] mt-4">
-            {step === 'form' 
+            {step === 'form'
               ? 'Premium Stainless Steel PVD Gold Plated Jewelry — Waterproof, Tarnish-Free, and made for Everyday Luxury.'
-              : `We sent a 6-digit OTP to ${form.email} and your phone.`
-            }
+              : step === 'phone_otp' ? `OTP sent to ${form.phone}`
+              : step === 'email_otp' ? `OTP sent to ${form.email}`
+              : 'Your account has been created successfully!'}
           </p>
         </div>
 
@@ -330,7 +377,7 @@ export function SignupPage() {
               {/* Phone - Mobile */}
               <div>
                 <label className="text-xs font-medium text-white block mb-1.5 pl-1">Phone Number</label>
-                <PhoneInput value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" dark />
+                <PhoneInput allowedCountries={allowedCountries} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" dark />
               </div>
 
               <div>
@@ -376,48 +423,64 @@ export function SignupPage() {
               Continue with Google
             </button>
           </>
-        ) : (
+        ) : step === 'phone_otp' ? (
           <>
             <div className="text-center mb-8">
-              <h2 className="text-4xl font-serif font-bold text-white mb-2">
-                Verify <span className="text-[#D4AF37]">OTP</span>
-              </h2>
+              <h2 className="text-4xl font-serif font-bold text-white mb-2">Verify <span className="text-[#D4AF37]">Mobile</span></h2>
               <div className="w-8 h-1 bg-[#D4AF37] mx-auto rounded-full mb-3"></div>
             </div>
-
-            <form onSubmit={handleVerify} className="w-full max-w-sm space-y-6">
+            <form onSubmit={handleVerifyPhone} className="w-full max-w-sm space-y-6">
               <div className="flex justify-center gap-2">
-                {otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={(el) => (otpRefs.current[idx] = el)}
+                {phoneOtp.map((digit, idx) => (
+                  <input key={idx} ref={el => phoneOtpRefs.current[idx] = el}
                     type="text" inputMode="numeric" maxLength={1} value={digit}
-                    onChange={(e) => handleOtpChange(e.target.value, idx)}
-                    onKeyDown={(e) => handleOtpKeyDown(e, idx)}
-                    className="w-10 h-12 md:w-12 md:h-14 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+                    onChange={e => handleOtpChange(e.target.value, idx, setPhoneOtp, phoneOtpRefs)}
+                    onKeyDown={e => handleOtpKeyDown(e, idx, phoneOtp, phoneOtpRefs)}
+                    className="w-10 h-12 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
                   />
                 ))}
               </div>
-
-              {displayError && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">
-                  {displayError}
-                </div>
-              )}
-
-              <button
-                type="submit" disabled={loading}
-                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]"
-              >
-                {loading ? 'Verifying...' : 'Verify & Create Account →'}
+              {(localError || error) && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">{localError || error}</div>}
+              <button type="submit" disabled={loading}
+                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                {loading ? 'Verifying...' : 'Verify Mobile →'}
               </button>
-
-              <button type="button" onClick={() => setStep('form')}
-                className="w-full text-sm text-white/50 hover:text-white transition-colors">
-                ← Change details
-              </button>
+              <button type="button" onClick={() => setStep('form')} className="w-full text-sm text-white/50 hover:text-white transition-colors">← Change details</button>
             </form>
           </>
+        ) : step === 'email_otp' ? (
+          <>
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-serif font-bold text-white mb-2">Verify <span className="text-[#D4AF37]">Email</span></h2>
+              <div className="w-8 h-1 bg-[#D4AF37] mx-auto rounded-full mb-3"></div>
+            </div>
+            <form onSubmit={handleVerifyEmail} className="w-full max-w-sm space-y-6">
+              <div className="flex justify-center gap-2">
+                {emailOtp.map((digit, idx) => (
+                  <input key={idx} ref={el => emailOtpRefs.current[idx] = el}
+                    type="text" inputMode="numeric" maxLength={1} value={digit}
+                    onChange={e => handleOtpChange(e.target.value, idx, setEmailOtp, emailOtpRefs)}
+                    onKeyDown={e => handleOtpKeyDown(e, idx, emailOtp, emailOtpRefs)}
+                    className="w-10 h-12 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+                  />
+                ))}
+              </div>
+              {(localError || error) && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">{localError || error}</div>}
+              <button type="submit" disabled={loading}
+                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                {loading ? 'Verifying...' : 'Verify Email & Create Account →'}
+              </button>
+              <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-white/50 hover:text-white transition-colors">← Back</button>
+            </form>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
+              <ShieldCheck className="w-10 h-10 text-green-400" />
+            </div>
+            <h2 className="text-2xl font-serif font-bold text-white">Account Created!</h2>
+            <p className="text-white/50 text-sm">Redirecting you to the store...</p>
+          </div>
         )}
 
         <p className="text-center text-xs text-white/50 mt-8">

@@ -226,12 +226,12 @@ export const COUNTRIES = [
   { name: 'Zimbabwe', iso: 'ZW', code: '263' },
 ];
 
-// Parse a stored value like "+911234567890" → { dialCode: '91', number: '1234567890' }
+// Parse a stored value like "+911234567890" → { iso: 'IN', dialCode: '91', number: '1234567890' }
 export function parsePhone(value = '') {
-  if (!value.startsWith('+')) return { dialCode: '1', number: value };
+  if (!value.startsWith('+')) return { iso: 'US', dialCode: '1', number: value };
   const match = COUNTRIES.find(c => value.startsWith(`+${c.code}`));
-  if (match) return { dialCode: match.code, number: value.slice(match.code.length + 1) };
-  return { dialCode: '1', number: value.slice(1) };
+  if (match) return { iso: match.iso, dialCode: match.code, number: value.slice(match.code.length + 1) };
+  return { iso: 'US', dialCode: '1', number: value.slice(1) };
 }
 
 // Returns full value like "+911234567890"
@@ -239,9 +239,9 @@ export function formatPhone(dialCode, number) {
   return `+${dialCode}${number.replace(/\D/g, '')}`;
 }
 
-export function PhoneInput({ value = '', onChange, className = '', inputClassName = '', placeholder = 'Phone number', dark = false }) {
+export function PhoneInput({ value = '', onChange, className = '', inputClassName = '', placeholder = 'Phone number', dark = false, allowedCountries = [] }) {
   const parsed = parsePhone(value);
-  const [dialCode, setDialCode] = useState(parsed.dialCode);
+  const [isoCode, setIsoCode] = useState(parsed.iso);
   const [number, setNumber] = useState(parsed.number);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -249,7 +249,7 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
 
   useEffect(() => {
     const p = parsePhone(value);
-    setDialCode(p.dialCode);
+    setIsoCode(p.iso);
     setNumber(p.number);
   }, []);
 
@@ -259,12 +259,15 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSelect = (code) => {
-    setDialCode(code);
+  const handleSelect = (c) => {
+    setIsoCode(c.iso);
     setOpen(false);
     setSearch('');
-    onChange(formatPhone(code, number));
+    onChange(formatPhone(c.code, number));
   };
+
+  const selected = COUNTRIES.find(c => c.iso === isoCode) || COUNTRIES.find(c => c.iso === 'US');
+  const dialCode = selected.code;
 
   const handleNumber = (e) => {
     const n = e.target.value.replace(/\D/g, '');
@@ -272,11 +275,13 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
     onChange(formatPhone(dialCode, n));
   };
 
-  const filtered = COUNTRIES.filter(c =>
+  const displayCountries = allowedCountries.length > 0 
+    ? COUNTRIES.filter(c => allowedCountries.includes(c.name))
+    : COUNTRIES;
+
+  const filtered = displayCountries.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search) || c.iso.toLowerCase().includes(search.toLowerCase())
   );
-
-  const selected = COUNTRIES.find(c => c.code === dialCode) || COUNTRIES.find(c => c.iso === 'US');
 
   const base = dark
     ? 'border-white/10 bg-transparent text-white placeholder:text-white/30 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/50'
@@ -314,8 +319,8 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
           <ul className="max-h-56 overflow-y-auto">
             {filtered.map(c => (
               <li key={c.iso}>
-                <button type="button" onClick={() => handleSelect(c.code)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left ${dialCode === c.code ? 'bg-brand-gold/10 font-bold text-[#08183A]' : 'text-gray-700'}`}>
+                <button type="button" onClick={() => handleSelect(c)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left ${isoCode === c.iso ? 'bg-brand-gold/10 font-bold text-[#08183A]' : 'text-gray-700'}`}>
                   <span className="text-base shrink-0">{String.fromCodePoint(...[...c.iso].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0)))}</span>
                   <span className="flex-1 truncate">{c.name}</span>
                   <span className="text-gray-400 shrink-0">+{c.code}</span>
