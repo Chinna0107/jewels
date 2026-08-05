@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Truck, RefreshCcw, Check, ChevronRight, User } from 'lucide-react';
+import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Droplet, Feather, Check, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
 import { ImageZoom } from '../components/ImageZoom';
+import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useStoreData } from '../store/useStoreData';
@@ -21,6 +22,7 @@ export function ProductDetailPage() {
   const product = products.find(p => p.id.toString() === id);
   const { addToCart } = useCartStore();
   const { toggleWishlist, items: wishlistItems } = useWishlistStore();
+  const { user } = useAuthStore();
   
   // Backwards compatibility for old product formats
   let variants = product?.variants;
@@ -44,6 +46,10 @@ export function ProductDetailPage() {
   
   const container = useRef(null);
   const [mainImg, setMainImg] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ name: '', rating: 5, comment: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
 
   // Determine Related Products
   const relatedProducts = product ? products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4) : [];
@@ -79,6 +85,23 @@ export function ProductDetailPage() {
       setMainImg(null);
     }
   }, [selectedVariant]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!reviewForm.name.trim() || !reviewForm.comment.trim()) return;
+    setReviewSubmitting(true);
+    try {
+      await fetch(`${API_URL}/general/products/${product.id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewForm)
+      });
+      setReviewSuccess(true);
+      setReviewForm({ name: '', rating: 5, comment: '' });
+      fetchData();
+    } catch (e) {}
+    setReviewSubmitting(false);
+  };
 
   useGSAP(() => {
     if (product && !loading) {
@@ -212,7 +235,7 @@ export function ProductDetailPage() {
               )}
               {activeOffer && (
                 <div className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10 shadow-sm">
-                  {activeOffer.discount_percentage}% OFF
+                  {parseFloat(activeOffer.discount_percentage)}% OFF
                 </div>
               )}
               {mainImg ? (
@@ -225,6 +248,23 @@ export function ProductDetailPage() {
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">No Image Available</div>
+              )}
+              {/* Arrow Buttons */}
+              {productImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setMainImg(productImages[(productImages.indexOf(mainImg) - 1 + productImages.length) % productImages.length])}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 border border-brand-gold/20 shadow flex items-center justify-center hover:bg-white transition z-10"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-brand-dark-blue" />
+                  </button>
+                  <button
+                    onClick={() => setMainImg(productImages[(productImages.indexOf(mainImg) + 1) % productImages.length])}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 border border-brand-gold/20 shadow flex items-center justify-center hover:bg-white transition z-10"
+                  >
+                    <ChevronRight className="w-5 h-5 text-brand-dark-blue" />
+                  </button>
+                </>
               )}
             </div>
             
@@ -415,18 +455,24 @@ export function ProductDetailPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className="animate-info grid grid-cols-3 gap-3 pt-4">
-              <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-brand-beige/50 text-center gap-2 shadow-sm">
-                <ShieldCheck className="w-6 h-6 text-brand-gold" />
-                <span className="text-[10px] uppercase tracking-wider font-bold text-brand-dark-blue leading-tight">100%<br/>Guarantee</span>
+            <div className="flex justify-between w-full max-w-sm mt-12 mb-4 px-2">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
+                </div>
+                <span className="text-brand-dark-blue text-[10px] font-medium">Tarnish Free</span>
               </div>
-              <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-brand-beige/50 text-center gap-2 shadow-sm">
-                <Truck className="w-6 h-6 text-brand-gold" />
-                <span className="text-[10px] uppercase tracking-wider font-bold text-brand-dark-blue leading-tight">Free<br/>Shipping</span>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
+                  <Droplet className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
+                </div>
+                <span className="text-brand-dark-blue text-[10px] font-medium">Waterproof</span>
               </div>
-              <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-brand-beige/50 text-center gap-2 shadow-sm">
-                <RefreshCcw className="w-6 h-6 text-brand-gold" />
-                <span className="text-[10px] uppercase tracking-wider font-bold text-brand-dark-blue leading-tight">7-Day<br/>Returns</span>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
+                  <Feather className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
+                </div>
+                <span className="text-brand-dark-blue text-[10px] font-medium">Hypoallergenic</span>
               </div>
             </div>
 
@@ -526,6 +572,60 @@ export function ProductDetailPage() {
                   <p className="text-sm text-gray-500 italic">No reviews yet.</p>
                 )}
               </div>
+              {/* Write a Review */}
+              {(product.allow_reviews ?? true) && (
+                <div className="px-6 pb-6 border-t border-gray-100 pt-5">
+                  {!user ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-brand-dark-blue/60 mb-3">Please login to share your review</p>
+                      <button
+                        onClick={() => navigate('/login')}
+                        className="px-6 py-2.5 bg-brand-dark-blue text-brand-gold font-bold rounded-xl text-sm hover:bg-brand-dark-blue/90 transition"
+                      >
+                        Login to Review
+                      </button>
+                    </div>
+                  ) : reviewSuccess ? (
+                    <p className="text-green-600 text-sm font-semibold text-center py-2">✓ Thank you for your review!</p>
+                  ) : (
+                    <>
+                      <h4 className="font-bold text-brand-dark-blue mb-4">Share Your Review</h4>
+                      <form onSubmit={handleReviewSubmit} className="space-y-3">
+                        <input
+                          required
+                          placeholder="Your name"
+                          value={reviewForm.name}
+                          onChange={e => setReviewForm({ ...reviewForm, name: e.target.value })}
+                          className="w-full px-4 py-2.5 text-sm border border-brand-gold/20 rounded-xl focus:outline-none focus:border-brand-gold"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-brand-dark-blue/60">Rating:</span>
+                          {[1,2,3,4,5].map(star => (
+                            <button type="button" key={star} onClick={() => setReviewForm({ ...reviewForm, rating: star })}>
+                              <Star className={`w-5 h-5 ${star <= reviewForm.rating ? 'fill-brand-gold text-brand-gold' : 'text-gray-300'}`} />
+                            </button>
+                          ))}
+                        </div>
+                        <textarea
+                          required
+                          rows={3}
+                          placeholder="Write your review..."
+                          value={reviewForm.comment}
+                          onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                          className="w-full px-4 py-2.5 text-sm border border-brand-gold/20 rounded-xl focus:outline-none focus:border-brand-gold resize-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={reviewSubmitting}
+                          className="w-full py-3 bg-brand-dark-blue text-brand-gold font-bold rounded-xl hover:bg-brand-dark-blue/90 transition text-sm disabled:opacity-60"
+                        >
+                          {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>

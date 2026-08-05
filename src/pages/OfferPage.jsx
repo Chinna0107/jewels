@@ -60,7 +60,7 @@ export function OfferPage() {
           <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <p className="text-white/80 font-sans text-sm font-semibold uppercase tracking-widest mb-1">Get up to</p>
             <p className="text-[#D4AF37] text-6xl md:text-7xl font-bold font-serif leading-none mb-2">
-              {activeOffer.discount_percentage}% <span className="text-3xl text-white">OFF</span>
+              {parseFloat(activeOffer.discount_percentage)}% <span className="text-3xl text-white">OFF</span>
             </p>
             <p className="text-white/70 text-xs">On selected exquisite pieces</p>
           </div>

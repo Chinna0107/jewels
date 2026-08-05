@@ -245,7 +245,7 @@ export function LoginPage() {
 
             {/* Trust badges */}
             <div className="mt-12 grid grid-cols-3 gap-6">
-              {['100% Tarnish Free', 'Waterproof', 'Hypoallergenic'].map((tag, i) => (
+              {[' Tarnish Free', 'Waterproof', 'Hypoallergenic'].map((tag, i) => (
                 <div key={i} className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center">
                     <svg className="w-5 h-5" style={{ color: '#C6A184' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -467,7 +467,7 @@ export function LoginPage() {
             <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
             </div>
-            <span className="text-white text-[10px]">100% Tarnish Free</span>
+            <span className="text-white text-[10px]"> Tarnish Free</span>
           </div>
           
           <div className="flex flex-col items-center gap-3">

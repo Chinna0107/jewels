@@ -178,7 +178,7 @@ export function AdminOffersPage() {
               
               <div className="space-y-2">
                 <p className="font-serif text-xl font-bold text-[#08183A]">
-                  {offer.discount_percentage}% OFF
+                  {parseFloat(offer.discount_percentage)}% OFF
                 </p>
               </div>
             </div>

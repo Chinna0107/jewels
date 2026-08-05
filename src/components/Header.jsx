@@ -172,7 +172,7 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
                     {offers.map((offer) => (
                       <Link key={offer.id} to={`/offer/${offer.id}`} className="flex justify-between items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-brand-orange transition-colors">
                         <span>{offer.title}</span>
-                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{offer.discount_percentage}% OFF</span>
+                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{parseFloat(offer.discount_percentage)}% OFF</span>
                       </Link>
                     ))}
                   </div>
@@ -363,7 +363,7 @@ export function Header({ variant = 'default', title, showShare = false }) {
                               {offers && offers.length > 0 ? offers.map((offer) => (
                                 <Link key={offer.id} to={`/offer/${offer.id}`} onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-between text-sm text-brand-dark-blue py-2 px-3 rounded-lg hover:bg-black/5">
                                   <span>{offer.title}</span>
-                                  <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{offer.discount_percentage}% OFF</span>
+                                  <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{parseFloat(offer.discount_percentage)}% OFF</span>
                                 </Link>
                               )) : (
                                 <span className="py-2 px-3 text-sm text-gray-500">No active offers</span>

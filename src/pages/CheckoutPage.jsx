@@ -305,8 +305,8 @@ export function CheckoutPage() {
       showToast('Please fill all details. All fields are required.', 'error');
       return;
     }
-    if (!/^\d{6}$/.test(address.pincode)) {
-      showToast('ZIP Code must be 6 digits.', 'error');
+    if (!address.pincode.trim()) {
+      showToast('Please enter a ZIP / Postal code.', 'error');
       return;
     }
     const mobileDigits = address.mobile.replace(/\D/g, '');
@@ -558,12 +558,11 @@ export function CheckoutPage() {
                     <input
                       type="text"
                       inputMode="numeric"
-                      maxLength={6}
                       required
                       value={address.pincode}
-                      onChange={e => setAddress({...address, pincode: e.target.value.replace(/\D/g, '')})}
+                      onChange={e => setAddress({...address, pincode: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                      placeholder="6-digit ZIP"
+                      placeholder="ZIP / Postal code"
                     />
                   </div>
                   <div>

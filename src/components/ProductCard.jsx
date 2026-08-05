@@ -160,7 +160,7 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
       <div className="relative aspect-square bg-gray-50 overflow-hidden rounded-xl mb-3">
         {activeOffer && (
           <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-            {activeOffer.discount_percentage}% OFF
+            {parseFloat(activeOffer.discount_percentage)}% OFF
           </div>
         )}
         {firstImg ? (

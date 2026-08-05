@@ -12,7 +12,7 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState(null);
   
   const initialFormData = { 
-    name: "", description: "", product_code: "", stock: 0, category: "", model: "", is_active: true, offer_id: "",
+    name: "", description: "", product_code: "", stock: 0, category: "", model: "", is_active: true, offer_id: "", allow_reviews: true,
     variants: [
       { color: "", code: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }
     ],
@@ -130,7 +130,8 @@ export function AdminProductsPage() {
       offer_id: product.offer_id || "",
       variants: variants,
       details: product.details || [],
-      reviews: product.reviews || []
+      reviews: product.reviews || [],
+      allow_reviews: product.allow_reviews ?? true
     });
     setEditProduct(product);
     setIsNew(false);
@@ -502,6 +503,11 @@ export function AdminProductsPage() {
                   <input type="checkbox" id="is_offer" checked={formData.is_offer || false} onChange={(e) => setFormData({ ...formData, is_offer: e.target.checked })}
                     className="w-4 h-4 text-[#08183A]" />
                   <label htmlFor="is_offer" className="text-sm font-sans font-semibold text-[#08183A] cursor-pointer">Offers</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="allow_reviews" checked={formData.allow_reviews ?? true} onChange={(e) => setFormData({ ...formData, allow_reviews: e.target.checked })}
+                    className="w-4 h-4 text-[#08183A]" />
+                  <label htmlFor="allow_reviews" className="text-sm font-sans font-semibold text-[#08183A] cursor-pointer">Allow Customer Reviews</label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id="is_festive" checked={formData.is_festive || false} onChange={(e) => setFormData({ ...formData, is_festive: e.target.checked })}
