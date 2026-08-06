@@ -23,40 +23,49 @@ export const useCartStore = create(
       deliveryCharge: 0,
       appliedCoupon: null,
       
-      addToCart: (product, variant, qty = 1) => {
+      addToCart: (product, variant, qty = 1, color) => {
         const stock = variant?.stock !== undefined ? Number(variant.stock) : Number(product?.stock || 0);
         if (stock <= 0) {
           useToastStore.getState().showToast('This item is out of stock', 'error');
           return;
         }
+        const variantWithColor = { ...variant, color: color || variant?.color || '' };
         set((state) => {
           const existingItemIndex = state.items.findIndex(
-            (i) => i.product.id === product.id && i.variant === variant
+            (i) => i.product.id === product.id && i.variant?.size === variantWithColor?.size && i.variant?.color === variantWithColor?.color
           );
 
           if (existingItemIndex > -1) {
             const newItems = [...state.items];
-            newItems[existingItemIndex].qty += qty;
+            const newQty = newItems[existingItemIndex].qty + qty;
+            if (newQty > stock) {
+              useToastStore.getState().showToast(`Only ${stock} in stock`, 'error');
+              newItems[existingItemIndex].qty = stock;
+            } else {
+              newItems[existingItemIndex].qty = newQty;
+            }
             return { items: newItems };
           }
-          
-          return { items: [...state.items, { product, variant, qty }] };
+
+          return { items: [...state.items, { product, variant: variantWithColor, qty: Math.min(qty, stock) }] };
         });
         useToastStore.getState().showToast(`Added ${product.name} to cart!`);
       },
       
       removeFromCart: (productId, variant) => set((state) => {
-        const newItems = state.items.filter(item => !(item.product.id === productId && item.variant === variant));
+        const newItems = state.items.filter(item => !(item.product.id === productId && item.variant?.size === variant?.size && item.variant?.color === variant?.color));
         return { items: newItems, appliedCoupon: validateCouponAgainstCart(state.appliedCoupon, newItems) };
       }),
       
       updateQuantity: (productId, variant, qty) => set((state) => {
+        const stock = variant?.stock !== undefined ? Number(variant.stock) : 0;
+        const cappedQty = stock > 0 ? Math.min(qty, stock) : qty;
         let newItems;
-        if (qty <= 0) {
-          newItems = state.items.filter(item => !(item.product.id === productId && item.variant === variant));
+        if (cappedQty <= 0) {
+          newItems = state.items.filter(item => !(item.product.id === productId && item.variant?.size === variant?.size && item.variant?.color === variant?.color));
         } else {
           newItems = state.items.map(item =>
-            (item.product.id === productId && item.variant === variant) ? { ...item, qty } : item
+            (item.product.id === productId && item.variant?.size === variant?.size && item.variant?.color === variant?.color) ? { ...item, qty: cappedQty } : item
           );
         }
         return { items: newItems, appliedCoupon: validateCouponAgainstCart(state.appliedCoupon, newItems) };

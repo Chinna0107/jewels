@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut, Shield, Users, Menu, X, ImageIcon, Tag, Layers, Truck, Settings, Store, MessageSquare } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut, Shield, Users, Menu, X, ImageIcon, Tag, Layers, Truck, Settings, Store, MessageSquare, PalmtreeIcon } from "lucide-react";
 import image from '../../assets/logo.png'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/admin/coupons", label: "Coupons", icon: <Tag className="w-4 h-4" /> },
   { href: "/admin/reviews", label: "Reviews", icon: <MessageSquare className="w-4 h-4" /> },
   { href: "/admin/reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
+  { href: "/admin/vacation", label: "Vacation", icon: <PalmtreeIcon className="w-4 h-4" /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
 ];
 

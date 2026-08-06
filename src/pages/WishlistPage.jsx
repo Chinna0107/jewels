@@ -45,7 +45,7 @@ export function WishlistPage() {
             </div>
             <h2 className="text-xl md:text-2xl font-serif font-bold text-[#08183A] mb-2">Your wishlist is empty</h2>
             <p className="text-[#08183A]/60 mb-8 font-sans text-sm md:text-base max-w-md">
-              Save your favorite divine essentials here. They'll be waiting for you when you're ready.
+              Save your favorite Fashion Jewellery  pieces here. They'll be waiting for you when you're ready.
             </p>
             <Link to="/category/all" className="bg-[#08183A] text-white px-8 py-3 rounded-full font-bold text-sm hover:bg-[#D4AF37] hover:shadow-lg transition-all hover:scale-105 inline-flex items-center justify-center">
               Discover Products

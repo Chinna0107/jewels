@@ -245,14 +245,16 @@ export function LoginPage() {
 
             {/* Trust badges */}
             <div className="mt-12 grid grid-cols-3 gap-6">
-              {[' Tarnish Free', 'Waterproof', 'Hypoallergenic'].map((tag, i) => (
+              {[
+                { icon: <ShieldCheck className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Tarnish Free' },
+                { icon: <Droplet className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Waterproof' },
+                { icon: <Feather className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Hypoallergenic' },
+              ].map(({ icon, label }, i) => (
                 <div key={i} className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                    <svg className="w-5 h-5" style={{ color: '#C6A184' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    {icon}
                   </div>
-                  <span className="text-white/50 text-xs text-center">{tag}</span>
+                  <span className="text-white/50 text-xs text-center">{label}</span>
                 </div>
               ))}
             </div>

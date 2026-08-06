@@ -251,7 +251,7 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
     const p = parsePhone(value);
     setIsoCode(p.iso);
     setNumber(p.number);
-  }, []);
+  }, [value]);
 
   useEffect(() => {
     const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false); };
@@ -288,7 +288,7 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
     : 'border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:ring-gray-400';
 
   return (
-    <div className={`flex gap-0 ${className}`} ref={dropdownRef}>
+    <div className={`flex gap-0 relative ${className}`} ref={dropdownRef}>
       {/* Dial code button */}
       <button type="button" onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1 px-3 py-2.5 border rounded-l-xl text-sm font-semibold shrink-0 transition-all ${dark ? 'border-white/10 bg-transparent text-white hover:bg-white/5' : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'} border-r-0`}>

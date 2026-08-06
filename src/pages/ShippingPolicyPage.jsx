@@ -8,13 +8,13 @@ const sections = [
     id: 'processing',
     icon: <Clock className="w-6 h-6 text-brand-gold" />,
     title: 'Processing Time',
-    badge: '1–2 Business Days',
+    badge: '1–3 Business Days',
     badgeColor: 'bg-emerald-100 text-emerald-700',
     content: [
-      'All orders are processed within 1–2 business days (Monday through Saturday, excluding public holidays).',
+      'All orders are processed within 1–3 business days (Monday through Saturday, excluding public holidays).',
       'You will receive an order confirmation email immediately after placing your order.',
       'A shipping confirmation email with your tracking number is sent once your order has been dispatched.',
-      'Orders placed after 5:00 PM IST will be processed the next business day.',
+      'Orders placed after 5:00 PM CST will be processed the next business day.',
     ],
   },
   {
@@ -40,7 +40,7 @@ const sections = [
       'We ship to all pin codes across USA through our trusted logistics partners.',
       'International shipping is available to select countries — please contact us before placing your international order.',
       'For international orders, additional customs duties or import taxes may apply depending on your country.',
-      'Contact us at hourajewels@gmail.com or WhatsApp +1 940-465-6563 for international shipping rates.',
+      'Contact us at support@hourajewels.com or WhatsApp +1 940-465-6563 for international shipping rates.',
     ],
   },
   {
@@ -143,7 +143,7 @@ export function ShippingPolicyPage() {
       <div className="px-4 md:px-24 -mt-1">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 py-8">
           {[
-            { label: 'Processing', value: '1–2 Days' },
+            { label: 'Processing', value: '1–3 Days' },
             { label: 'Delivery', value: '3–7 Days' },
             { label: 'Coverage', value: 'Pan USA' },
             { label: 'Packaging', value: 'Gift-Ready' },
@@ -220,7 +220,7 @@ export function ShippingPolicyPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Email</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">hourajewels@gmail.com</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">support@hourajewels.com</p>
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">WhatsApp</p>
@@ -228,7 +228,7 @@ export function ShippingPolicyPage() {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Hours</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">Mon–Sat, 9AM – 6PM IST</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">Mon–Sat, 9AM – 6PM CST</p>
                 </div>
               </div>
             </motion.div>

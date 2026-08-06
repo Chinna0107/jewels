@@ -5,6 +5,7 @@ import { Header } from '../components/Header';
 import { useCartStore } from '../store/useCartStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
+import { useStoreData } from '../store/useStoreData';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
@@ -12,8 +13,22 @@ export function CartPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { items, removeFromCart, updateQuantity, getSubtotal, getTotal, getDiscount, deliveryCharge, appliedCoupon, applyCoupon, removeCoupon } = useCartStore();
+  const { products } = useStoreData();
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code || '');
   const { showToast } = useToastStore();
+
+  // Helper: get live stock for a cart item from the products store
+  const getLiveStock = (item) => {
+    const liveProduct = products.find(p => p.id === item.product.id);
+    if (!liveProduct) return item.variant?.stock ?? 0;
+    let variants = liveProduct.variants;
+    if (typeof variants === 'string') try { variants = JSON.parse(variants); } catch { variants = []; }
+    for (const v of (variants || [])) {
+      const s = (v.sizes || []).find(s => s.size === item.variant?.size);
+      if (s) return Number(s.stock ?? 0);
+    }
+    return Number(liveProduct.stock ?? 0);
+  };
   
   const container = React.useRef(null);
   
@@ -40,6 +55,8 @@ export function CartPage() {
 
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [pickupEnabled, setPickupEnabled] = useState(false);
+  const [vacation, setVacation] = useState({ is_active: false, message: '' });
+  const [showVacationModal, setShowVacationModal] = useState(false);
 
   useEffect(() => {
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
@@ -47,9 +64,17 @@ export function CartPage() {
       .then(r => r.json())
       .then(d => setPickupEnabled(d.settings?.pickup_enabled ?? false))
       .catch(() => {});
+    fetch(`${BACKEND_URL}/general/settings/vacation`)
+      .then(r => r.json())
+      .then(d => setVacation(d))
+      .catch(() => {});
   }, []);
 
   const handleCheckout = () => {
+    if (vacation.is_active) {
+      setShowVacationModal(true);
+      return;
+    }
     // Re-validate coupon conditions before proceeding
     if (appliedCoupon) {
       const cartQty = items.reduce((s, i) => s + i.qty, 0);
@@ -77,7 +102,7 @@ export function CartPage() {
   const handleDeliveryChoice = (type) => {
     setShowDeliveryModal(false);
     if (type === 'pickup') navigate('/pickup');
-    else navigate('/checkout', { state: { couponCode } });
+    else navigate('/checkout', { state: { couponCode, orderType: 'shipping' } });
   };
 
   const subtotal = getSubtotal();
@@ -170,6 +195,11 @@ export function CartPage() {
                           {item.product.color}
                         </p>
                       )}
+                      {item.variant?.code && (
+                        <p className="text-[10px] text-brand-gold font-mono font-bold bg-brand-gold/10 px-1.5 py-0.5 rounded inline-block">
+                          {item.variant.code}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="font-bold text-[#08183A] mb-2">${item.variant?.price || item.product.price}</div>
@@ -183,7 +213,11 @@ export function CartPage() {
                     </button>
                     <span className="flex-1 text-center text-[10px] font-bold text-brand-dark-blue">{item.qty}</span>
                     <button 
-                      onClick={() => updateQuantity(item.product.id, item.variant, item.qty + 1)}
+                      onClick={() => {
+                        const liveStock = getLiveStock(item);
+                        if (item.qty >= liveStock) { showToast(`Only ${liveStock} in stock`, 'error'); return; }
+                        updateQuantity(item.product.id, item.variant, item.qty + 1);
+                      }}
                       className="w-6 h-6 flex items-center justify-center text-brand-dark-blue hover:bg-brand-beige rounded transition-colors"
                     >
                       <Plus className="w-3 h-3" />
@@ -298,6 +332,26 @@ export function CartPage() {
                   <p className="font-bold text-brand-dark-blue">Shipping</p>
                   <p className="text-xs text-brand-dark-blue/60 mt-0.5">Shipped to your address • Shipping fee applies</p>
                 </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Vacation Modal */}
+      {showVacationModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="p-6 text-center space-y-4">
+              <div className="text-5xl">🌴</div>
+              <h2 className="font-serif text-xl font-bold text-[#08183A]">We're on Vacation!</h2>
+              <p className="text-sm text-[#08183A]/70 leading-relaxed">
+                {vacation.message || 'We are temporarily not accepting orders. Please check back soon!'}
+              </p>
+              <button
+                onClick={() => setShowVacationModal(false)}
+                className="w-full bg-[#08183A] text-[#D4AF37] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
+              >
+                Got it
               </button>
             </div>
           </div>

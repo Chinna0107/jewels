@@ -6,23 +6,90 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../store/useAuthStore';
 import logoImg from '../assets/image.png';
 import brandLogo from '../assets/logo.png'; // Updated logo for mobile
-import { PhoneInput, formatPhone } from '../components/PhoneInput';
+import { PhoneInput, formatPhone, COUNTRIES } from '../components/PhoneInput';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { signup, verifyPhoneOtp, verifyOtp, googleLogin, loading, error } = useAuthStore();
+  const { signup, verifyPhoneOtp, verifyOtp, googleLogin, loading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState('form'); // 'form' | 'phone_otp' | 'email_otp' | 'done'
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', country: '' });
   const [phoneOtp, setPhoneOtp] = useState(['', '', '', '', '', '']);
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [localError, setLocalError] = useState('');
   const [allowedCountries, setAllowedCountries] = useState([]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const countryDropdownRef = useRef(null);
   const phoneOtpRefs = useRef([]);
   const emailOtpRefs = useRef([]);
+
+  useEffect(() => {
+    const handler = (e) => { if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) setCountryOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const isoFlag = (iso) => String.fromCodePoint(...[...iso].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+
+  function CountryPicker({ dark }) {
+    const list = allowedCountries.length > 0 ? COUNTRIES.filter(c => allowedCountries.includes(c.name)) : COUNTRIES;
+    const filtered = list.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()));
+    const selected = COUNTRIES.find(c => c.name === form.country);
+    return (
+      <div ref={countryDropdownRef} className="relative">
+        <button
+          type="button"
+          onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
+          className={`w-full flex items-center gap-2 px-4 py-3.5 rounded-xl text-sm border transition-all focus:outline-none ${
+            dark
+              ? 'bg-transparent border-white/10 text-white focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50'
+              : 'bg-white border-brand-gold/20 text-brand-dark-blue focus:ring-2 focus:ring-brand-gold/40'
+          }`}
+        >
+          {selected ? (
+            <><span className="text-base leading-none shrink-0">{isoFlag(selected.iso)}</span><span className="flex-1 text-left truncate">{selected.name}</span></>
+          ) : (
+            <span className={`flex-1 text-left ${dark ? 'text-white/30' : 'text-brand-dark-blue/30'}`}>Select your country</span>
+          )}
+          <svg className={`w-4 h-4 shrink-0 transition-transform ${countryOpen ? 'rotate-180' : ''} ${dark ? 'text-white/40' : 'text-brand-dark-blue/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        {countryOpen && (
+          <div className="absolute z-[200] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+            <div className="p-2 border-b border-gray-100">
+              <input
+                autoFocus
+                value={countrySearch}
+                onChange={e => setCountrySearch(e.target.value)}
+                placeholder="Search country..."
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold"
+              />
+            </div>
+            <ul className="max-h-52 overflow-y-auto">
+              {filtered.map(c => (
+                <li key={c.iso}>
+                  <button
+                    type="button"
+                    onClick={() => { setForm(f => ({ ...f, country: c.name })); setCountryOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
+                      form.country === c.name ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-base shrink-0">{isoFlag(c.iso)}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                  </button>
+                </li>
+              ))}
+              {filtered.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No results</li>}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/shipping`)
@@ -33,6 +100,7 @@ export function SignupPage() {
         }
       })
       .catch(console.error);
+    return () => clearError();
   }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -40,7 +108,7 @@ export function SignupPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setLocalError('');
-    const res = await signup(form.name, form.email, form.phone, form.password);
+    const res = await signup(form.name, form.email, form.phone, form.password, form.country);
     if (res.success) setStep('phone_otp');
     else setLocalError(res.error);
   };
@@ -131,6 +199,19 @@ export function SignupPage() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-10 grid grid-cols-3 gap-6">
+              {[
+                { icon: <ShieldCheck className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Tarnish Free' },
+                { icon: <Droplet className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Waterproof' },
+                { icon: <Feather className="w-5 h-5" style={{ color: '#C6A184' }} strokeWidth={1.5} />, label: 'Hypoallergenic' },
+              ].map(({ icon, label }, i) => (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-brand-gold/10 flex items-center justify-center">{icon}</div>
+                  <span className="text-white/50 text-xs text-center">{label}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
 
@@ -176,6 +257,12 @@ export function SignupPage() {
                         className="w-full bg-white border border-brand-gold/20 rounded-xl px-4 py-3.5 pl-11 text-sm text-brand-dark-blue placeholder:text-brand-dark-blue/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow"
                       />
                     </div>
+                  </div>
+
+                  {/* Country - Desktop */}
+                  <div>
+                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country</label>
+                    <CountryPicker dark={false} />
                   </div>
 
                   {/* Phone - Desktop */}
@@ -372,6 +459,12 @@ export function SignupPage() {
                     className="w-full bg-transparent border border-white/10 rounded-xl px-4 py-3.5 pl-11 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all"
                   />
                 </div>
+              </div>
+
+              {/* Country - Mobile */}
+              <div>
+                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country</label>
+                <CountryPicker dark={true} />
               </div>
 
               {/* Phone - Mobile */}

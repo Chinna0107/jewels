@@ -214,7 +214,7 @@ export function HomePage() {
         )}
 
         {/* Special Offers / Premium Collection Banner */}
-        <div className="animate-section px-4 md:px-24 mb-12 flex justify-center mt-8">
+        {/* <div className="animate-section px-4 md:px-24 mb-12 flex justify-center mt-8">
           <div className="relative w-full h-32 md:h-[300px] rounded-[24px] overflow-hidden shadow-lg border border-brand-gold/20 group">
             <div className="absolute inset-0 z-0">
               <img src="https://images.pexels.com/photos/1458867/pexels-photo-1458867.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Jewelry Offers" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
@@ -231,7 +231,7 @@ export function HomePage() {
               </Link>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Festive Collection */}
         {products.filter(p => p.is_festive).length > 0 && (

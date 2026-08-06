@@ -1,141 +1,205 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Filter, Store, Loader } from 'lucide-react';
-import { useAuthStore } from '../../store/useAuthStore';
+import { motion } from 'framer-motion';
+import { Store, ChevronDown, MessageCircle, FileText } from 'lucide-react';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+
+const PICKUP_STATUSES = ['pending', 'processing', 'ready for pickup', 'pickup completed', 'cancelled'];
+
+const STATUS_COLORS = {
+  pending: 'bg-gray-100 text-gray-700',
+  processing: 'bg-yellow-100 text-yellow-700',
+  'ready for pickup': 'bg-orange-100 text-orange-700',
+  'pickup completed': 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700',
+};
 
 export function AdminPickupOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
-  const { token } = useAuthStore();
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
-    fetchOrders();
+    const token = localStorage.getItem('token');
+    fetch(`${BACKEND_URL}/admin/orders`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (d.orders) setOrders(d.orders.filter(o => o.order_type === 'pickup')); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const fetchOrders = async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/admin/orders`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      // Filter for pickup orders only
-      const pickupOrders = data.orders.filter(o => o.order_type === 'pickup');
-      setOrders(pickupOrders);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const updateStatus = async (orderId, status) => {
+    const token = localStorage.getItem('token');
+    await fetch(`${BACKEND_URL}/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    });
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'shipped': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  const notifyWhatsApp = (order) => {
+    let address = {};
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+    const phone = (order.user_phone || address.mobile || '').replace(/\D/g, '');
+    const msg = encodeURIComponent(
+      `Hi ${order.user_name || address.name || 'Customer'}! Your order #${order.order_number || order.id} status is now: *${order.status}*.\n\n` +
+      (order.status === 'ready for pickup'
+        ? `Your order is ready for pickup at *2965 FM1385, Aubrey, TX 76227*. Please come pick it up at your convenience! 🏪`
+        : `Thank you for shopping with Houra Jewels! 🙏`)
+    );
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
 
   if (loading) return (
-    <div className="flex justify-center p-8"><Loader className="w-8 h-8 text-brand-dark-blue animate-spin" /></div>
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-4 border-[#08183A]/20 border-t-[#08183A] rounded-full animate-spin" />
+    </div>
   );
 
+  const filtered = orders.filter(o => statusFilter === 'all' || o.status === statusFilter);
+
   return (
-    <div className="p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="w-full max-w-5xl mx-auto">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Store className="w-6 h-6 text-brand-dark-blue" />
-            Store Pickup Orders
+          <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-[#08183A] flex items-center gap-2">
+            <Store className="w-6 h-6" /> Pickup Orders
           </h1>
-          <p className="text-gray-500 mt-1">Manage all orders placed for store pickup</p>
+          <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">{orders.length} total</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold">
-              <tr>
-                <th className="px-6 py-4">Order ID</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Amount</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {orders.length > 0 ? orders.map((order) => {
-                let address = {};
-                try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
-                const customerName = order.user_name || address.name || 'Guest';
-                const isExpanded = expanded === order.id;
+      {/* Status Filter */}
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+        {['all', ...PICKUP_STATUSES].map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold font-sans capitalize transition-colors ${
+              statusFilter === s
+                ? 'bg-[#08183A] text-white shadow-sm'
+                : 'bg-white border border-[#08183A]/20 text-[#08183A]/60 hover:border-[#08183A]/40'
+            }`}>
+            {s === 'all' ? `All (${orders.length})` : `${s} (${orders.filter(o => o.status === s).length})`}
+          </button>
+        ))}
+      </div>
 
-                return (
-                  <React.Fragment key={order.id}>
-                    <tr 
-                      className="hover:bg-gray-50/50 cursor-pointer"
-                      onClick={() => setExpanded(isExpanded ? null : order.id)}
-                    >
-                      <td className="px-6 py-4 font-bold text-brand-dark-blue">#{order.order_number || order.id}</td>
-                      <td className="px-6 py-4 text-gray-700">{customerName}</td>
-                      <td className="px-6 py-4 font-bold text-gray-900">${parseFloat(order.total).toFixed(2)}</td>
-                      <td className="px-6 py-4 text-gray-500">{new Date(order.created_at).toLocaleDateString()}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-4 bg-gray-50/30 border-b border-gray-100">
-                          <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Order Items</p>
-                          <div className="space-y-3">
-                            {(typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])).map((item, idx) => (
-                              <div key={idx} className="flex gap-3 items-center">
-                                <div className="w-12 h-12 rounded bg-white border border-gray-100 flex items-center justify-center p-1 shrink-0 shadow-sm">
-                                  <img src={item.product?.images?.[0] || item.product?.image_url} alt="" className="max-w-full max-h-full object-contain" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-[#08183A] truncate">{item.product?.name || 'Unknown Product'}</p>
-                                  <p className="text-xs text-gray-500">
-                                    {item.variant?.size ? `Size: ${item.variant.size}` : 'Standard'} • Qty: {item.qty}
-                                  </p>
-                                </div>
-                                <div className="text-sm font-bold text-[#D4AF37]">
-                                  ${(item.variant?.price || item.product?.price || 0) * item.qty}
-                                </div>
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#08183A]/10 p-10 text-center">
+          <Store className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-[#08183A]/50 font-sans text-sm">
+            {orders.length === 0 ? 'No pickup orders yet.' : `No ${statusFilter} pickup orders.`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3 sm:space-y-4">
+          {filtered.map((order, i) => {
+            let address = {};
+            try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+            const name = order.user_name || address.name || 'Guest';
+            const phone = order.user_phone || address.mobile || '—';
+            const email = order.user_email || address.email || '—';
+
+            return (
+              <motion.div key={order.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="bg-white rounded-2xl border border-[#08183A]/10 overflow-hidden">
+
+                <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 lg:p-5 cursor-pointer hover:bg-[#FDF8F0]/30 transition-colors"
+                  onClick={() => setExpanded(expanded === order.id ? null : order.id)}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="font-serif font-bold text-[#08183A] text-sm sm:text-base">#{order.order_number || order.id}</span>
+                      <span className="text-[#08183A]/50 text-[10px] sm:text-xs font-sans">
+                        {new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })}
+                      </span>
+                      <span className={`text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className="text-[#08183A]/60 text-[10px] sm:text-xs font-sans mt-0.5 truncate">{name}</p>
+                  </div>
+                  <span className="font-serif font-bold text-[#D4AF37] text-sm sm:text-base lg:text-lg flex-shrink-0">${order.total}</span>
+                  <ChevronDown className={`w-4 h-4 text-[#08183A]/40 transition-transform flex-shrink-0 ${expanded === order.id ? 'rotate-180' : ''}`} />
+                </div>
+
+                {expanded === order.id && (
+                  <div className="border-t border-[#08183A]/5 p-3 sm:p-4 lg:p-5 space-y-4">
+
+                    {/* Status Update */}
+                    <div>
+                      <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Update Status</p>
+                      <select value={order.status} onChange={e => updateStatus(order.id, e.target.value)}
+                        className="w-full sm:w-64 px-3 py-2 rounded-xl bg-[#FDF8F0] border border-[#08183A]/10 text-[#08183A] font-sans text-sm focus:outline-none">
+                        {PICKUP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Customer Details */}
+                    <div className="pt-4 border-t border-[#08183A]/5">
+                      <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Customer Details</p>
+                      <div className="bg-[#FDF8F0] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Name</span>
+                          <span className="text-sm font-semibold text-[#08183A]">{name}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Phone</span>
+                          <span className="text-sm font-semibold text-[#08183A]">{phone}</span>
+                        </div>
+                        <div className="flex items-start gap-2 sm:col-span-2">
+                          <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Email</span>
+                          <span className="text-sm font-semibold text-[#08183A] break-all">{email}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Payment</span>
+                          <span className="text-sm font-semibold text-[#08183A] capitalize">{order.payment_method === 'stripe' ? 'Online (Stripe)' : order.payment_method || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="pt-4 border-t border-[#08183A]/5">
+                      <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Order Items</p>
+                      <div className="space-y-3">
+                        {(typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])).map((item, idx) => (
+                          <div key={idx} className="flex gap-3 items-center">
+                            <div className="w-12 h-12 rounded bg-gray-50 border border-gray-100 flex items-center justify-center p-1 shrink-0">
+                              <img src={item.product?.images?.[0] || item.product?.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-[#08183A] truncate">{item.product?.name || 'Unknown Product'}</p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <p className="text-xs text-gray-500">{item.variant?.size ? `Size: ${item.variant.size}` : 'Standard'} • Qty: {item.qty}</p>
+                                {(item.product?.product_code || item.product_code) && (
+                                  <span className="text-xs font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
+                                    #{item.product?.product_code || item.product_code}
+                                  </span>
+                                )}
                               </div>
-                            ))}
+                            </div>
+                            <div className="text-sm font-bold text-[#D4AF37]">
+                              ${(item.variant?.price || item.product?.price || 0) * item.qty}
+                            </div>
                           </div>
-                          
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-sm text-gray-700"><strong>Customer Name:</strong> {address.name || order.user_name || 'Guest'}</p>
-                            <p className="text-sm text-gray-700"><strong>Mobile:</strong> {address.mobile || order.user_phone || 'N/A'}</p>
-                            <p className="text-sm text-gray-700"><strong>Payment Method:</strong> {order.payment_method === 'stripe' || order.payment_method === 'razorpay' ? 'Online' : order.payment_method}</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              }) : (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                    <Store className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="font-medium">No pickup orders found</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-[#08183A]/5">
+                      <button onClick={() => notifyWhatsApp(order)}
+                        className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors">
+                        <MessageCircle className="w-3.5 h-3.5" /> Notify via WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

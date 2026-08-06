@@ -191,7 +191,7 @@ export function CategoryListingPage() {
           <div className="text-center md:text-left text-white max-w-xl">
             <h1 className="text-3xl md:text-5xl font-serif font-bold mb-3 tracking-wide">{categoryName}</h1>
             <p className="text-white/80 font-sans text-sm md:text-base leading-relaxed">
-              Explore our handpicked collection of authentic, premium essentials for your divine rituals. Each item is crafted with devotion and purity.
+              Discover our curated collection of timeless fashion jewellery, crafted to add elegance, sparkle, and sophistication to every occasion. ✨
             </p>
           </div>
           <div className="w-24 h-24 md:w-36 md:h-36 shrink-0 rounded-full bg-white/10 p-2 border border-white/20 backdrop-blur-md hidden md:block">

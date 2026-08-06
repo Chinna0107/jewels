@@ -1,16 +1,27 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Package, ArrowRight, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, Package, ArrowRight, ShoppingBag, Store, Truck, MapPin, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Header } from '../components/Header';
 import confetti from 'canvas-confetti';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+
 export function OrderTrackingPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const [order, setOrder] = React.useState(null);
 
   useEffect(() => {
-    // Fire a beautiful confetti burst on mount
+    // Fetch order details
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`${BACKEND_URL}/general/order/${orderId}`, { headers })
+      .then(r => r.json())
+      .then(d => { if (d.order) setOrder(d.order); })
+      .catch(() => {});
+
+    // Fire confetti
     const end = Date.now() + 1.5 * 1000;
     const colors = ['#08183A', '#7D2A2A', '#ffffff'];
 
@@ -59,7 +70,7 @@ export function OrderTrackingPage() {
           className="text-center space-y-3 mb-10"
         >
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">Order Placed Successfully!</h1>
-          <p className="text-gray-500 text-sm md:text-base">Thank you for shopping with Houra Jewels. Your divine essentials are being prepared.</p>
+          <p className="text-gray-500 text-sm md:text-base">Thank you for shopping with Houra Jewels. Your Fashion jewellery products are being prepared.</p>
         </motion.div>
 
         <motion.div 
@@ -76,21 +87,84 @@ export function OrderTrackingPage() {
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Order Number</p>
                 <p className="text-lg font-bold text-[#08183A]">#{orderId}</p>
               </div>
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-brand-gold" />
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
+                order?.order_type === 'pickup' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+              }`}>
+                {order?.order_type === 'pickup' ? <Store className="w-3.5 h-3.5" /> : <Truck className="w-3.5 h-3.5" />}
+                {order?.order_type === 'pickup' ? 'Store Pickup' : 'Home Delivery'}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
-                <p className="text-sm font-semibold text-gray-900">{new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                {order?.created_at
+                  ? new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })
+                  : new Date().toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })}
+              </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Est. Delivery</p>
-                <p className="text-sm font-semibold text-gray-900">Within 3-5 Days</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  {order?.order_type === 'pickup' ? 'Pickup Status' : 'Est. Shipping'}
+                </p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {order?.order_type === 'pickup' ? 'We will contact you' : 'Within 1-3 Business Days'}
+                </p>
               </div>
             </div>
+
+            {/* Items */}
+            {order?.items?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Items Ordered</p>
+                {order.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{item.product?.name || item.name}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-xs text-gray-500">Qty: {item.qty || 1}</span>
+                        {(item.product?.product_code || item.product_code) && (
+                          <span className="text-xs font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
+                            #{item.product?.product_code || item.product_code}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold text-gray-800 shrink-0">${Number(item.variant?.price || item.product?.price || item.price || 0).toFixed(2)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pickup Info Banner */}
+            {order?.order_type === 'pickup' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-blue-800">Pickup Notification</p>
+                    <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+                      Once your order is ready, our team will message you for pickup via <strong>WhatsApp/Text message</strong> from <strong>+1 940-465-6563</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                  <MapPin className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-blue-800">Pickup Location</p>
+                    <p className="text-xs text-blue-700 mt-1">2965 FM1385, Aubrey, TX 76227</p>
+                    <a
+                      href="https://maps.google.com/?q=2965+FM1385,+Aubrey,+TX+76227"
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-600 font-bold underline mt-1 inline-block hover:text-blue-800"
+                    >
+                      View on Google Maps →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 

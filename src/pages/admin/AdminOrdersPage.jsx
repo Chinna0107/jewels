@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw } from "lucide-react";
 import { Link } from "react-router-dom";
+import logoUrl from '../../assets/logo.png';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const FROM_ADDRESS = {
@@ -13,7 +14,9 @@ const FROM_ADDRESS = {
   phone: "+91 90326 75205",
 };
 
-const STATUSES = ["pending", "paid", "processing", "shipped", "delivered", "cancelled"];
+const SHIPPING_STATUSES = ["pending", "paid", "processing", "shipped", "delivered", "cancelled"];
+const PICKUP_STATUSES = ["pending", "processing", "ready for pickup", "pickup completed", "cancelled"];
+const STATUSES = [...new Set([...SHIPPING_STATUSES, ...PICKUP_STATUSES])];
 
 const STATUS_COLORS = {
   pending: "bg-gray-100 text-gray-700",
@@ -21,46 +24,71 @@ const STATUS_COLORS = {
   processing: "bg-yellow-100 text-yellow-700",
   shipped: "bg-purple-100 text-purple-700",
   delivered: "bg-green-100 text-green-700",
+  "ready for pickup": "bg-orange-100 text-orange-700",
+  "pickup completed": "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-700",
 };
 
 function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   const items = (() => { try { return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) { return []; } })();
-  const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * i.qty, 0);
   const orderTotal = parseFloat(order.total) || 0;
   const shipping = Math.max(0, parseFloat(order.shipping_fee) || 0);
   const tax = Math.max(0, parseFloat(order.tax_amount) || 0);
-  // fallback: derive shipping+tax from total - items
+  const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * i.qty, 0);
   const derivedExtra = Math.max(0, orderTotal - itemsTotal);
   const shippingDisplay = shipping || (tax ? derivedExtra - tax : derivedExtra);
   const taxDisplay = tax;
 
-  const [refundItems, setRefundItems] = useState(true);
+  const [mode, setMode] = useState('full'); // 'full' | 'partial'
+  const [selectedItems, setSelectedItems] = useState(() => Object.fromEntries(items.map((_, i) => [i, true])));
   const [refundShipping, setRefundShipping] = useState(true);
   const [refundTax, setRefundTax] = useState(true);
 
-  const refundTotal = (refundItems ? itemsTotal : 0) + (refundShipping ? shippingDisplay : 0) + (refundTax ? taxDisplay : 0);
+  const toggleItem = (idx) => setSelectedItems(p => ({ ...p, [idx]: !p[idx] }));
+
+  const selectedItemsTotal = items.reduce((s, item, idx) =>
+    selectedItems[idx] ? s + (item.variant?.price || item.product?.price || 0) * item.qty : s, 0);
+
+  const refundTotal = mode === 'full'
+    ? (selectedItemsTotal + (refundShipping ? shippingDisplay : 0) + (refundTax ? taxDisplay : 0))
+    : selectedItemsTotal;
+
+  const allSelected = items.every((_, i) => selectedItems[i]);
 
   const handleConfirm = () => {
+    const cancelledItems = items
+      .filter((_, idx) => selectedItems[idx])
+      .map(item => ({
+        productId: item.product?.id,
+        variantSize: item.variant?.size || '',
+        qty: item.qty,
+        price: (item.variant?.price || item.product?.price || 0) * item.qty,
+      }));
+
+    const isFullCancel = allSelected && mode === 'full';
+
     onConfirm({
-      items: refundItems ? itemsTotal : 0,
-      shipping: refundShipping ? shippingDisplay : 0,
-      tax: refundTax ? taxDisplay : 0,
-      total: refundTotal
+      breakdown: {
+        items: selectedItemsTotal,
+        shipping: mode === 'full' && refundShipping ? shippingDisplay : 0,
+        tax: mode === 'full' && refundTax ? taxDisplay : 0,
+        total: refundTotal,
+      },
+      cancelledItems: isFullCancel ? null : cancelledItems,
     });
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-4 h-4 text-red-600" />
             </div>
-            <h2 className="font-serif text-lg font-bold text-[#08183A]">Cancel & Refund Order</h2>
+            <h2 className="font-serif text-lg font-bold text-[#08183A]">Cancel & Refund</h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
         </div>
@@ -72,8 +100,15 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <RefreshCcw className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="font-bold text-lg text-[#08183A] mb-1">Refund Issued!</h3>
-                <p className="text-sm text-gray-500 mb-2">Refund of <strong>${refundResult.amount?.toFixed(2)}</strong> has been sent back to the customer.</p>
+                <h3 className="font-bold text-lg text-[#08183A] mb-1">
+                  {refundResult.partial ? 'Partial Refund Issued!' : 'Refund Issued!'}
+                </h3>
+                <p className="text-sm text-gray-500 mb-2">
+                  Refund of <strong>${refundResult.amount?.toFixed(2)}</strong> has been sent to the customer.
+                  {refundResult.partial && refundResult.remainingItems > 0 && (
+                    <span className="block mt-1 text-blue-600 font-medium">{refundResult.remainingItems} item(s) remain active in the order.</span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-400 font-mono">Refund ID: {refundResult.refundId}</p>
                 <button onClick={onClose} className="mt-5 w-full bg-[#08183A] text-white font-bold py-2.5 rounded-xl hover:bg-[#08183A]/80 transition-colors">Done</button>
               </>
@@ -89,62 +124,91 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
             )}
           </div>
         ) : (
-          <div className="p-6 space-y-5">
-            <p className="text-sm text-gray-500">Select what to refund for order <strong>#{order.order_number || order.id}</strong>. The amount will be returned to the customer's original payment method via Stripe.</p>
+          <div className="p-6 space-y-5 overflow-y-auto">
+            <p className="text-sm text-gray-500">Order <strong>#{order.order_number || order.id}</strong> — select what to cancel and refund.</p>
 
-            <div className="space-y-3">
-              {/* Items */}
-              <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={refundItems} onChange={e => setRefundItems(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
-                  <div>
-                    <p className="text-sm font-bold text-[#08183A]">Items</p>
-                    <p className="text-xs text-gray-500">{items.length} item(s) in order</p>
-                  </div>
-                </div>
-                <span className="font-bold text-[#08183A]">${itemsTotal.toFixed(2)}</span>
-              </label>
-
-              {/* Shipping */}
-              {shippingDisplay > 0 && (
-                <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={refundShipping} onChange={e => setRefundShipping(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
-                    <div>
-                      <p className="text-sm font-bold text-[#08183A]">Shipping Fee</p>
-                      <p className="text-xs text-gray-500">Delivery charge</p>
-                    </div>
-                  </div>
-                  <span className="font-bold text-[#08183A]">${shippingDisplay.toFixed(2)}</span>
-                </label>
-              )}
-
-              {/* Tax */}
-              {taxDisplay > 0 && (
-                <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={refundTax} onChange={e => setRefundTax(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
-                    <div>
-                      <p className="text-sm font-bold text-[#08183A]">Tax</p>
-                      <p className="text-xs text-gray-500">Applied tax amount</p>
-                    </div>
-                  </div>
-                  <span className="font-bold text-[#08183A]">${taxDisplay.toFixed(2)}</span>
-                </label>
-              )}
+            {/* Mode toggle */}
+            <div className="flex gap-2">
+              <button onClick={() => setMode('full')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                  mode === 'full' ? 'bg-[#08183A] text-white border-[#08183A]' : 'bg-white text-[#08183A]/60 border-[#08183A]/20 hover:border-[#08183A]/40'
+                }`}>
+                Full Order Cancel
+              </button>
+              <button onClick={() => setMode('partial')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                  mode === 'partial' ? 'bg-[#08183A] text-white border-[#08183A]' : 'bg-white text-[#08183A]/60 border-[#08183A]/20 hover:border-[#08183A]/40'
+                }`}>
+                Partial Cancel
+              </button>
             </div>
+
+            {/* Items */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider">Select Items to Cancel</p>
+              {items.map((item, idx) => {
+                const price = (item.variant?.price || item.product?.price || 0) * item.qty;
+                const img = item.product?.images?.[0] || item.product?.image_url;
+                return (
+                  <label key={idx} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    selectedItems[idx] ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200 opacity-60'
+                  }`}>
+                    <input type="checkbox" checked={!!selectedItems[idx]} onChange={() => toggleItem(idx)}
+                      className="w-4 h-4 accent-red-600 shrink-0" />
+                    {img && <img src={img} alt="" className="w-10 h-10 object-contain rounded-lg border border-gray-100 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#08183A] truncate">{item.product?.name || 'Product'}</p>
+                      <p className="text-xs text-gray-500">{item.variant?.size || 'Standard'} × {item.qty}</p>
+                    </div>
+                    <span className="font-bold text-[#08183A] text-sm shrink-0">${price.toFixed(2)}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Shipping + Tax (only for full cancel mode) */}
+            {mode === 'full' && (
+              <div className="space-y-2">
+                {shippingDisplay > 0 && (
+                  <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={refundShipping} onChange={e => setRefundShipping(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                      <span className="text-sm font-bold text-[#08183A]">Shipping Fee</span>
+                    </div>
+                    <span className="font-bold text-[#08183A]">${shippingDisplay.toFixed(2)}</span>
+                  </label>
+                )}
+                {taxDisplay > 0 && (
+                  <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={refundTax} onChange={e => setRefundTax(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                      <span className="text-sm font-bold text-[#08183A]">Tax</span>
+                    </div>
+                    <span className="font-bold text-[#08183A]">${taxDisplay.toFixed(2)}</span>
+                  </label>
+                )}
+              </div>
+            )}
 
             {/* Total */}
             <div className="flex justify-between items-center bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-              <span className="font-bold text-red-700">Total Refund</span>
+              <div>
+                <span className="font-bold text-red-700">Total Refund</span>
+                {mode === 'partial' && !allSelected && (
+                  <p className="text-[10px] text-red-500 mt-0.5">Remaining items stay active</p>
+                )}
+              </div>
               <span className="font-bold text-red-700 text-lg">${refundTotal.toFixed(2)}</span>
             </div>
 
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-gray-100 text-[#08183A] rounded-xl font-semibold hover:bg-gray-200 transition-colors">Cancel</button>
-              <button onClick={handleConfirm} disabled={refunding || refundTotal <= 0}
+              <button onClick={handleConfirm} disabled={refunding || refundTotal <= 0 || !items.some((_, i) => selectedItems[i])}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {refunding ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</> : 'Confirm Refund & Cancel'}
+                {refunding
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
+                  : mode === 'partial' && !allSelected ? 'Cancel Selected & Refund' : 'Cancel Order & Refund'
+                }
               </button>
             </div>
           </div>
@@ -202,7 +266,7 @@ export function AdminOrdersPage() {
     setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
   };
 
-  const handleRefundAndCancel = async (order, refundBreakdown) => {
+  const handleRefundAndCancel = async (order, { breakdown, cancelledItems }) => {
     setRefunding(true);
     setRefundResult(null);
     try {
@@ -210,12 +274,19 @@ export function AdminOrdersPage() {
       const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/refund`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ refund_breakdown: refundBreakdown })
+        body: JSON.stringify({ refund_breakdown: breakdown, cancelled_items: cancelledItems })
       });
       const data = await res.json();
       if (data.success) {
-        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled', refund_id: data.refund_id } : o));
-        setRefundResult({ success: true, refundId: data.refund_id, amount: data.amount });
+        setOrders(prev => prev.map(o => {
+          if (o.id !== order.id) return o;
+          if (data.partial && data.remaining_items > 0) {
+            // partial: update items from response isn't available, just update refund info
+            return { ...o, refund_id: data.refund_id };
+          }
+          return { ...o, status: 'cancelled', refund_id: data.refund_id };
+        }));
+        setRefundResult({ success: true, refundId: data.refund_id, amount: data.amount, partial: data.partial, remainingItems: data.remaining_items });
       } else {
         setRefundResult({ success: false, error: data.error });
       }
@@ -298,152 +369,134 @@ export function AdminOrdersPage() {
 
   const invoiceHtml = (order) => {
     let items = [];
-    try {
-      items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
-    } catch(e) {}
-    
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
     let address = {};
-    try {
-      address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {});
-    } catch(e) {}
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
 
+    const isPickup = order.order_type === 'pickup';
     const subtotal = items.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || 0) * item.qty), 0);
-    const rows = items.map((item, idx) => `
-      <tr class="${idx % 2 === 0 ? '' : 'alt-row'}">
-        <td style="text-align: center;">${idx + 1}</td>
-        <td><span style="font-weight: bold; color: #222222;">${escapeHtml(item.product?.name)}</span></td>
-        <td style="text-align: center;">${escapeHtml(item.variant?.size || '-')}</td>
-        <td style="text-align: center;">${item.qty} </td>
-        <td style="text-align: right;">$${(item.variant?.price || item.product?.price || 0).toFixed(2)}</td>
-      </tr>
-    `).join("");
+    const shippingCost = !isPickup && Number(order.total) - subtotal > 0 ? Number(order.total) - subtotal : 0;
+    const orderDate = order.created_at
+      ? new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })
+      : '—';
+
+    const rows = items.map((item, idx) => {
+      const img = item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
+      const code = item.product?.product_code || item.product_code || '';
+      return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#FFFAF9'}">
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;color:#888;">${idx + 1}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${img ? `<img src="${img}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;" />` : `<div style="width:44px;height:44px;background:#FDF8F0;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;"></div>`}
+            <div>
+              <div style="font-weight:700;color:#222;font-size:9.5pt;">${escapeHtml(item.product?.name || '')}</div>
+              ${code ? `<div style="font-size:8pt;color:#b8860b;font-weight:600;margin-top:2px;">#${escapeHtml(code)}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${escapeHtml(item.variant?.size || '—')}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${item.qty}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:right;font-size:9pt;font-weight:600;">$${(item.variant?.price || item.product?.price || 0).toFixed(2)}</td>
+      </tr>`;
+    }).join('');
 
     return `<!doctype html>
-      <html lang="en">
-      <head>
-          <meta charset="UTF-8">
-          <title>Invoice #${order.order_number || order.id}</title>
-          <style>
-              *, *::before, *::after { box-sizing: border-box; }
-              @page { size: A4; margin: 15mm 12mm 20mm 12mm; }
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333333; margin: 0; padding: 0; font-size: 10pt; line-height: 1.4; background-color: #ffffff; }
-              .invoice-container { width: 100%; max-width: 100%; }
-              .invoice-header { border-bottom: 3px solid #E63A12; padding-bottom: 18px; margin-bottom: 20px; }
-              .header-table { width: 100%; border-collapse: collapse; }
-              .header-table td { vertical-align: top; padding: 0; }
-              .invoice-title-block { text-align: right; }
-              .invoice-title { font-size: 22pt; font-weight: bold; color: #E63A12; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-              .invoice-meta { margin-top: 8px; font-size: 9.5pt; color: #444444; line-height: 1.5; }
-              .addresses-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-              .addresses-table td { width: 50%; vertical-align: top; padding: 12px; border: 1px solid #FFE4DE; }
-              .addresses-table td.from-box { background-color: #FFFDFD; }
-              .addresses-table td.ship-box { background-color: #FFFAF9; }
-              .section-heading { font-size: 9.5pt; font-weight: bold; color: #E63A12; text-transform: uppercase; border-bottom: 1px solid #FFE4DE; padding-bottom: 5px; margin-bottom: 8px; letter-spacing: 0.5px; }
-              .address-box { font-size: 9.5pt; color: #555555; line-height: 1.5; }
-              .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; margin-top: 10px; }
-              .items-table th { background-color: #E63A12; color: #ffffff; font-weight: bold; font-size: 9.5pt; text-align: left; padding: 10px 12px; text-transform: uppercase; }
-              .items-table td { padding: 11px 12px; border-bottom: 1px solid #F6EFEF; font-size: 9.5pt; vertical-align: middle; }
-              .items-table tr:nth-child(even) td { background-color: #FFFAF9; }
-              .totals-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              .totals-table td { padding: 0; vertical-align: top; }
-              .terms-cell { width: 55%; padding-right: 25px; }
-              .summary-cell { width: 45%; }
-              .inner-summary-table { width: 100%; border-collapse: collapse; }
-              .inner-summary-table td { padding: 8px 12px; font-size: 10pt; border-bottom: 1px solid #F6EFEF; }
-              .inner-summary-table td.label { text-align: right; color: #555555; }
-              .inner-summary-table td.value { text-align: right; font-weight: bold; width: 120px; }
-              .inner-summary-table tr.grand-total td { background-color: #FFEBE7; border-top: 2px solid #E63A12; border-bottom: 2px double #E63A12; font-weight: bold; color: #E63A12; font-size: 12pt; }
-              .print-btn { margin-top: 20px; text-align: center; }
-              .print-btn button { padding: 8px 24px; margin: 0 8px; border-radius: 9999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
-              .btn-primary { background: #E63A12; color: white; }
-              .btn-secondary { background: white; color: #E63A12; border: 1px solid #E63A12; }
-              @media print { .print-btn { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
-          </style>
-      </head>
-      <body>
-      <div class="invoice-container">
-          <div class="invoice-header">
-              <table class="header-table">
-                  <tr>
-                      <td>
-                          <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
-                              <strong style="font-size: 20px;">Houra Jewels</strong><br>
-                              
-                              Phone: +1 940-465-6563 | Email: hourajewels@gmail.com<br/>
-                          </div>
-                      </td>
-                      <td class="invoice-title-block">
-                          <div class="invoice-title">Order Invoice</div>
-                          <div class="invoice-meta">
-                              <strong>Invoice No:</strong> #${order.order_number || order.id}<br>
-                              <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}<br>
-                              <strong>Status:</strong> ${escapeHtml(order.status)}
-                          </div>
-                      </td>
-                  </tr>
-              </table>
-          </div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice #${order.order_number || order.id}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    @page { size: A4; margin: 15mm 12mm 20mm 12mm; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 20px; font-size: 10pt; line-height: 1.4; background: #fff; }
+    .print-btn { text-align: center; margin: 20px 0; }
+    .print-btn button { padding: 8px 24px; margin: 0 6px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-print { background: #08183A; color: #D4AF37; }
+    .btn-dl { background: #D4AF37; color: #08183A; }
+    @media print { .print-btn { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+  </style>
+</head>
+<body>
 
-          <table class="addresses-table">
-              <tr>
-                  <td class="from-box">
-                      <div class="section-heading">From Address</div>
-                      <div class="address-box">
-                          <strong>Houra Jewels</strong><br>
-                          1-1-738, Vinayaka temple road,<br>
-                          Koratla, Telangana, USA<br>
-                          <strong>Phone:</strong> +91 90326 75205
-                      </div>
-                  </td>
-                  <td class="ship-box">
-                      <div class="section-heading">Shipping Address</div>
-                      <div class="address-box">
-                          <strong>${escapeHtml(address.name || "")}</strong><br>
-                          ${escapeHtml(address.line1 || "")}${address.line2 ? `, ${escapeHtml(address.line2)}` : ""}<br>
-                          ${escapeHtml(address.city || "")}, ${escapeHtml(address.state || "")} — ${escapeHtml(address.pincode || "")}, USA<br>
-                          ${address.mobile ? `<strong>Mobile:</strong> ${escapeHtml(address.mobile)}` : ""}
-                      </div>
-                  </td>
-              </tr>
-          </table>
-
-          <table class="items-table">
-              <thead>
-                  <tr>
-                      <th style="width: 8%; text-align: center;">S.No.</th>
-                      <th style="width: 44%;">Item Name</th>
-                      <th style="width: 18%; text-align: center;">Pack Size</th>
-                      <th style="width: 12%; text-align: center;">Quantity</th>
-                      <th style="width: 18%; text-align: right;">Price ($)</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  ${rows}
-              </tbody>
-          </table>
-
-      <table class="totals-table">
-          <tr>
-              <td class="terms-cell"></td>
-              <td class="summary-cell">
-                  <table class="inner-summary-table">
-                      <tr><td class="label">Subtotal</td><td class="value">$${subtotal.toFixed(2)}</td></tr>
-                      ${Number(order.total) - subtotal > 0 ? `<tr><td class="label">Delivery Charges</td><td class="value">$${(Number(order.total) - subtotal).toFixed(2)}</td></tr>` : ''}
-                      <tr class="grand-total"><td class="label">TOTAL:</td><td class="value">$${Number(order.total).toFixed(2)}</td></tr>
-                      ${order.payment_method === 'cod' ? `<tr><td class="label" style="color: #059669; font-size: 9pt;">Advance Paid (Online)</td><td class="value" style="color: #059669; font-size: 9pt;">-$${Number(order.advance_paid || 0).toFixed(2)}</td></tr>
-                      <tr class="grand-total" style="background-color: #ecfdf5; border-color: #059669; color: #059669;"><td class="label" style="color: #059669;">CASH TO COLLECT:</td><td class="value">$${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</td></tr>` : ''}
-                  </table>
-                  </td>
-              </tr>
-          </table>
-
-          <div class="print-btn">
-              <button class="btn-secondary" onclick="window.print()">🖨️ Print</button>
-              <button class="btn-primary" onclick="window.print()">📥 Download PDF</button>
-          </div>
+<table style="width:100%;border-collapse:collapse;border-bottom:3px solid #08183A;padding-bottom:16px;margin-bottom:20px;">
+  <tr>
+    <td style="vertical-align:middle;width:50%;">
+      <img src="${logoUrl}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
+    </td>
+    <td style="vertical-align:top;text-align:right;">
+      <div style="font-size:20pt;font-weight:900;color:#08183A;letter-spacing:-0.5px;">INVOICE</div>
+      <div style="font-size:9pt;color:#555;margin-top:6px;line-height:1.7;">
+        <strong>Invoice No:</strong> #${escapeHtml(order.order_number || String(order.id))}<br>
+        <strong>Date:</strong> ${orderDate}<br>
+        <strong>Order Type:</strong> <span style="font-weight:700;color:${isPickup ? '#1d4ed8' : '#059669'};">${isPickup ? '🏪 Store Pickup' : '🚚 Home Delivery'}</span><br>
+        <strong>Status:</strong> ${escapeHtml(order.status)}
       </div>
-      </body>
-      </html>`;
+    </td>
+  </tr>
+</table>
+
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="width:${isPickup ? '100%' : '50%'};vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#FFFDFD;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">From</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong style="color:#08183A;">Houra Jewels</strong><br>
+        Texas, 76227<br>
+        Phone: +1 940-465-6563<br>
+        Email: support@hourajewels.com
+      </div>
+    </td>
+    ${!isPickup ? `
+    <td style="width:4px;"></td>
+    <td style="width:50%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#FFFAF9;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Ship To</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong style="color:#08183A;">${escapeHtml(address.name || '')}</strong><br>
+        ${escapeHtml(address.line1 || '')}${address.line2 ? ', ' + escapeHtml(address.line2) : ''}<br>
+        ${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} ${escapeHtml(address.pincode || '')}<br>
+        ${address.mobile ? `<strong>Phone:</strong> ${escapeHtml(address.mobile)}` : ''}
+      </div>
+    </td>` : ''}
+  </tr>
+</table>
+
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+  <thead>
+    <tr style="background:#08183A;">
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:5%;">#</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:left;width:45%;">Item</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:15%;">Size</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:10%;">Qty</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:right;width:15%;">Price</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<table style="width:100%;border-collapse:collapse;margin-top:8px;">
+  <tr>
+    <td style="width:55%;"></td>
+    <td style="width:45%;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Subtotal</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;width:110px;">$${subtotal.toFixed(2)}</td></tr>
+        ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
+        <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<div style="margin-top:30px;padding-top:12px;border-top:1px solid #e8d5b0;text-align:center;font-size:8.5pt;color:#999;">
+  Thank you for shopping with Houra Jewels! &nbsp;|&nbsp; support@hourajewels.com &nbsp;|&nbsp; +1 940-465-6563
+</div>
+
+<div class="print-btn">
+  <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+  <button class="btn-dl" onclick="window.print()">📥 Download PDF</button>
+</div>
+</body>
+</html>`;
   };
 
   const openInvoice = (order) => {
@@ -554,7 +607,7 @@ export function AdminOrdersPage() {
     </div>
   );
 
-  const filtered = orders.filter(o => statusFilter === "all" || o.status === statusFilter);
+  const filtered = orders.filter(o => (statusFilter === "all" || o.status === statusFilter) && o.order_type !== 'pickup');
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -562,22 +615,24 @@ export function AdminOrdersPage() {
       <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-[#08183A]">Orders</h1>
-          <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">{orders.length} total</p>
+          <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">{orders.filter(o => o.order_type !== 'pickup').length} total</p>
         </div>
       </div>
 
       {/* Status Filter Buttons */}
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
-        {["all", ...STATUSES].map((s) => (
+        {["all", ...SHIPPING_STATUSES].map((s) => {
+          const shippingOrders = orders.filter(o => o.order_type !== 'pickup');
+          return (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold font-sans capitalize transition-colors ${
               statusFilter === s
                 ? "bg-[#08183A] text-white shadow-sm"
                 : "bg-white border border-[#08183A]/20 text-[#08183A]/60 hover:border-[#08183A]/40"
             }`}>
-            {s === "all" ? `All (${orders.length})` : `${s} (${orders.filter(o => o.status === s).length})`}
+            {s === "all" ? `All (${shippingOrders.length})` : `${s} (${shippingOrders.filter(o => o.status === s).length})`}
           </button>
-        ))}
+        )})}
       </div>
 
       {filtered.length === 0 ? (
@@ -624,7 +679,7 @@ export function AdminOrdersPage() {
                       <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Update Status</p>
                       <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-[#FDF8F0] border border-[#08183A]/10 text-[#08183A] font-sans text-sm focus:outline-none">
-                        {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        {(order.order_type === 'pickup' ? PICKUP_STATUSES : SHIPPING_STATUSES).map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div>

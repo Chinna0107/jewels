@@ -1,35 +1,56 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Header } from '../components/Header';
-import { RefreshCw, CheckCircle, XCircle, Clock, AlertCircle, ChevronDown } from 'lucide-react';
+import { XCircle, Package, AlertTriangle, Video, Clock, ChevronDown, ShieldCheck } from 'lucide-react';
 
-const steps = [
-  { num: '01', title: 'Contact Us', desc: 'Reach out via WhatsApp (+1 940-465-6563) or email (hourajewels@gmail.com) within 7 days of receiving your order. Include your order number and the reason for the return.' },
-  { num: '02', title: 'Get Confirmation', desc: 'Our team will review your request and send you a return confirmation along with shipping instructions within 24 hours.' },
-  { num: '03', title: 'Ship the Item', desc: 'Pack the item securely in its original packaging and ship it back using the address provided. The return shipping cost is borne by the customer (unless the return is due to our error).' },
-  { num: '04', title: 'Refund / Exchange', desc: 'Once we receive and inspect the item, your refund will be processed within 5–7 business days or your exchange item will be dispatched within 2–3 business days.' },
-];
-
-const eligibleItems = [
-  'Item received is damaged or defective',
-  'Wrong item was delivered',
-  'Item is unworn and in original packaging',
-  'Return requested within 7 days of delivery',
-];
-
-const notEligibleItems = [
-  'Item has been worn, washed, or used',
-  'Return requested after 7 days of delivery',
-  'Item is not in original packaging',
-  'Customized or personalized items',
-  'Items purchased during clearance or final sales',
+const claimSteps = [
+  {
+    num: '01',
+    title: 'Record an Unboxing Video',
+    desc: 'Before opening your package, start recording a clear, uninterrupted video. The video must show the sealed package, the unboxing process, and the condition of the item(s) inside.',
+  },
+  {
+    num: '02',
+    title: 'Report Within 7 Days',
+    desc: 'Contact us within 7 days of delivery via WhatsApp (+1 940-465-6563) or email (support@hourajewels.com). Include your order number, a description of the issue, and attach the unboxing video as proof.',
+  },
+  {
+    num: '03',
+    title: 'We Review Your Claim',
+    desc: 'Our team will review the submitted proof within 24–48 hours and confirm whether your claim is approved. Claims without a valid unboxing video cannot be processed.',
+  },
+  {
+    num: '04',
+    title: 'Resolution',
+    desc: 'For shipping damage: the replacement item will be sent in the next shipment at no extra cost. For missing items: we will refund the item amount, issue a store coupon, or ship the missing item in the next shipment — whichever you prefer.',
+  },
 ];
 
 const faqs = [
-  { q: 'How long do I have to return an item?', a: 'You have 7 days from the date of delivery to initiate a return. After this window, we are unable to process returns.' },
-  { q: 'Who pays for return shipping?', a: 'If the return is due to our error (wrong item or defective product), we will bear the return shipping cost. Otherwise, the return shipping cost is the customer\'s responsibility.' },
-  { q: 'How will I receive my refund?', a: 'Refunds are credited to your original payment method within 5–7 business days after we receive and inspect the returned item.' },
-  { q: 'Can I exchange for a different design?', a: 'Yes, you can request an exchange for a different design subject to stock availability. Contact us to check availability before shipping back your item.' },
+  {
+    q: 'Do you accept returns or exchanges?',
+    a: 'No. All sales are final. We do not accept returns or exchanges for any reason, including change of mind, sizing, or preference. Please review your order carefully before placing it.',
+  },
+  {
+    q: 'What if my item arrived damaged?',
+    a: 'If your item was damaged during shipping, we will replace it in the next shipment at no cost to you. You must provide an unboxing video as proof and report the issue within 7 days of delivery.',
+  },
+  {
+    q: 'What if an item is missing from my order?',
+    a: 'If an item is missing, we will either refund the amount for that item, issue a store coupon of equivalent value, or ship the missing item in the next shipment. You must provide an unboxing video showing the incomplete order and report within 7 days.',
+  },
+  {
+    q: 'Why is an unboxing video required?',
+    a: 'An unboxing video is the only way to verify the condition of the package at the time of delivery and confirm that items were missing or damaged. Without this proof, we are unable to process any claims.',
+  },
+  {
+    q: 'What if I did not record an unboxing video?',
+    a: 'Unfortunately, without an unboxing video we cannot process damage or missing item claims. We strongly recommend recording a video every time you receive a package from us.',
+  },
+  {
+    q: 'How long do I have to report an issue?',
+    a: 'All issues — shipping damage or missing items — must be reported within 7 days of the delivery date. Claims submitted after this window cannot be accepted.',
+  },
 ];
 
 function FaqItem({ faq }) {
@@ -72,7 +93,7 @@ export function ReturnsPolicyPage() {
             </h1>
             <div className="w-20 h-1.5 rounded-full mb-6" style={{ background: '#C6A184' }}></div>
             <p className="text-white/60 text-base md:text-lg leading-relaxed">
-              Your satisfaction is our highest priority. If you are not completely happy with your purchase, we are here to make it right.
+              All sales are final. However, we take full responsibility for shipping damage and missing items — with proper proof, we'll make it right.
             </p>
             <p className="text-white/30 text-xs mt-4">Last updated: July 2025</p>
           </motion.div>
@@ -83,10 +104,10 @@ export function ReturnsPolicyPage() {
       <div className="px-4 md:px-24 py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
           {[
-            { label: 'Return Window', value: '7 Days' },
-            { label: 'Refund Time', value: '5–7 Days' },
-            { label: 'Exchange Time', value: '2–3 Days' },
-            { label: 'Condition', value: 'Unused Only' },
+            { label: 'Returns', value: 'Not Accepted' },
+            { label: 'Exchanges', value: 'Not Accepted' },
+            { label: 'Report Window', value: '7 Days' },
+            { label: 'Proof Required', value: 'Unboxing Video' },
           ].map((s, i) => (
             <motion.div
               key={i}
@@ -95,7 +116,7 @@ export function ReturnsPolicyPage() {
               transition={{ delay: i * 0.08 }}
               className="bg-white border border-brand-gold/20 rounded-2xl p-4 md:p-5 text-center shadow-sm"
             >
-              <p className="text-xl md:text-2xl font-serif font-bold text-brand-gold">{s.value}</p>
+              <p className={`text-lg md:text-xl font-serif font-bold ${i < 2 ? 'text-red-500' : 'text-brand-gold'}`}>{s.value}</p>
               <p className="text-brand-dark-blue/60 text-xs md:text-sm font-semibold mt-1">{s.label}</p>
             </motion.div>
           ))}
@@ -106,31 +127,46 @@ export function ReturnsPolicyPage() {
       <div className="px-4 md:px-24 pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
 
-          {/* Left Main */}
           <div className="lg:col-span-2 space-y-10">
 
-            {/* Eligible / Not Eligible */}
+            {/* No Returns Banner */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-red-50 border border-red-200 rounded-2xl p-6 flex gap-4"
+            >
+              <XCircle className="w-7 h-7 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-red-700 text-lg mb-2">No Returns or Exchanges</h3>
+                <p className="text-red-600 text-sm leading-relaxed">
+                  All sales at Houra Jewels are <strong>final</strong>. We do not accept returns or exchanges for any reason, including change of mind, sizing issues, or personal preference. Please review your order carefully before completing your purchase.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* What We Do Cover */}
             <div>
-              <h2 className="text-2xl font-serif font-bold text-brand-dark-blue mb-6">Eligibility</h2>
+              <h2 className="text-2xl font-serif font-bold text-brand-dark-blue mb-6">What We Do Cover</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="bg-green-50 border border-green-200 rounded-2xl p-6"
+                  className="bg-white border border-brand-gold/20 rounded-2xl p-6 shadow-sm"
                 >
-                  <div className="flex items-center gap-3 mb-5">
-                    <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
-                    <h3 className="font-bold text-green-800 text-lg">Eligible for Return</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                      <Package className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <h3 className="font-bold text-brand-dark-blue text-base">Shipping Damage</h3>
                   </div>
-                  <ul className="space-y-3">
-                    {eligibleItems.map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-green-700 text-sm leading-relaxed">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-brand-dark-blue/65 text-sm leading-relaxed mb-3">
+                    If your item arrives physically damaged due to shipping, we will send a <strong className="text-brand-dark-blue">replacement in the next shipment</strong> at no cost to you.
+                  </p>
+                  <div className="bg-amber-50 rounded-xl px-3 py-2 text-xs text-amber-700 font-medium">
+                    ⚠️ Unboxing video proof required
+                  </div>
                 </motion.div>
 
                 <motion.div
@@ -138,29 +174,80 @@ export function ReturnsPolicyPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="bg-red-50 border border-red-200 rounded-2xl p-6"
+                  className="bg-white border border-brand-gold/20 rounded-2xl p-6 shadow-sm"
                 >
-                  <div className="flex items-center gap-3 mb-5">
-                    <XCircle className="w-6 h-6 text-red-500 shrink-0" />
-                    <h3 className="font-bold text-red-700 text-lg">Not Eligible for Return</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <h3 className="font-bold text-brand-dark-blue text-base">Missing Items</h3>
                   </div>
-                  <ul className="space-y-3">
-                    {notEligibleItems.map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-red-600 text-sm leading-relaxed">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0"></span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-brand-dark-blue/65 text-sm leading-relaxed mb-3">
+                    If an item is missing from your order, we will — at your choice — <strong className="text-brand-dark-blue">refund the amount</strong>, issue a <strong className="text-brand-dark-blue">store coupon</strong>, or ship the missing item in the <strong className="text-brand-dark-blue">next shipment</strong>.
+                  </p>
+                  <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 font-medium">
+                    ⚠️ Unboxing video proof required
+                  </div>
                 </motion.div>
               </div>
             </div>
 
-            {/* Return Process Steps */}
+            {/* Proof Requirement */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-brand-dark-blue rounded-2xl p-6 md:p-8"
+            >
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-12 h-12 rounded-full bg-brand-gold/20 flex items-center justify-center shrink-0">
+                  <Video className="w-6 h-6 text-brand-gold" />
+                </div>
+                <h3 className="font-bold text-white text-xl">Unboxing Video — Mandatory Proof</h3>
+              </div>
+              <div className="space-y-3 text-sm text-white/70 leading-relaxed">
+                <p>To file a claim for shipping damage or a missing item, you <strong className="text-white">must provide an unboxing video</strong>. This is the only accepted form of proof.</p>
+                <p>The video must:</p>
+                <ul className="space-y-2 pl-2">
+                  {[
+                    'Show the sealed, unopened package before unboxing begins',
+                    'Be a single, uninterrupted recording — no cuts or edits',
+                    'Clearly show the condition of all items inside the package',
+                    'Be recorded at the time of delivery, not after',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-gold shrink-0"></span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-white/50 text-xs pt-2">Claims submitted without a valid unboxing video will not be processed under any circumstances.</p>
+              </div>
+            </motion.div>
+
+            {/* Reporting Window */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-white border border-brand-gold/20 rounded-2xl p-6 md:p-8 shadow-sm flex gap-5"
+            >
+              <div className="w-12 h-12 rounded-full bg-brand-dark-blue flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6 text-brand-gold" />
+              </div>
+              <div>
+                <h3 className="font-bold text-brand-dark-blue text-xl mb-2">7-Day Reporting Window</h3>
+                <p className="text-brand-dark-blue/65 text-sm leading-relaxed">
+                  All claims for shipping damage or missing items must be reported within <strong className="text-brand-dark-blue">7 days of the delivery date</strong>. After this window, we are unable to process any claims regardless of the circumstances.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* How to Claim Steps */}
             <div>
-              <h2 className="text-2xl font-serif font-bold text-brand-dark-blue mb-6">How to Return</h2>
+              <h2 className="text-2xl font-serif font-bold text-brand-dark-blue mb-6">How to File a Claim</h2>
               <div className="space-y-4">
-                {steps.map((step, i) => (
+                {claimSteps.map((step, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -15 }}
@@ -180,27 +267,6 @@ export function ReturnsPolicyPage() {
                 ))}
               </div>
             </div>
-
-            {/* Refund Policy Note */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-white border border-brand-gold/20 rounded-2xl p-6 md:p-8 shadow-sm"
-            >
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-12 h-12 rounded-full bg-brand-dark-blue flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-6 h-6 text-brand-gold" />
-                </div>
-                <h3 className="font-bold text-brand-dark-blue text-xl">Refund Details</h3>
-              </div>
-              <div className="space-y-3 text-sm text-brand-dark-blue/70 leading-relaxed">
-                <p>Once your return is received and inspected, we will notify you of the approval or rejection within 48 hours.</p>
-                <p>If approved, your refund will be credited to your original payment method within <strong className="text-brand-dark-blue">5–7 business days</strong>.</p>
-                <p>Please note that <strong className="text-brand-dark-blue">original shipping charges are non-refundable</strong> unless the return is due to our error (wrong or defective item).</p>
-                <p>For Cash on Delivery orders, refunds will be issued as store credit or via bank transfer.</p>
-              </div>
-            </motion.div>
 
             {/* FAQs */}
             <div>
@@ -224,7 +290,6 @@ export function ReturnsPolicyPage() {
 
           {/* Sidebar */}
           <div className="space-y-5 lg:sticky lg:top-24">
-            {/* WhatsApp CTA */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -236,19 +301,18 @@ export function ReturnsPolicyPage() {
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                 </svg>
               </div>
-              <h3 className="font-bold text-white text-lg mb-2">Start a Return</h3>
-              <p className="text-white/50 text-sm mb-5 leading-relaxed">Message us and we'll guide you through the return process step by step.</p>
+              <h3 className="font-bold text-white text-lg mb-2">File a Claim</h3>
+              <p className="text-white/50 text-sm mb-5 leading-relaxed">Have a shipping damage or missing item issue? Contact us with your unboxing video.</p>
               <a href="https://wa.me/19404656563" target="_blank" rel="noopener noreferrer"
                 className="block w-full bg-brand-gold text-brand-dark-blue font-bold py-3 rounded-xl text-sm hover:bg-brand-gold/80 transition-all">
                 Chat on WhatsApp
               </a>
-              <a href="mailto:hourajewels@gmail.com"
+              <a href="mailto:support@hourajewels.com"
                 className="block w-full mt-3 border border-white/20 text-white/70 font-semibold py-3 rounded-xl text-sm hover:bg-white/10 transition-all">
                 Email Us
               </a>
             </motion.div>
 
-            {/* Contact Info */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -260,7 +324,7 @@ export function ReturnsPolicyPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Email</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">hourajewels@gmail.com</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">support@hourajewels.com</p>
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">WhatsApp</p>
@@ -268,17 +332,37 @@ export function ReturnsPolicyPage() {
                 </div>
                 <div>
                   <p className="text-xs text-brand-dark-blue/40 font-semibold uppercase tracking-widest">Hours</p>
-                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">Mon–Sat, 9AM – 6PM IST</p>
+                  <p className="text-brand-dark-blue/80 text-sm mt-0.5">Mon–Sat, 9AM – 6PM CST</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Related */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.15 }}
+              className="bg-brand-beige border border-brand-gold/20 rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-4 h-4 text-brand-gold" />
+                <h3 className="font-bold text-brand-dark-blue text-base">Quick Summary</h3>
+              </div>
+              <ul className="space-y-2.5 text-xs text-brand-dark-blue/70">
+                <li className="flex items-start gap-2"><span className="text-red-400 font-bold mt-0.5">✕</span> No returns accepted</li>
+                <li className="flex items-start gap-2"><span className="text-red-400 font-bold mt-0.5">✕</span> No exchanges accepted</li>
+                <li className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span> Shipping damage → replacement</li>
+                <li className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span> Missing item → refund / coupon / resend</li>
+                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5">!</span> Unboxing video required</li>
+                <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5">!</span> Report within 7 days of delivery</li>
+              </ul>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
               className="bg-brand-beige border border-brand-gold/20 rounded-2xl p-6"
             >
               <h3 className="font-bold text-brand-dark-blue text-base mb-4">Related Policies</h3>

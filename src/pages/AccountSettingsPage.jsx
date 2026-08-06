@@ -29,7 +29,7 @@ export function AccountSettingsPage() {
     e.preventDefault();
     setSaving(true);
     const res = await updateProfile(profileForm.name, profileForm.phone);
-    setProfileMsg(res.success ? 'Profile updated!' : res.error);
+    setProfileMsg(res.success ? 'Profile updated!' : (res.error || 'Failed to update'));
     setSaving(false);
     setTimeout(() => setProfileMsg(''), 3000);
   };

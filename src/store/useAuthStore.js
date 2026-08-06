@@ -28,10 +28,12 @@ export const useAuthStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  signup: async (name, email, phone, password) => {
+  clearError: () => set({ error: null }),
+
+  signup: async (name, email, phone, password, country) => {
     set({ loading: true, error: null });
     try {
-      await api.post('/auth/signup', { name, email, phone, password });
+      await api.post('/auth/signup', { name, email, phone, password, country });
       set({ loading: false });
       return { success: true };
     } catch (err) {
@@ -122,7 +124,7 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await api.put('/auth/profile', { name, phone });
-      set({ user: data.user, loading: false });
+      set(state => ({ user: { ...state.user, ...data.user, name, phone }, loading: false }));
       return { success: true };
     } catch (err) {
       const error = err.response?.data?.error || 'Update failed';
@@ -134,10 +136,28 @@ export const useAuthStore = create((set, get) => ({
   addAddress: async (addressData) => {
     try {
       const { data } = await api.post('/auth/address', addressData);
-      set((state) => ({ addresses: [...state.addresses, data.address] }));
+      set((state) => ({
+        addresses: addressData.is_default
+          ? [...state.addresses.map(a => ({ ...a, is_default: false })), data.address]
+          : [...state.addresses, data.address]
+      }));
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Failed to add address' };
+    }
+  },
+
+  updateAddress: async (id, addressData) => {
+    try {
+      const { data } = await api.put(`/auth/address/${id}`, addressData);
+      set((state) => ({
+        addresses: state.addresses.map(a =>
+          addressData.is_default ? { ...a, is_default: a.id === id ? true : false } : a.id === id ? data.address : a
+        ).map(a => a.id === id ? data.address : a)
+      }));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Failed to update address' };
     }
   },
 

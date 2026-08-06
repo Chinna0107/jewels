@@ -35,6 +35,84 @@ function CountUp({ end, suffix = '', duration = 1800 }) {
   return <span ref={ref}>{count}{suffix}</span>;
 }
 
+const WHATSAPP_NUMBER = '19404656563';
+
+function ContactForm() {
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [errors, setErrors] = useState({});
+  const [sent, setSent] = useState(false);
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim()) e.name = true;
+    if (!form.subject.trim()) e.subject = true;
+    if (!form.message.trim()) e.message = true;
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    const text = `*New Message from Houra Jewels Website*%0A%0A*Name:* ${encodeURIComponent(form.name)}%0A*Email:* ${encodeURIComponent(form.email || 'Not provided')}%0A*Subject:* ${encodeURIComponent(form.subject)}%0A%0A*Message:*%0A${encodeURIComponent(form.message)}`;
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
+    setSent(true);
+  };
+
+  const inputClass = (key) =>
+    `w-full px-4 py-3 rounded-xl border bg-brand-beige focus:outline-none focus:ring-2 transition-shadow text-brand-dark-blue placeholder:text-brand-dark-blue/30 ${
+      errors[key] ? 'border-red-400 focus:ring-red-300' : 'border-brand-gold/20 focus:ring-brand-gold/40'
+    }`;
+
+  if (sent) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+        <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+      </div>
+      <h3 className="text-xl font-bold text-brand-dark-blue">WhatsApp Opened!</h3>
+      <p className="text-brand-dark-blue/60 text-sm">Your message has been pre-filled in WhatsApp. Just hit send!</p>
+      <button onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); }}
+        className="text-sm font-bold text-brand-gold underline mt-2">Send another message</button>
+    </div>
+  );
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <div>
+        <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Full Name *</label>
+        <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          className={inputClass('name')} placeholder="Your Name" />
+        {errors.name && <p className="text-xs text-red-500 mt-1">Name is required</p>}
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Email Address <span className="text-brand-dark-blue/40 font-normal">(optional)</span></label>
+        <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+          className={inputClass('email')} placeholder="your@email.com" />
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Subject *</label>
+        <input type="text" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+          className={inputClass('subject')} placeholder="How can we help?" />
+        {errors.subject && <p className="text-xs text-red-500 mt-1">Subject is required</p>}
+      </div>
+      <div>
+        <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Message *</label>
+        <textarea rows="4" value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+          className={inputClass('message') + ' resize-none'} placeholder="Write your message here..." />
+        {errors.message && <p className="text-xs text-red-500 mt-1">Message is required</p>}
+      </div>
+      <motion.button type="submit"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all mt-2"
+      >
+        Send via WhatsApp
+        <Send className="w-5 h-5" />
+      </motion.button>
+    </form>
+  );
+}
+
 export function ContactPage() {
   const { hash } = useLocation();
 
@@ -115,7 +193,7 @@ export function ContactPage() {
               </div>
               <div>
                 <h3 className="font-bold text-brand-dark-blue text-lg mb-1">Email Address</h3>
-                <p className="text-brand-dark-blue/70 text-sm">hourajewels@gmail.com</p>
+                <p className="text-brand-dark-blue/70 text-sm">support@hourajewels.com</p>
                 <p className="text-brand-dark-blue/40 text-xs mt-1">We typically reply within 24 hours</p>
               </div>
             </div>
@@ -154,32 +232,7 @@ export function ContactPage() {
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-brand-dark-blue mb-2">Send us a Message</h2>
             <p className="text-brand-dark-blue/60 text-sm mb-8">Fill in the form and we'll get back to you shortly.</p>
 
-            <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
-              <div>
-                <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Full Name</label>
-                <input type="text" className="w-full px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-beige focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow text-brand-dark-blue placeholder:text-brand-dark-blue/30" placeholder="Your Name" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Email Address</label>
-                <input type="email" className="w-full px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-beige focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow text-brand-dark-blue placeholder:text-brand-dark-blue/30" placeholder="your@email.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Subject</label>
-                <input type="text" className="w-full px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-beige focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow text-brand-dark-blue placeholder:text-brand-dark-blue/30" placeholder="How can we help?" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-brand-dark-blue mb-1.5">Message</label>
-                <textarea rows="4" className="w-full px-4 py-3 rounded-xl border border-brand-gold/20 bg-brand-beige focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow resize-none text-brand-dark-blue placeholder:text-brand-dark-blue/30" placeholder="Write your message here..."></textarea>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all mt-2"
-              >
-                Send Message
-                <Send className="w-5 h-5" />
-              </motion.button>
-            </form>
+<ContactForm />
           </motion.div>
 
         </div>

@@ -79,21 +79,78 @@ function AvatarDropdown({ user, onLogout }) {
 function DesktopSearchBar() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const { products } = useStoreData();
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const trimmed = q.trim().toLowerCase();
+  const results = trimmed
+    ? products.filter(p =>
+        p.name?.toLowerCase().includes(trimmed) ||
+        p.category?.toLowerCase().includes(trimmed) ||
+        (p.variants && p.variants.some(v => v.sizes?.some(s => s.code?.toLowerCase().includes(trimmed))))
+      ).slice(0, 6)
+    : [];
+
+  const handleSelect = (product) => {
+    setQ('');
+    setOpen(false);
+    navigate(`/product/${product.id}`);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && trimmed) {
+      setOpen(false);
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    }
+    if (e.key === 'Escape') setOpen(false);
+  };
+
   return (
-    <div className="relative w-[280px] xl:w-[320px]">
+    <div ref={ref} className="relative w-[280px] xl:w-[320px]">
       <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
       <input
         type="text"
         value={q}
-        onChange={e => setQ(e.target.value)}
+        onChange={e => { setQ(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder="Search products, categories..."
-        onKeyDown={e => {
-          if (e.key === 'Enter' && q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
-        }}
-        onFocus={() => navigate('/search')}
-        className="w-full bg-white/10 border border-white/20 text-white placeholder-gray-400 rounded-full py-2 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-gold focus:bg-white/20 transition-all cursor-pointer"
-        readOnly
+        className="w-full bg-white/10 border border-white/20 text-white placeholder-gray-400 rounded-full py-2 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-gold focus:bg-white/20 transition-all"
       />
+      {open && trimmed && (
+        <div className="absolute top-full mt-2 left-0 w-full bg-white rounded-2xl shadow-xl border border-brand-gold/10 overflow-hidden z-50">
+          {results.length > 0 ? (
+            <>
+              {results.map(p => {
+                const img = p.variants?.[0]?.images?.[0] || p.image_url;
+                return (
+                  <button key={p.id} onClick={() => handleSelect(p)}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-brand-beige transition-colors text-left">
+                    {img && <img src={img} className="w-9 h-9 rounded-lg object-cover shrink-0" />}
+                    <div>
+                      <p className="text-sm font-semibold text-brand-dark-blue line-clamp-1">{p.name}</p>
+                      <p className="text-xs text-brand-dark-blue/50">{p.category}</p>
+                    </div>
+                  </button>
+                );
+              })}
+              <button onClick={() => { setOpen(false); navigate(`/search?q=${encodeURIComponent(trimmed)}`); }}
+                className="w-full text-center text-xs font-bold text-brand-gold py-2.5 border-t border-brand-gold/10 hover:bg-brand-beige transition-colors">
+                See all results for "{q}"
+              </button>
+            </>
+          ) : (
+            <div className="px-4 py-4 text-sm text-brand-dark-blue/50 text-center">No results for "{q}"</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -226,9 +283,13 @@ export function Header({ variant = 'default', title, showShare = false }) {
   const wishlistItems = useWishlistStore((state) => state.items);
   const wishlistCount = wishlistItems ? wishlistItems.length : 0;
 
-  const { token, user, logout } = useAuthStore();
+  const { token, user, logout, fetchProfile } = useAuthStore();
   const { categories, offers } = useStoreData();
   const [announcement, setAnnouncement] = useState(null);
+
+  useEffect(() => {
+    if (token && !user) fetchProfile();
+  }, [token]);
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/settings/announcement`)

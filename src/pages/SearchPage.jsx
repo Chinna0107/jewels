@@ -42,8 +42,7 @@ export function SearchPage() {
   const results = trimmed
     ? products.filter(p => {
         const nameMatch = p.name?.toLowerCase().includes(trimmed);
-        const codeMatch = p.product_code?.toLowerCase().includes(trimmed) || 
-                          (p.variants && p.variants.some(v => v.code?.toLowerCase().includes(trimmed)));
+        const codeMatch = p.variants && p.variants.some(v => v.sizes?.some(s => s.code?.toLowerCase().includes(trimmed)));
         const catMatch = p.category?.toLowerCase().includes(trimmed);
         return nameMatch || codeMatch || catMatch;
       })

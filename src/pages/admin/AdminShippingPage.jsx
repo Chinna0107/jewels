@@ -213,7 +213,8 @@ export function AdminShippingPage() {
                   }}
                   className="w-4 h-4 accent-brand-dark-blue cursor-pointer rounded border-gray-300"
                 />
-                <span className="text-sm text-gray-700 select-none">{c.name}</span>
+                <span className="text-base leading-none">{String.fromCodePoint(...[...c.code].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0)))}</span>
+                <span className="text-sm text-gray-700 select-none truncate">{c.name}</span>
               </label>
             ))}
           </div>

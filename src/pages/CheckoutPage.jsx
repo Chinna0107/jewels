@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, ShoppingCart } from 'lucide-react';
+import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, ShoppingCart, Store } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Header } from '../components/Header';
@@ -38,7 +38,6 @@ function AddressAutocomplete({ value, onChange, onSelect }) {
 
   const handleSelect = async (suggestion) => {
     setValue(suggestion.description, false);
-    onChange(suggestion.description);
     clearSuggestions();
     try {
       const details = await getDetails({
@@ -47,13 +46,16 @@ function AddressAutocomplete({ value, onChange, onSelect }) {
       });
       const components = details.address_components || [];
       const get = (type) => components.find(c => c.types.includes(type))?.long_name || '';
+      const line1 = `${get('street_number')} ${get('route')}`.trim() || get('premise') || get('sublocality_level_1') || '';
+      setValue(line1, false);
       onSelect({
-        line1: `${get('street_number')} ${get('route')}`.trim() || suggestion.description,
+        line1,
         city: get('locality') || get('administrative_area_level_2') || get('postal_town'),
         state: get('administrative_area_level_1'),
         pincode: get('postal_code'),
         country: get('country'),
       });
+      onChange(line1);
     } catch (e) { console.error(e); }
   };
 
@@ -102,7 +104,7 @@ const CARD_ELEMENT_OPTIONS = {
   },
 };
 
-function StripePaymentForm({ finalTotal, isPlacingOrder, handlePlaceOrder }) {
+function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, setTermsAccepted }) {
   const stripe = useStripe();
   const elements = useElements();
   return (
@@ -118,45 +120,35 @@ function StripePaymentForm({ finalTotal, isPlacingOrder, handlePlaceOrder }) {
         <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5">
           <CardElement options={CARD_ELEMENT_OPTIONS} />
         </div>
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-brand-dark-blue shrink-0" />
+          <span className="text-[11px] text-gray-500 leading-relaxed">
+            I agree to the <a href="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</a>. I understand that all sales are <strong>final — no returns or exchanges</strong>. All items are fashion jewellery and sold as-is. By proceeding, I waive any right to dispute this charge with my card issuer.
+          </span>
+        </label>
         <button
           onClick={() => handlePlaceOrder(stripe, elements)}
           disabled={isPlacingOrder || !stripe}
-          className={`w-full font-bold text-sm rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
-            isPlacingOrder || !stripe ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg hover:opacity-90'
+          className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
+            isPlacingOrder || !stripe ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
           }`}
         >
           {isPlacingOrder ? (
-            <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Processing...</>
-          ) : `Pay $${finalTotal.toFixed(2)}`}
+            <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Placing Order...</>
+          ) : 'Confirm & Pay'}
         </button>
       </div>
     </div>
   );
 }
 
-function StripeSubmitButton({ isPlacingOrder, handlePlaceOrder, label = 'Confirm & Pay' }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  return (
-    <button
-      onClick={() => handlePlaceOrder(stripe, elements)}
-      disabled={isPlacingOrder || !stripe}
-      className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
-        isPlacingOrder || !stripe ? 'opacity-70 cursor-not-allowed bg-brand-beige-darker text-brand-dark-blue/50' : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
-      }`}
-    >
-      {isPlacingOrder ? (
-        <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Placing Order...</>
-      ) : label}
-    </button>
-  );
-}
 
 export function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, getTotal, getSubtotal, getDiscount, appliedCoupon, clearCart } = useCartStore();
-  const { token, user } = useAuthStore();
+  const { token, user, addAddress, addresses, fetchProfile } = useAuthStore();
   const { showToast } = useToastStore();
 
   const { isLoaded: mapsLoaded } = useLoadScript({
@@ -164,12 +156,36 @@ export function CheckoutPage() {
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
   
-  const [step, setStep] = useState(token ? 2 : 1);
+  const [orderType, setOrderType] = useState(location.state?.orderType || 'shipping');
+  const initialStep = token ? (location.state?.orderType ? 2.5 : 2) : 1;
+  const [step, setStep] = useState(initialStep);
+  const [pickupContact, setPickupContact] = useState({ name: '', email: '', phone: '' });
+  const [pickupDialCode, setPickupDialCode] = useState('US');
+  const [pickupDialOpen, setPickupDialOpen] = useState(false);
+  const [pickupDialSearch, setPickupDialSearch] = useState('');
+  const pickupDialRef = useRef(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setPickupContact({ name: user.name || '', email: user.email || '', phone: user.phone || '' });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (pickupDialRef.current && !pickupDialRef.current.contains(e.target)) setPickupDialOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
     if (!token) {
       navigate('/login?redirect=/checkout');
+    } else {
+      fetchProfile();
     }
   }, []);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -201,6 +217,10 @@ export function CheckoutPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [saveAddress, setSaveAddress] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState(null); // id of selected saved address
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   
   const overlayRef = useRef(null);
   const iconRef = useRef(null);
@@ -269,13 +289,26 @@ export function CheckoutPage() {
 
   // If user logs in mid-way
   useEffect(() => {
-    if (token && step === 1) {
-      setStep(2);
-      if (user) {
-        setAddress(prev => ({ ...prev, name: user.name, mobile: user.phone }));
-      }
+    if (token && step === 1) setStep(location.state?.orderType ? 2.5 : 2);
+  }, [token, step]);
+
+  // Auto-select saved address or show new form
+  useEffect(() => {
+    if (addresses.length > 0) {
+      const def = addresses.find(a => a.is_default) || addresses[0];
+      setSelectedSavedAddress(def.id);
+      const c = COUNTRIES.find(c => c.name === def.country);
+      if (c) setDialCountryCode(c.code);
+      // Strip dial code prefix from stored mobile if present
+      const dialPrefix = c?.dial || '';
+      const rawMobile = def.mobile || '';
+      const mobileDigits = rawMobile.startsWith(dialPrefix) ? rawMobile.slice(dialPrefix.length) : rawMobile;
+      setAddress({ name: def.name, line1: def.line1, line2: def.line2 || '', city: def.city, state: def.state || '', pincode: def.pincode, country: def.country || 'United States', mobile: mobileDigits });
+      setShowNewAddressForm(false);
+    } else {
+      setShowNewAddressForm(true);
     }
-  }, [token, step, user]);
+  }, [addresses]);
 
   useGSAP(() => {
     if (isPlacingOrder) {
@@ -295,35 +328,72 @@ export function CheckoutPage() {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ items, address, total: finalTotal, coupon_code: couponCode, payment_method: pMethod, stripe_payment_intent_id: stripePaymentIntentId })
+      body: JSON.stringify({ items, address: orderType === 'pickup' ? { name: pickupContact.name, mobile: `${COUNTRIES.find(c=>c.code===pickupDialCode)?.dial||'+1'}${pickupContact.phone}`, email: pickupContact.email } : address, total: finalTotal, coupon_code: couponCode, payment_method: pMethod, order_type: orderType, stripe_payment_intent_id: stripePaymentIntentId })
     });
     return res.json();
   };
 
-  const handleProceedToPayment = () => {
-    if (!address.name.trim() || !address.line1.trim() || !address.city.trim() || !address.state.trim() || !address.pincode.trim() || !address.mobile.trim() || !address.country.trim()) {
-      showToast('Please fill all details. All fields are required.', 'error');
-      return;
-    }
-    if (!address.pincode.trim()) {
-      showToast('Please enter a ZIP / Postal code.', 'error');
-      return;
-    }
-    const mobileDigits = address.mobile.replace(/\D/g, '');
-    if (['US', 'CA', 'IN'].includes(dialCountryCode)) {
-      if (mobileDigits.length !== 10) {
-        showToast(`Please enter a valid 10-digit mobile number for ${dialCountryCode === 'IN' ? 'India' : 'US/Canada'}.`, 'error');
+  const handleProceedToPayment = async () => {
+    if (orderType === 'shipping') {
+      if (!address.name.trim() || !address.line1.trim() || !address.city.trim() || !address.pincode.trim() || !address.mobile.trim() || !address.country.trim()) {
+        showToast('Please fill all required fields.', 'error');
         return;
       }
-    } else if (mobileDigits.length < 5 || mobileDigits.length > 15) {
-      showToast('Please enter a valid mobile number.', 'error');
-      return;
+      const mobileDigits = address.mobile.replace(/\D/g, '');
+      if (['US', 'CA', 'IN'].includes(dialCountryCode)) {
+        if (mobileDigits.length !== 10) {
+          showToast(`Please enter a valid 10-digit mobile number for ${dialCountryCode === 'IN' ? 'India' : 'US/Canada'}.`, 'error');
+          return;
+        }
+      } else if (mobileDigits.length < 5 || mobileDigits.length > 15) {
+        showToast('Please enter a valid mobile number.', 'error');
+        return;
+      }
+      // Shippo address validation
+      try {
+        const token = localStorage.getItem('token');
+        const valRes = await fetch(`${BACKEND_URL}/general/validate-address`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({
+            name: address.name,
+            street1: address.line1,
+            street2: address.line2 || '',
+            city: address.city,
+            state: address.state || '',
+            zip: address.pincode,
+            country: address.country,
+            phone: address.mobile
+          })
+        });
+        const valData = await valRes.json();
+        if (!valData.valid) {
+          showToast(valData.message || 'Address could not be validated. Please check and try again.', 'error');
+          return;
+        }
+      } catch (e) {
+        console.warn('Address validation failed, proceeding anyway:', e);
+      }
+    } else if (orderType === 'pickup') {
+      if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
+      if (!pickupContact.phone.trim() || pickupContact.phone.replace(/\D/g, '').length < 10) {
+        showToast('Please enter a valid 10-digit phone number for pickup notification.', 'error');
+        return;
+      }
+    }
+    if (token && saveAddress && orderType === 'shipping') {
+      addAddress({ ...address, mobile: `${dialCode}${address.mobile}`, is_default: saveAsDefault }).catch(() => {});
     }
     setStep(3);
   };
 
   const handlePlaceOrder = async (stripe, elements) => {
     if (!stripe || !elements) return;
+    if (!termsAccepted) { showToast('Please accept the Terms & Conditions to proceed.', 'error'); return; }
+    if (orderType === 'pickup') {
+      if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
+      if (pickupContact.phone.replace(/\D/g, '').length < 7) { showToast('Please enter a valid phone number.', 'error'); return; }
+    }
     setIsPlacingOrder(true);
     try {
       const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
@@ -355,6 +425,8 @@ export function CheckoutPage() {
     }
   };
 
+  const pickupEnabled = shippingConfig?.settings?.pickup_enabled ?? false;
+
   const renderStepIndicator = () => (
     <div className="flex justify-between items-center mb-6 px-2 bg-white/80 p-3 rounded-xl shadow-sm border border-brand-gold/20">
       <div className="flex flex-col items-center cursor-pointer" onClick={() => navigate('/cart')}>
@@ -362,20 +434,18 @@ export function CheckoutPage() {
         <span className="text-[10px] text-brand-dark-blue font-bold mt-1">Cart</span>
       </div>
       <div className={`h-px flex-1 mx-2 ${step >= 2 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
-      
       <div className="flex flex-col items-center">
         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>
-          {step > 2 ? '✓' : (token ? '✓' : '1')}
+          {step > 2 ? '✓' : '1'}
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>{token ? 'Auth' : 'Login'}</span>
+        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>Delivery</span>
       </div>
-      <div className={`h-px flex-1 mx-2 ${step >= 2 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
-
+      <div className={`h-px flex-1 mx-2 ${step >= 2.5 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
       <div className="flex flex-col items-center">
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>
-          {step > 2 ? '✓' : '2'}
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2.5 ? 'bg-brand-dark-blue text-brand-gold border border-brand-gold/30' : 'bg-brand-beige-darker text-brand-dark-blue/50 border border-brand-dark-blue/10'}`}>
+          {step > 2.5 ? '✓' : '2'}
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${step >= 2 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>Address</span>
+        <span className={`text-[10px] font-bold mt-1 ${step >= 2.5 ? 'text-brand-dark-blue' : 'text-brand-dark-blue/50'}`}>Address</span>
       </div>
       <div className={`h-px flex-1 mx-2 ${step >= 3 ? 'bg-brand-gold/40' : 'bg-brand-gold/20'}`}></div>
       <div className={`flex flex-col items-center ${step < 3 ? 'opacity-70' : ''}`}>
@@ -461,7 +531,44 @@ export function CheckoutPage() {
           <div className="lg:col-span-8 space-y-6">
 
 
-            {step === 2 && (
+            {step === 2 && pickupEnabled && (
+              <div className="space-y-4 max-w-3xl mx-auto">
+                <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
+                    <Truck className="w-4 h-4 text-brand-gold" />
+                  </div>
+                  How would you like to receive your order?
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => { setOrderType('shipping'); setStep(2.5); }}
+                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
+                      orderType === 'shipping' ? 'border-brand-gold bg-brand-gold/5' : 'border-gray-200 bg-white hover:border-brand-gold/40'
+                    }`}
+                  >
+                    <Truck className="w-10 h-10 text-brand-dark-blue" />
+                    <div className="text-center">
+                      <p className="font-bold text-brand-dark-blue">Home Delivery</p>
+                      <p className="text-xs text-gray-500 mt-1">Delivered to your address within 1–3 business days</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setOrderType('pickup'); setStep(3); }}
+                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
+                      orderType === 'pickup' ? 'border-brand-gold bg-brand-gold/5' : 'border-gray-200 bg-white hover:border-brand-gold/40'
+                    }`}
+                  >
+                    <Store className="w-10 h-10 text-brand-dark-blue" />
+                    <div className="text-center">
+                      <p className="font-bold text-brand-dark-blue">Store Pickup</p>
+                      <p className="text-xs text-gray-500 mt-1">Pick up from 2965 FM1385, Aubrey, TX 76227</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(step === 2.5 || (step === 2 && !pickupEnabled)) && (
           <div className="space-y-4 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
@@ -469,8 +576,64 @@ export function CheckoutPage() {
               </div>
               Shipping Address
             </h2>
-            
+
+            {/* Saved addresses list */}
+            {addresses.length > 0 && !showNewAddressForm && (
+              <div className="space-y-3">
+                {addresses.map(addr => (
+                  <button
+                    key={addr.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSavedAddress(addr.id);
+                      const c = COUNTRIES.find(c => c.name === addr.country);
+                      if (c) setDialCountryCode(c.code);
+                      const dialPrefix = c?.dial || '';
+                      const rawMobile = addr.mobile || '';
+                      const mobileDigits = rawMobile.startsWith(dialPrefix) ? rawMobile.slice(dialPrefix.length) : rawMobile;
+                      setAddress({ name: addr.name, line1: addr.line1, line2: addr.line2 || '', city: addr.city, state: addr.state || '', pincode: addr.pincode, country: addr.country || 'United States', mobile: mobileDigits });
+                    }}
+                    className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                      selectedSavedAddress === addr.id ? 'border-brand-gold bg-brand-gold/5' : 'border-gray-200 bg-white hover:border-brand-gold/40'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
+                      selectedSavedAddress === addr.id ? 'border-brand-gold bg-brand-gold' : 'border-gray-300'
+                    }`}>
+                      {selectedSavedAddress === addr.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-brand-dark-blue">{addr.name}</p>
+                        {addr.is_default && <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Default</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}, {addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.pincode}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">📞 {addr.mobile}</p>
+                    </div>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => { setSelectedSavedAddress(null); setShowNewAddressForm(true); setAddress({ name: user?.name || '', line1: '', line2: '', city: '', state: '', pincode: '', country: 'United States', mobile: '' }); }}
+                  className="w-full text-left p-4 rounded-2xl border-2 border-dashed border-gray-200 bg-white hover:border-brand-gold/40 transition-all flex items-center gap-3 text-brand-dark-blue/60 hover:text-brand-dark-blue"
+                >
+                  <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                  <span className="text-sm font-semibold">+ Use a different address</span>
+                </button>
+              </div>
+            )}
+
+            {/* New address form */}
+            {showNewAddressForm && (
             <div className="bg-white rounded-2xl shadow-sm border border-brand-gold/20 overflow-hidden">
+              {addresses.length > 0 && (
+                <div className="px-4 pt-4 sm:px-6">
+                  <button type="button" onClick={() => { setShowNewAddressForm(false); const def = addresses.find(a => a.is_default) || addresses[0]; setSelectedSavedAddress(def.id); }}
+                    className="text-xs font-bold text-brand-gold flex items-center gap-1 hover:underline">
+                    ← Back to saved addresses
+                  </button>
+                </div>
+              )}
               <div className="p-4 sm:p-6 space-y-4">
                 {/* Full Name */}
                 <div>
@@ -484,7 +647,7 @@ export function CheckoutPage() {
                   />
                 </div>
 
-                {/* Address Line 1 — Google Places Autocomplete */}
+                {/* Address Line 1 */}
                 <div>
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Address Line 1 *</label>
                   {mapsLoaded ? (
@@ -531,50 +694,33 @@ export function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">City *</label>
-                    <input
-                      required
-                      value={address.city}
-                      onChange={e => setAddress({...address, city: e.target.value})}
+                    <input required value={address.city} onChange={e => setAddress({...address, city: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                      placeholder="City"
-                    />
+                      placeholder="City" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">State *</label>
-                    <input
-                      required
-                      value={address.state}
-                      onChange={e => setAddress({...address, state: e.target.value})}
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">State <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <input value={address.state} onChange={e => setAddress({...address, state: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                      placeholder="State"
-                    />
+                      placeholder="State (optional)" />
                   </div>
                 </div>
 
-                {/* ZIP + Mobile */}
+                {/* ZIP + Phone */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">ZIP Code *</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      required
-                      value={address.pincode}
+                    <input type="text" inputMode="numeric" required value={address.pincode}
                       onChange={e => setAddress({...address, pincode: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                      placeholder="ZIP / Postal code"
-                    />
+                      placeholder="ZIP / Postal code" />
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Phone *</label>
                     <div className="flex gap-2">
-                      {/* Dial code picker */}
                       <div ref={dialRef} className="relative shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { setDialOpen(o => !o); setDialSearch(''); }}
-                          className="h-full min-w-[80px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm flex items-center gap-1.5 focus:outline-none focus:border-brand-gold hover:border-brand-gold/50 transition-all"
-                        >
+                        <button type="button" onClick={() => { setDialOpen(o => !o); setDialSearch(''); }}
+                          className="h-full min-w-[80px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm flex items-center gap-1.5 focus:outline-none focus:border-brand-gold hover:border-brand-gold/50 transition-all">
                           <span>{flag(dialCountryCode)}</span>
                           <span className="font-bold text-gray-700">{dialCode}</span>
                           <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${dialOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -582,28 +728,15 @@ export function CheckoutPage() {
                         {dialOpen && (
                           <div className="absolute z-50 mt-1 left-0 w-64 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
                             <div className="p-2 border-b border-gray-100">
-                              <input
-                                autoFocus
-                                type="text"
-                                value={dialSearch}
-                                onChange={e => setDialSearch(e.target.value)}
-                                placeholder="Search country..."
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
-                              />
+                              <input autoFocus type="text" value={dialSearch} onChange={e => setDialSearch(e.target.value)}
+                                placeholder="Search country..." className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold" />
                             </div>
                             <ul className="max-h-52 overflow-y-auto">
-                              {displayCountries.filter(c =>
-                                c.name.toLowerCase().includes(dialSearch.toLowerCase()) ||
-                                c.dial.includes(dialSearch)
-                              ).map(c => (
+                              {displayCountries.filter(c => c.name.toLowerCase().includes(dialSearch.toLowerCase()) || c.dial.includes(dialSearch)).map(c => (
                                 <li key={c.code}>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setDialCountryCode(c.code); setDialOpen(false); }}
+                                  <button type="button" onClick={() => { setDialCountryCode(c.code); setDialOpen(false); }}
                                     className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
-                                      dialCountryCode === c.code ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
-                                    }`}
-                                  >
+                                      dialCountryCode === c.code ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'}`}>
                                     <span className="text-base">{flag(c.code)}</span>
                                     <span className="flex-1 truncate">{c.name}</span>
                                     <span className="text-gray-400 font-mono text-xs shrink-0">{c.dial}</span>
@@ -614,20 +747,11 @@ export function CheckoutPage() {
                           </div>
                         )}
                       </div>
-                      {/* Number input */}
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        required
-                        value={address.mobile}
+                      <input type="text" inputMode="numeric" required value={address.mobile}
                         maxLength={['IN', 'US', 'CA'].includes(dialCountryCode) ? 10 : 15}
-                        onChange={e => {
-                          const limit = ['IN', 'US', 'CA'].includes(dialCountryCode) ? 10 : 15;
-                          setAddress({...address, mobile: e.target.value.replace(/\D/g, '').slice(0, limit)});
-                        }}
+                        onChange={e => { const limit = ['IN', 'US', 'CA'].includes(dialCountryCode) ? 10 : 15; setAddress({...address, mobile: e.target.value.replace(/\D/g, '').slice(0, limit)}); }}
                         className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                        placeholder={['IN', 'US', 'CA'].includes(dialCountryCode) ? '10-digit number' : 'Phone number'}
-                      />
+                        placeholder={['IN', 'US', 'CA'].includes(dialCountryCode) ? '10-digit number' : 'Phone number'} />
                     </div>
                   </div>
                 </div>
@@ -635,66 +759,63 @@ export function CheckoutPage() {
                 {/* Country */}
                 <div ref={countryRef} className="relative">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Country *</label>
-                  <button
-                    type="button"
-                    onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center gap-2 justify-between"
-                  >
+                  <button type="button" onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all flex items-center gap-2 justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       {address.country && (() => { const c = COUNTRIES.find(c => c.name === address.country); return c ? <span className="text-base shrink-0">{flag(c.code)}</span> : null; })()}
                       <span className={`truncate ${address.country ? 'text-gray-700' : 'text-gray-400'}`}>{address.country || 'Select country'}</span>
                     </div>
-                    <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${countryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${countryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
                   {countryOpen && (
                     <div className="absolute z-[200] bottom-full mb-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
                       <div className="p-2 border-b border-gray-100">
-                        <input
-                          autoFocus
-                          type="text"
-                          value={countrySearch}
-                          onChange={e => setCountrySearch(e.target.value)}
-                          placeholder="Search country..."
-                          className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
-                        />
+                        <input autoFocus type="text" value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
+                          placeholder="Search country..." className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold" />
                       </div>
                       <ul className="max-h-52 overflow-y-auto">
                         {displayCountries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
                           <li key={c.code}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAddress({...address, country: c.name});
-                                setDialCountryCode(c.code);
-                                setCountryOpen(false);
-                              }}
+                            <button type="button" onClick={() => { setAddress({...address, country: c.name}); setDialCountryCode(c.code); setCountryOpen(false); }}
                               className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
-                                address.country === c.name ? 'bg-brand-gold/10 text-brand-dark-blue font-bold' : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
+                                address.country === c.name ? 'bg-brand-gold/10 text-brand-dark-blue font-bold' : 'text-gray-700 hover:bg-gray-50'}`}>
                               <span className="text-base shrink-0">{flag(c.code)}</span>
                               <span className="flex-1 truncate">{c.name}</span>
                               <span className="text-gray-400 font-mono text-xs shrink-0">{c.dial}</span>
                             </button>
                           </li>
                         ))}
-                        {COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
+                        {displayCountries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
                           <li className="px-4 py-3 text-sm text-gray-400 text-center">No country found</li>
                         )}
                       </ul>
                     </div>
                   )}
                 </div>
+
+                {/* Save address checkboxes */}
+                {token && (
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)}
+                        className="w-4 h-4 accent-brand-dark-blue rounded" />
+                      <span className="text-xs text-gray-600 font-medium">Save this address for future orders</span>
+                    </label>
+                    {saveAddress && (
+                      <label className="flex items-center gap-2.5 cursor-pointer pl-6">
+                        <input type="checkbox" checked={saveAsDefault} onChange={e => setSaveAsDefault(e.target.checked)}
+                          className="w-4 h-4 accent-brand-dark-blue rounded" />
+                        <span className="text-xs text-gray-600">Set as default address</span>
+                      </label>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Proceed button inside card on mobile */}
               <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-                <button
-                  onClick={handleProceedToPayment}
-                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                >
+                <button onClick={handleProceedToPayment}
+                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
                   <CreditCard className="w-4 h-4" /> Proceed to Payment
                 </button>
                 <div className="flex items-center justify-center gap-1.5 mt-3">
@@ -703,15 +824,145 @@ export function CheckoutPage() {
                 </div>
               </div>
             </div>
+            )}
+
+            {/* Proceed button when using saved address */}
+            {!showNewAddressForm && addresses.length > 0 && (
+              <div className="space-y-3">
+                <button onClick={handleProceedToPayment}
+                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Proceed to Payment
+                </button>
+                <div className="flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] text-gray-400">100% Secure Transaction</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {step === 3 && orderType === 'pickup' && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <Store className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-blue-800">Store Pickup Selected</p>
+                  <p className="text-sm text-blue-700 mt-1">Once your order is ready, our team will message you via <strong>WhatsApp/Text</strong> from <strong>+1 940-465-6563</strong></p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                <MapPin className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-blue-800">Nearby Pickup Location</p>
+                  <p className="text-sm text-blue-700">2965 FM1385, Aubrey, TX 76227</p>
+                  <a href="https://maps.google.com/?q=2965+FM1385,+Aubrey,+TX+76227" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 font-bold underline hover:text-blue-800">View on Google Maps →</a>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-brand-gold/20 p-5 space-y-4">
+              <p className="text-sm font-bold text-brand-dark-blue">Contact Details for Pickup Notification</p>
+
+              {/* Full Name */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Full Name *</label>
+                <input
+                  value={pickupContact.name}
+                  onChange={e => setPickupContact(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Your full name"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                />
+              </div>
+
+              {/* Phone with country code */}
+              <div>
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Phone *</label>
+                <div className="flex gap-2">
+                  {/* Country code picker */}
+                  <div ref={pickupDialRef} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { setPickupDialOpen(o => !o); setPickupDialSearch(''); }}
+                      className="h-full min-w-[90px] bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm flex items-center gap-1.5 focus:outline-none focus:border-brand-gold hover:border-brand-gold/50 transition-all"
+                    >
+                      <span>{String.fromCodePoint(...[...pickupDialCode.toUpperCase()].map(x => 127397 + x.charCodeAt(0)))}</span>
+                      <span className="font-bold text-gray-700 text-xs">{COUNTRIES.find(c=>c.code===pickupDialCode)?.dial || '+1'}</span>
+                      <svg className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${pickupDialOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {pickupDialOpen && (
+                      <div className="absolute z-50 mt-1 left-0 w-64 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                        <div className="p-2 border-b border-gray-100">
+                          <input
+                            autoFocus
+                            type="text"
+                            value={pickupDialSearch}
+                            onChange={e => setPickupDialSearch(e.target.value)}
+                            placeholder="Search country..."
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold"
+                          />
+                        </div>
+                        <ul className="max-h-52 overflow-y-auto">
+                          {COUNTRIES.filter(c =>
+                            c.name.toLowerCase().includes(pickupDialSearch.toLowerCase()) ||
+                            c.dial.includes(pickupDialSearch)
+                          ).map(c => (
+                            <li key={c.code}>
+                              <button
+                                type="button"
+                                onClick={() => { setPickupDialCode(c.code); setPickupDialOpen(false); }}
+                                className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${
+                                  pickupDialCode === c.code ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                <span>{String.fromCodePoint(...[...c.code.toUpperCase()].map(x => 127397 + x.charCodeAt(0)))}</span>
+                                <span className="flex-1 truncate">{c.name}</span>
+                                <span className="text-gray-400 font-mono text-xs shrink-0">{c.dial}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={pickupContact.phone}
+                    onChange={e => setPickupContact(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                    placeholder="Phone number"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-600 font-medium mt-1.5 flex items-center gap-1">
+                  💬 For best experience, please provide your WhatsApp number — we'll send pickup updates via WhatsApp/Text.
+                </p>
+              </div>
+
+              {/* Email */}
+              {!user?.email && (
+                <div>
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Email (optional)</label>
+                  <input
+                    value={pickupContact.email}
+                    onChange={e => setPickupContact(p => ({ ...p, email: e.target.value }))}
+                    placeholder="your@email.com"
+                    type="email"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {step === 3 && (
           <Elements stripe={stripePromise}>
             <StripePaymentForm
-              finalTotal={finalTotal}
               isPlacingOrder={isPlacingOrder}
               handlePlaceOrder={handlePlaceOrder}
+              termsAccepted={termsAccepted}
+              setTermsAccepted={setTermsAccepted}
             />
           </Elements>
         )}
@@ -729,6 +980,9 @@ export function CheckoutPage() {
                     <div>
                       <h4 className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</h4>
                       <p className="text-xs text-brand-dark-blue/60 mt-1">Qty: {item.qty} | {item.variant?.size || 'Std'}</p>
+                      {item.product.product_code && (
+                        <span className="text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded border border-[#D4AF37]/20">#{item.product.product_code}</span>
+                      )}
                       <p className="text-sm font-bold text-brand-gold mt-1">${(item.variant?.price || item.product.price) * item.qty}</p>
                     </div>
                   </div>
@@ -762,18 +1016,15 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              {step === 2 ? (
+              {(step === 2 || step === 2.5) ? (
                 <button 
-                  onClick={handleProceedToPayment}
-                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                  onClick={step === 2 && pickupEnabled ? undefined : handleProceedToPayment}
+                  disabled={step === 2 && pickupEnabled}
+                  className={`w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 ${step === 2 && pickupEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                 >
                   Proceed to Payment
                 </button>
-              ) : (
-                <Elements stripe={stripePromise}>
-                  <StripeSubmitButton isPlacingOrder={isPlacingOrder} handlePlaceOrder={handlePlaceOrder} />
-                </Elements>
-              )}
+              ) : null}
               
               <div className="flex items-center justify-center gap-2 mt-4 text-gray-400">
                 <ShieldCheck className="w-4 h-4" />
@@ -784,7 +1035,6 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      {/* Sticky Bottom Bar (Mobile Only) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-brand-beige/95 backdrop-blur-md border-t border-brand-gold/20 p-4 pb-safe z-50 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] mx-auto w-full">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-end justify-between mb-4">
@@ -799,20 +1049,15 @@ export function CheckoutPage() {
             </div>
           </div>
           
-          {step === 2 ? (
+          {(step === 2 || step === 2.5) ? (
             <button 
-              onClick={handleProceedToPayment}
-              className="w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+              onClick={step === 2 && pickupEnabled ? undefined : handleProceedToPayment}
+              disabled={step === 2 && pickupEnabled}
+              className={`w-full bg-brand-dark-blue text-brand-gold font-bold text-base rounded-xl py-4 shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 ${step === 2 && pickupEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               Proceed to Payment
-              <span className="w-1 h-1 bg-white rounded-full mx-1 opacity-50" />
-              
             </button>
-          ) : (
-            <Elements stripe={stripePromise}>
-              <StripeSubmitButton isPlacingOrder={isPlacingOrder} handlePlaceOrder={handlePlaceOrder} label="Confirm Order" />
-            </Elements>
-          )}
+          ) : null}
         
         <div className="flex items-center justify-center gap-1 mt-3">
           <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />

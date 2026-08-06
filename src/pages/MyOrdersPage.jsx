@@ -1,19 +1,23 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, ShoppingBag, FileText, RefreshCw } from 'lucide-react';
+import { Package, ShoppingBag, FileText, RefreshCw, Store, Truck, MapPin, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import { Header } from '../components/Header';
+import logoUrl from '../assets/logo.png';
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   processing: 'bg-blue-100 text-blue-700 border-blue-200',
   shipped: 'bg-purple-100 text-purple-700 border-purple-200',
   delivered: 'bg-green-100 text-green-700 border-green-200',
+  'ready for pickup': 'bg-orange-100 text-orange-700 border-orange-200',
+  'pickup completed': 'bg-green-100 text-green-700 border-green-200',
   cancelled: 'bg-red-100 text-red-700 border-red-200',
 };
 
-const STATUS_STEPS = ['pending', 'processing', 'shipped', 'delivered'];
+const SHIPPING_STEPS = ['pending', 'processing', 'shipped', 'delivered'];
+const PICKUP_STEPS = ['pending', 'processing', 'ready for pickup', 'pickup completed'];
 
 export function MyOrdersPage() {
   const navigate = useNavigate();
@@ -36,151 +40,142 @@ export function MyOrdersPage() {
   const invoiceHtml = (order) => {
     let items = [];
     try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
-    
     let address = {};
     try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
 
+    const isPickup = order.order_type === 'pickup';
     const subtotal = items.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || item.price || 0) * item.qty), 0);
-    const rows = items.map((item, idx) => `
-      <tr class="${idx % 2 === 0 ? '' : 'alt-row'}">
-        <td style="text-align: center;">${idx + 1}</td>
-        <td><span style="font-weight: bold; color: #222222;">${escapeHtml(item.product?.name || item.name)}</span></td>
-        <td style="text-align: center;">${escapeHtml(item.variant?.size || item.size || '-')}</td>
-        <td style="text-align: center;">${item.qty} </td>
-        <td style="text-align: right;">$${Number(item.variant?.price || item.product?.price || item.price || 0).toFixed(2)}</td>
-      </tr>
-    `).join("");
+    const shippingCost = !isPickup && Number(order.total) - subtotal > 0 ? Number(order.total) - subtotal : 0;
+    const orderDate = order.created_at
+      ? new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })
+      : '—';
+
+    const rows = items.map((item, idx) => {
+      const img = item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
+      const code = item.product?.product_code || item.product_code || '';
+      return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#FFFAF9'}">
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;color:#888;">${idx + 1}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${img ? `<img src="${img}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;" />` : `<div style="width:44px;height:44px;background:#FDF8F0;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;"></div>`}
+            <div>
+              <div style="font-weight:700;color:#222;font-size:9.5pt;">${escapeHtml(item.product?.name || item.name || '')}</div>
+              ${code ? `<div style="font-size:8pt;color:#b8860b;font-weight:600;margin-top:2px;">#${escapeHtml(code)}</div>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${escapeHtml(item.variant?.size || item.size || '—')}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${item.qty}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:right;font-size:9pt;font-weight:600;">$${Number(item.variant?.price || item.product?.price || item.price || 0).toFixed(2)}</td>
+      </tr>`;
+    }).join('');
 
     return `<!doctype html>
-      <html lang="en">
-      <head>
-          <meta charset="UTF-8">
-          <title>Invoice #${order.order_number || order.id}</title>
-          <style>
-              *, *::before, *::after { box-sizing: border-box; }
-              @page { size: A4; margin: 15mm 12mm 20mm 12mm; }
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333333; margin: 0; padding: 0; font-size: 10pt; line-height: 1.4; background-color: #ffffff; }
-              .invoice-container { width: 100%; max-width: 100%; }
-              .invoice-header { border-bottom: 3px solid #E63A12; padding-bottom: 18px; margin-bottom: 20px; }
-              .header-table { width: 100%; border-collapse: collapse; }
-              .header-table td { vertical-align: top; padding: 0; }
-              .invoice-title-block { text-align: right; }
-              .invoice-title { font-size: 22pt; font-weight: bold; color: #E63A12; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-              .invoice-meta { margin-top: 8px; font-size: 9.5pt; color: #444444; line-height: 1.5; }
-              .addresses-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-              .addresses-table td { width: 50%; vertical-align: top; padding: 12px; border: 1px solid #FFE4DE; }
-              .addresses-table td.from-box { background-color: #FFFDFD; }
-              .addresses-table td.ship-box { background-color: #FFFAF9; }
-              .section-heading { font-size: 9.5pt; font-weight: bold; color: #E63A12; text-transform: uppercase; border-bottom: 1px solid #FFE4DE; padding-bottom: 5px; margin-bottom: 8px; letter-spacing: 0.5px; }
-              .address-box { font-size: 9.5pt; color: #555555; line-height: 1.5; }
-              .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; margin-top: 10px; }
-              .items-table th { background-color: #E63A12; color: #ffffff; font-weight: bold; font-size: 9.5pt; text-align: left; padding: 10px 12px; text-transform: uppercase; }
-              .items-table td { padding: 11px 12px; border-bottom: 1px solid #F6EFEF; font-size: 9.5pt; vertical-align: middle; }
-              .items-table tr:nth-child(even) td { background-color: #FFFAF9; }
-              .totals-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              .totals-table td { padding: 0; vertical-align: top; }
-              .terms-cell { width: 55%; padding-right: 25px; }
-              .summary-cell { width: 45%; }
-              .inner-summary-table { width: 100%; border-collapse: collapse; }
-              .inner-summary-table td { padding: 8px 12px; font-size: 10pt; border-bottom: 1px solid #F6EFEF; }
-              .inner-summary-table td.label { text-align: right; color: #555555; }
-              .inner-summary-table td.value { text-align: right; font-weight: bold; width: 120px; }
-              .inner-summary-table tr.grand-total td { background-color: #FFEBE7; border-top: 2px solid #E63A12; border-bottom: 2px double #E63A12; font-weight: bold; color: #E63A12; font-size: 12pt; }
-              .print-btn { margin-top: 20px; text-align: center; }
-              .print-btn button { padding: 8px 24px; margin: 0 8px; border-radius: 9999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
-              .btn-primary { background: #E63A12; color: white; }
-              .btn-secondary { background: white; color: #E63A12; border: 1px solid #E63A12; }
-              @media print { .print-btn { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
-          </style>
-      </head>
-      <body>
-      <div class="invoice-container">
-          <div class="invoice-header">
-              <table class="header-table">
-                  <tr>
-                      <td>
-                          <div style="font-size: 9pt; color: #555555; margin-top: 8px; line-height: 1.5;">
-                              <strong style="font-size: 20px;">Houra Jewels</strong><br>
-                            
-                              Phone: +1 940-465-6563 | Email: hourajewels@gmail.com<br/>
-                          </div>
-                      </td>
-                      <td class="invoice-title-block">
-                          <div class="invoice-title">Order Invoice</div>
-                          <div class="invoice-meta">
-                              <strong>Invoice No:</strong> #${order.order_number || order.id}<br>
-                              <strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}<br>
-                              <strong>Status:</strong> ${escapeHtml(order.status)}
-                          </div>
-                      </td>
-                  </tr>
-              </table>
-          </div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice #${order.order_number || order.id}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    @page { size: A4; margin: 15mm 12mm 20mm 12mm; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 20px; font-size: 10pt; line-height: 1.4; background: #fff; }
+    .print-btn { text-align: center; margin: 20px 0; }
+    .print-btn button { padding: 8px 24px; margin: 0 6px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-print { background: #08183A; color: #D4AF37; }
+    .btn-dl { background: #D4AF37; color: #08183A; }
+    @media print { .print-btn { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+  </style>
+</head>
+<body>
 
-          <table class="addresses-table">
-              <tr>
-                  <td class="from-box">
-                      <div class="section-heading">From Address</div>
-                      <div class="address-box">
-                          <strong>Houra Jewels</strong><br>
-                          1-1-738, Vinayaka temple road,<br>
-                          Koratla, Telangana, USA<br>
-                          <strong>Phone:</strong> +91 90326 75205
-                      </div>
-                  </td>
-                  <td class="ship-box">
-                      <div class="section-heading">Shipping Address</div>
-                      <div class="address-box">
-                          <strong>${escapeHtml(address.name || user?.name || "")}</strong><br>
-                          ${escapeHtml(address.line1 || "")}${address.line2 ? `, ${escapeHtml(address.line2)}` : ""}<br>
-                          ${escapeHtml(address.city || "")}, ${escapeHtml(address.state || "")} — ${escapeHtml(address.pincode || "")}, USA<br>
-                          ${address.mobile ? `<strong>Mobile:</strong> ${escapeHtml(address.mobile)}` : ""}
-                      </div>
-                  </td>
-              </tr>
-          </table>
-
-          <table class="items-table">
-              <thead>
-                  <tr>
-                      <th style="width: 8%; text-align: center;">S.No.</th>
-                      <th style="width: 44%;">Item Name</th>
-                      <th style="width: 18%; text-align: center;">Pack Size</th>
-                      <th style="width: 12%; text-align: center;">Quantity</th>
-                      <th style="width: 18%; text-align: right;">Price ($)</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  ${rows}
-              </tbody>
-          </table>
-
-      <table class="totals-table">
-          <tr>
-              <td class="terms-cell"></td>
-              <td class="summary-cell">
-                  <table class="inner-summary-table">
-                      <tr><td class="label">Subtotal</td><td class="value">$${subtotal.toFixed(2)}</td></tr>
-                      ${Number(order.total) - subtotal > 0 ? `<tr><td class="label">Delivery Charges</td><td class="value">$${(Number(order.total) - subtotal).toFixed(2)}</td></tr>` : ''}
-                      <tr class="grand-total"><td class="label">TOTAL:</td><td class="value">$${Number(order.total).toFixed(2)}</td></tr>
-                      ${order.payment_method === 'cod' ? `<tr><td class="label" style="color: #059669; font-size: 9pt;">Advance Paid (Online)</td><td class="value" style="color: #059669; font-size: 9pt;">-$${Number(order.advance_paid || 0).toFixed(2)}</td></tr>
-                      <tr class="grand-total" style="background-color: #ecfdf5; border-color: #059669; color: #059669;"><td class="label" style="color: #059669;">CASH TO COLLECT:</td><td class="value">$${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</td></tr>` : ''}
-                  </table>
-                  </td>
-              </tr>
-          </table>
-
-          <div class="print-btn">
-              <button class="btn-secondary" onclick="window.print()">🖨️ Print</button>
-              <button class="btn-primary" onclick="window.print()">📥 Download PDF</button>
-          </div>
+<!-- HEADER -->
+<table style="width:100%;border-collapse:collapse;border-bottom:3px solid #08183A;padding-bottom:16px;margin-bottom:20px;">
+  <tr>
+    <td style="vertical-align:middle;width:50%;">
+      <img src="${logoUrl}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
+    </td>
+    <td style="vertical-align:top;text-align:right;">
+      <div style="font-size:20pt;font-weight:900;color:#08183A;letter-spacing:-0.5px;">INVOICE</div>
+      <div style="font-size:9pt;color:#555;margin-top:6px;line-height:1.7;">
+        <strong>Invoice No:</strong> #${escapeHtml(order.order_number || String(order.id))}<br>
+        <strong>Date:</strong> ${orderDate}<br>
+        <strong>Order Type:</strong> <span style="font-weight:700;color:${isPickup ? '#1d4ed8' : '#059669'};">${isPickup ? '🏪 Store Pickup' : '🚚 Home Delivery'}</span><br>
+        <strong>Status:</strong> ${escapeHtml(order.status)}
       </div>
-      </body>
-      </html>`;
+    </td>
+  </tr>
+</table>
+
+<!-- FROM / SHIP TO -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="width:${isPickup ? '100%' : '50%'};vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#FFFDFD;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">From</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong style="color:#08183A;">Houra Jewels</strong><br>
+        Texas, 76227<br>
+        Phone: +1 940-465-6563<br>
+        Email: support@hourajewels.com
+      </div>
+    </td>
+    ${!isPickup ? `
+    <td style="width:4px;"></td>
+    <td style="width:50%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#FFFAF9;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Ship To</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong style="color:#08183A;">${escapeHtml(address.name || user?.name || '')}</strong><br>
+        ${escapeHtml(address.line1 || '')}${address.line2 ? ', ' + escapeHtml(address.line2) : ''}<br>
+        ${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} ${escapeHtml(address.pincode || '')}<br>
+        ${address.mobile ? `<strong>Phone:</strong> ${escapeHtml(address.mobile)}` : ''}
+      </div>
+    </td>` : ''}
+  </tr>
+</table>
+
+<!-- ITEMS TABLE -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+  <thead>
+    <tr style="background:#08183A;">
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:5%;">#</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:left;width:45%;">Item</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:15%;">Size</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:10%;">Qty</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:right;width:15%;">Price</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<!-- TOTALS -->
+<table style="width:100%;border-collapse:collapse;margin-top:8px;">
+  <tr>
+    <td style="width:55%;"></td>
+    <td style="width:45%;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Subtotal</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;width:110px;">$${subtotal.toFixed(2)}</td></tr>
+        ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
+        <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- FOOTER -->
+<div style="margin-top:30px;padding-top:12px;border-top:1px solid #e8d5b0;text-align:center;font-size:8.5pt;color:#999;">
+  Thank you for shopping with Houra Jewels! &nbsp;|&nbsp; support@hourajewels.com &nbsp;|&nbsp; +1 940-465-6563
+</div>
+
+<div class="print-btn">
+  <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+  <button class="btn-dl" onclick="window.print()">📥 Download PDF</button>
+</div>
+</body>
+</html>`;
   };
 
   const openInvoice = (order) => {
-    const invoiceWindow = window.open("", "_blank");
+    const invoiceWindow = window.open('', '_blank');
     if (invoiceWindow) {
       invoiceWindow.document.open();
       invoiceWindow.document.write(invoiceHtml(order));
@@ -225,6 +220,7 @@ export function MyOrdersPage() {
           </div>
         ) : (
           orders.map((order) => {
+            const STATUS_STEPS = order.order_type === 'pickup' ? PICKUP_STEPS : SHIPPING_STEPS;
             const stepIdx = STATUS_STEPS.indexOf(order.status);
             return (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
@@ -233,10 +229,16 @@ export function MyOrdersPage() {
                   <div>
                     <p className="text-sm font-bold text-[#08183A]">Order #{order.order_number || order.id}</p>
                     <p className="text-xs text-[#08183A]/60 mt-1">
-                      Placed on {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      Placed on {new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex items-center gap-1.5 shadow-sm ${
+                      order.order_type === 'pickup' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-green-50 text-green-700 border-green-200'
+                    }`}>
+                      {order.order_type === 'pickup' ? <Store className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
+                      {order.order_type === 'pickup' ? 'Pickup' : 'Delivery'}
+                    </span>
                     <span className={`text-xs font-bold px-4 py-1.5 rounded-full border capitalize shadow-sm ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                       {order.status}
                     </span>
@@ -278,6 +280,27 @@ export function MyOrdersPage() {
                   </div>
                 )}
 
+                {/* Pickup Info Banner */}
+                {order.order_type === 'pickup' && (
+                  <div className="mx-6 mb-2 bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <MessageCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <p className="text-xs text-blue-700 leading-relaxed">
+                        Once your order is ready, our team will message you for pickup via <strong>WhatsApp/Text</strong> from <strong>+1 940-465-6563</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                      <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-blue-800">Pickup Location</p>
+                        <p className="text-xs text-blue-700">2965 FM1385, Aubrey, TX 76227</p>
+                        <a href="https://maps.google.com/?q=2965+FM1385,+Aubrey,+TX+76227" target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 font-bold underline hover:text-blue-800">View on Google Maps →</a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Items */}
                 <div className="px-6 py-4 bg-white">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -296,10 +319,15 @@ export function MyOrdersPage() {
                               {item.name || item.product?.name || 'Product'}
                             </Link>
                           </p>
-                          <div className="flex items-center gap-3 mt-1.5">
+                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                             <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">Qty: {item.qty || 1}</span>
                             {(item.size || item.variant?.size) && (
                               <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">{item.size || item.variant?.size}</span>
+                            )}
+                            {(item.product?.product_code || item.product_code) && (
+                              <span className="text-xs text-[#D4AF37] font-bold bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
+                                #{item.product?.product_code || item.product_code}
+                              </span>
                             )}
                           </div>
                         </div>

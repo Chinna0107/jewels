@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Droplet, Feather, Check, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Droplet, Feather, Check, ChevronLeft, ChevronRight, User, Truck, RotateCcw, Layers } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
 import { ImageZoom } from '../components/ImageZoom';
@@ -292,8 +292,8 @@ export function ProductDetailPage() {
               <h1 className="text-3xl md:text-[40px] font-serif font-bold text-brand-dark-blue leading-tight">
                 {product.name}
               </h1>
-              {(selectedVariant?.code || product.product_code) && (
-                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {selectedVariant?.code || product.product_code}</p>
+              {selectedSize?.code && (
+                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {selectedSize.code}</p>
               )}
               
               {reviewCount > 0 && (
@@ -455,25 +455,20 @@ export function ProductDetailPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className="flex justify-between w-full max-w-sm mt-12 mb-4 px-2">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              {[
+                { icon: <Truck className="w-4 h-4 text-brand-gold" />, label: 'Free Shipping' },
+                { icon: <RotateCcw className="w-4 h-4 text-brand-gold" />, label: '7 Days Return' },
+                { icon: <ShieldCheck className="w-4 h-4 text-brand-gold" />, label: 'Tarnish Free' },
+                { icon: <Droplet className="w-4 h-4 text-brand-gold" />, label: 'Waterproof' },
+                { icon: <Feather className="w-4 h-4 text-brand-gold" />, label: 'Hypoallergenic' },
+                { icon: <Layers className="w-4 h-4 text-brand-gold" />, label: 'PVD Plated' },
+              ].map(({ icon, label }) => (
+                <div key={label} className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 border border-brand-gold/10">
+                  {icon}
+                  <span className="text-xs font-semibold text-brand-dark-blue">{label}</span>
                 </div>
-                <span className="text-brand-dark-blue text-[10px] font-medium">Tarnish Free</span>
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
-                  <Droplet className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
-                </div>
-                <span className="text-brand-dark-blue text-[10px] font-medium">Waterproof</span>
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full border border-[#D4AF37]/30 flex items-center justify-center">
-                  <Feather className="w-5 h-5 text-[#D4AF37]" strokeWidth={1.5} />
-                </div>
-                <span className="text-brand-dark-blue text-[10px] font-medium">Hypoallergenic</span>
-              </div>
+              ))}
             </div>
 
             {/* Product Details Tabs */}

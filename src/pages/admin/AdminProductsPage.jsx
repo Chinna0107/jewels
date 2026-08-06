@@ -14,7 +14,7 @@ export function AdminProductsPage() {
   const initialFormData = { 
     name: "", description: "", product_code: "", stock: 0, category: "", model: "", is_active: true, offer_id: "", allow_reviews: true,
     variants: [
-      { color: "", code: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }
+      { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" }] }
     ],
     details: [],
     reviews: []
@@ -117,7 +117,6 @@ export function AdminProductsPage() {
       
       variants = [{
         color: product.color || "",
-        code: product.code || "",
         images: images,
         sizes: sizes
       }];
@@ -125,7 +124,6 @@ export function AdminProductsPage() {
 
     setFormData({ 
       ...product, 
-      product_code: product.product_code || "",
       model: product.model || "", 
       offer_id: product.offer_id || "",
       variants: variants,
@@ -159,11 +157,13 @@ export function AdminProductsPage() {
         offer_id: formData.offer_id ? Number(formData.offer_id) : null
       };
 
-      await fetch(url, {
+      const res = await fetch(url, {
         method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
+      const data = await res.json();
+      if (!res.ok) { alert('Save failed: ' + (data.error || res.status)); return; }
       setEditProduct(null);
       fetchData();
     } catch (err) {
@@ -174,7 +174,7 @@ export function AdminProductsPage() {
   };
 
   const addVariant = () => {
-    setFormData({ ...formData, variants: [...formData.variants, { color: "", code: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0 }] }] });
+    setFormData({ ...formData, variants: [...formData.variants, { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" }] }] });
   };
   
   const removeVariant = (index) => {
@@ -217,7 +217,7 @@ export function AdminProductsPage() {
 
   const addSizeToVariant = (vIndex) => {
     const updated = [...formData.variants];
-    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0 });
+    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" });
     setFormData({ ...formData, variants: updated });
   };
   
@@ -356,11 +356,6 @@ export function AdminProductsPage() {
                   <input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Product Code</label>
-                  <input value={formData.product_code} onChange={(e) => setFormData({ ...formData, product_code: e.target.value })} placeholder="e.g. RING-001"
-                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
-                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -425,11 +420,7 @@ export function AdminProductsPage() {
                           <input value={variant.color} onChange={(e) => updateVariantField(vIndex, 'color', e.target.value)} placeholder="e.g. Gold, Rose Gold"
                             className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
                         </div>
-                        <div>
-                          <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Variant Code</label>
-                          <input value={variant.code || ""} onChange={(e) => updateVariantField(vIndex, 'code', e.target.value)} placeholder="e.g. RING-001"
-                            className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
-                        </div>
+
                       </div>
 
                       {/* Images for this variant */}
@@ -468,9 +459,11 @@ export function AdminProductsPage() {
                           {variant.sizes.map((sizeObj, sIndex) => (
                             <div key={sIndex} className="flex flex-wrap items-center gap-2 bg-white p-2 rounded border border-gray-200">
                               <input value={sizeObj.size} onChange={e => updateSizeField(vIndex, sIndex, 'size', e.target.value)} placeholder="Size (e.g. S, 10g)" className="flex-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none min-w-[80px]" />
+                              <input value={sizeObj.code || ""} onChange={e => updateSizeField(vIndex, sIndex, 'code', e.target.value)} placeholder="Code (e.g. RING-001-S)" className="w-32 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <input type="number" value={sizeObj.mrp} onChange={e => updateSizeField(vIndex, sIndex, 'mrp', e.target.value)} placeholder="MRP ($)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <input type="number" value={sizeObj.our_price} onChange={e => updateSizeField(vIndex, sIndex, 'our_price', e.target.value)} placeholder="Our Price ($)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <input type="number" value={sizeObj.stock} onChange={e => updateSizeField(vIndex, sIndex, 'stock', Number(e.target.value))} placeholder="Stock" className="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
+                              <input value={sizeObj.weight || ""} onChange={e => updateSizeField(vIndex, sIndex, 'weight', e.target.value)} placeholder="Weight (g)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <button onClick={() => removeSizeFromVariant(vIndex, sIndex)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                             </div>
                           ))}
