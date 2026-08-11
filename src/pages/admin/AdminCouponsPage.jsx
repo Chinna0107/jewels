@@ -6,21 +6,54 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 
 export function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [skuList, setSkuList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editCoupon, setEditCoupon] = useState(null);
-  const [formData, setFormData] = useState({ code: '', discount_type: 'percentage', discount_value: 0, min_order_value: 0, expires_at: '', is_active: true, user_id: 'all', usage_type: 'multiple', min_type: 'amount', min_qty: 0 });
+  
+  const initialForm = { code: '', discount_type: 'percentage', discount_value: 0, min_order_value: 0, expires_at: '', is_active: true, user_id: 'all', usage_type: 'multiple', min_type: 'amount', min_qty: 0, applicable_categories: [], applicable_product_codes: [] };
+  const [formData, setFormData] = useState(initialForm);
+  
   const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [skuSearch, setSkuSearch] = useState("");
 
-  const fetchCoupons = async () => {
+  const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${BACKEND_URL}/admin/coupons`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.coupons) setCoupons(data.coupons);
+      const [couponRes, userRes, catRes, prodRes] = await Promise.all([
+        fetch(`${BACKEND_URL}/admin/coupons`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BACKEND_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BACKEND_URL}/admin/categories`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BACKEND_URL}/admin/products`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      const couponData = await couponRes.json();
+      const userData = await userRes.json();
+      const catData = await catRes.json();
+      const prodData = await prodRes.json();
+      
+      if (couponData.coupons) setCoupons(couponData.coupons);
+      if (userData.users) setUsers(userData.users);
+      if (catData.categories) setCategories(catData.categories);
+      
+      if (prodData.products) {
+        const skus = [];
+        prodData.products.forEach(p => {
+          if (p.variants) {
+            p.variants.forEach(v => {
+              if (v.sizes) {
+                v.sizes.forEach(s => {
+                  if (s.code) skus.push({ code: s.code, name: `${p.name} - ${v.color || ''} - ${s.size}` });
+                });
+              }
+            });
+          }
+        });
+        setSkuList(skus);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -28,30 +61,36 @@ export function AdminCouponsPage() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${BACKEND_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (data.users) setUsers(data.users);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
-    fetchCoupons();
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleAdd = () => {
-    setFormData({ code: '', discount_type: 'percentage', discount_value: 0, min_order_value: 0, expires_at: '', is_active: true, user_id: 'all', usage_type: 'multiple', min_type: 'amount', min_qty: 0 });
+    setFormData(initialForm);
     setEditCoupon({});
     setIsNew(true);
   };
 
   const handleEdit = (coupon) => {
-    setFormData({ ...coupon, expires_at: coupon.expires_at ? coupon.expires_at.split('T')[0] : '', user_id: coupon.user_id || 'all', usage_type: coupon.usage_type || 'multiple', min_type: coupon.min_type || 'amount', min_qty: coupon.min_qty || 0 });
+    // Convert UTC to local datetime-local format (YYYY-MM-DDTHH:mm)
+    let localDatetime = '';
+    if (coupon.expires_at) {
+      const d = new Date(coupon.expires_at);
+      // To display the time in datetime-local exactly as stored, we format it locally
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      localDatetime = d.toISOString().slice(0, 16);
+    }
+    
+    setFormData({ 
+      ...coupon, 
+      expires_at: localDatetime, 
+      user_id: coupon.user_id || 'all', 
+      usage_type: coupon.usage_type || 'multiple', 
+      min_type: coupon.min_type || 'amount', 
+      min_qty: coupon.min_qty || 0,
+      applicable_categories: coupon.applicable_categories || [],
+      applicable_product_codes: coupon.applicable_product_codes || []
+    });
     setEditCoupon(coupon);
     setIsNew(false);
   };
@@ -61,7 +100,7 @@ export function AdminCouponsPage() {
     try {
       const token = localStorage.getItem("token");
       await fetch(`${BACKEND_URL}/admin/coupons/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      fetchCoupons();
+      fetchData();
     } catch (err) {
       console.error(err);
     }
@@ -78,7 +117,7 @@ export function AdminCouponsPage() {
         body: JSON.stringify(formData),
       });
       setEditCoupon(null);
-      fetchCoupons();
+      fetchData();
     } catch (err) {
       console.error(err);
     } finally {
@@ -222,8 +261,9 @@ export function AdminCouponsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Expires At (Optional)</label>
-                  <input type="date" value={formData.expires_at} onChange={e => setFormData({ ...formData, expires_at: e.target.value })}
+                  <input type="datetime-local" value={formData.expires_at} onChange={e => setFormData({ ...formData, expires_at: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none" />
+                  <p className="text-[10px] text-[#08183A]/40 mt-1">Time will be saved and evaluated as CST.</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -282,6 +322,68 @@ export function AdminCouponsPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Applicable Categories (Optional)</label>
+                  <div className="max-h-32 overflow-y-auto border border-[#08183A]/10 rounded-lg p-2 bg-[#FDF8F0]">
+                    {categories.map(cat => (
+                      <label key={cat.id} className="flex items-start gap-2 mb-2 cursor-pointer">
+                        <input type="checkbox" checked={formData.applicable_categories.includes(cat.name)}
+                          onChange={e => {
+                            const newCats = e.target.checked 
+                              ? [...formData.applicable_categories, cat.name]
+                              : formData.applicable_categories.filter(c => c !== cat.name);
+                            setFormData({ ...formData, applicable_categories: newCats });
+                          }}
+                          className="w-4 h-4 mt-0.5 text-[#08183A]" />
+                        <span className="text-xs text-[#08183A] font-semibold">{cat.name}</span>
+                      </label>
+                    ))}
+                    {categories.length === 0 && <span className="text-xs text-[#08183A]/50">No categories found</span>}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Applicable Product Codes (Optional)</label>
+                  <div className="border border-[#08183A]/10 rounded-lg bg-[#FDF8F0] overflow-hidden">
+                    <div className="flex items-center gap-2 px-2 py-1.5 border-b border-[#08183A]/10 bg-white">
+                      <Search className="w-3 h-3 text-[#08183A]/40 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Search by code or name..."
+                        value={skuSearch}
+                        onChange={e => setSkuSearch(e.target.value)}
+                        className="w-full text-xs bg-transparent focus:outline-none text-[#08183A] placeholder-[#08183A]/30"
+                      />
+                      {skuSearch && (
+                        <button onClick={() => setSkuSearch("")} className="text-[#08183A]/40 hover:text-[#08183A] shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-28 overflow-y-auto p-2">
+                      {skuList
+                        .filter(sku => !skuSearch || sku.code.toLowerCase().includes(skuSearch.toLowerCase()) || sku.name.toLowerCase().includes(skuSearch.toLowerCase()))
+                        .map(sku => (
+                          <label key={sku.code} className="flex items-start gap-2 mb-2 cursor-pointer">
+                            <input type="checkbox" checked={formData.applicable_product_codes.includes(sku.code)}
+                              onChange={e => {
+                                const newCodes = e.target.checked 
+                                  ? [...formData.applicable_product_codes, sku.code]
+                                  : formData.applicable_product_codes.filter(c => c !== sku.code);
+                                setFormData({ ...formData, applicable_product_codes: newCodes });
+                              }}
+                              className="w-4 h-4 mt-0.5 text-[#08183A]" />
+                            <span className="text-xs text-[#08183A] font-semibold">{sku.code} <br/><span className="text-[10px] text-[#08183A]/60 font-normal">{sku.name}</span></span>
+                          </label>
+                        ))
+                      }
+                      {skuList.filter(sku => !skuSearch || sku.code.toLowerCase().includes(skuSearch.toLowerCase()) || sku.name.toLowerCase().includes(skuSearch.toLowerCase())).length === 0 && (
+                        <span className="text-xs text-[#08183A]/50">{skuSearch ? 'No matching codes' : 'No product codes found'}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4">

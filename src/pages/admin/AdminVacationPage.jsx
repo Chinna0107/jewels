@@ -78,7 +78,7 @@ export function AdminVacationPage() {
           >
             <div className="text-left">
               <p className="font-bold text-[#08183A]">
-                {vacation.is_active ? '🔴 Vacation Mode is ON' : '🟢 Vacation Mode is OFF'}
+                {vacation.is_active ? '🔴 Vacation Mode is ON' : '🟢 `Vacation Mode` is OFF'}
               </p>
               <p className="text-xs text-[#08183A]/60 mt-0.5">
                 {vacation.is_active

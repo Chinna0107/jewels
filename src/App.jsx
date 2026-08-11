@@ -23,6 +23,8 @@ import { MyAddressesPage } from './pages/MyAddressesPage';
 import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { ShippingPolicyPage } from './pages/ShippingPolicyPage';
 import { ReturnsPolicyPage } from './pages/ReturnsPolicyPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
@@ -105,6 +107,8 @@ function App() {
                   <Route path="/account-settings" element={<AccountSettingsPage />} />
                   <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
                   <Route path="/returns-policy" element={<ReturnsPolicyPage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms-of-service" element={<TermsOfServicePage />} />
                 </Routes>
               </AppLayout>
             } />
@@ -118,7 +122,7 @@ function App() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="fixed bottom-6 right-4 z-[9999] flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-transform"
+        className="fixed bottom-20 md:bottom-6 right-4 z-[9999] flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-transform"
         style={{ background: '#25D366' }}
       >
         <svg viewBox="0 0 32 32" width="30" height="30" fill="white" xmlns="http://www.w3.org/2000/svg">

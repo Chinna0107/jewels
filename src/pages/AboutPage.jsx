@@ -78,7 +78,7 @@ export function AboutPage() {
             
             <div className="space-y-6 text-brand-dark-blue/80 text-base md:text-lg leading-relaxed">
               <p className="first-letter:text-6xl first-letter:font-serif first-letter:text-brand-gold first-letter:mr-2 first-letter:float-left">
-                Welcome to <strong className="text-brand-dark-blue font-semibold">Houra Jewels</strong>, your premium destination for exquisite fashion jewelry. Operating as an exclusive home-based retail boutique, we are passionate about bringing you high-quality accessories that blend seamlessly into your daily life.
+                Welcome to <strong className="text-brand-dark-blue font-semibold">Houra Jewels</strong>, your premium destination for exquisite fashion jewelry. Operating as an exclusive home-based retail store, we are passionate about bringing you high-quality accessories that blend seamlessly into your daily life.
               </p>
               
               <p>

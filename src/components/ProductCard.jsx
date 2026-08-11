@@ -37,14 +37,23 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
   const originalPrice = Number(defaultSize.mrp) || Number(defaultSize.our_price) || 0;
   let displayPrice = Number(defaultSize.our_price) || originalPrice;
 
-  // Calculate offer price
+  // Calculate offer price (check per-size offer too)
   let activeOffer = null;
-  if (product.offer_id) {
+  if (defaultSize.offer_id) {
+    activeOffer = offers?.find(o => o.id == defaultSize.offer_id && o.is_active);
+  } else if (product.offer_id) {
     activeOffer = offers?.find(o => o.id === product.offer_id && o.is_active);
-    if (activeOffer) {
-      displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
-    }
   }
+  if (activeOffer) {
+    displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
+  }
+
+  // Compute total stock across all variants/sizes
+  const totalStock = variants.reduce((sum, v) => {
+    const sizes = v.sizes && v.sizes.length > 0 ? v.sizes : [];
+    return sum + sizes.reduce((s2, sz) => s2 + (Number(sz.stock) || 0), 0);
+  }, 0);
+  const isOutOfStock = totalStock <= 0;
 
   const handleWishlist = (e) => {
     e.preventDefault();
@@ -119,10 +128,14 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
               )}
               <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1 py-0.5 rounded">{defaultSize.size}</span>
             </div>
-            <button onClick={handleAddToCart} className="bg-[#08183A] text-white text-xs font-semibold px-4 py-1.5 rounded-md hover:bg-[#D4AF37] transition-colors flex items-center gap-1">
-              <ShoppingCart className="w-3.5 h-3.5" />
-              Add
-            </button>
+            {isOutOfStock ? (
+              <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-md">Out of Stock</span>
+            ) : (
+              <button onClick={handleAddToCart} className="bg-[#08183A] text-white text-xs font-semibold px-4 py-1.5 rounded-md hover:bg-[#D4AF37] transition-colors flex items-center gap-1">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                Add
+              </button>
+            )}
           </div>
         </div>
         <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
@@ -163,8 +176,13 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
             {parseFloat(activeOffer.discount_percentage)}% OFF
           </div>
         )}
+        {isOutOfStock && (
+          <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+            <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">Out of Stock</span>
+          </div>
+        )}
         {firstImg ? (
-          <img src={firstImg} alt={product.name} className="w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110" />
+          <img src={firstImg} alt={product.name} className={`w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110 ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
         )}
@@ -194,22 +212,33 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
           )}
         </div>
 
-        <div className="flex items-end justify-between mt-auto mb-1">
-          <div className="flex flex-col gap-1">
-            <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold text-gray-900 leading-none">${displayPrice}</span>
-              {(activeOffer || originalPrice > displayPrice) && (
-                <span className="text-[10px] text-gray-400 line-through leading-none">${originalPrice}</span>
-              )}
+          {isOutOfStock ? (
+            <div className="mt-auto mb-1 flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base font-bold text-gray-400 leading-none line-through">${displayPrice}</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full">Out of Stock</span>
             </div>
-          </div>
-
-          <button onClick={handleAddToCart} className="bg-[#08183A] text-white p-2.5 rounded-full hover:bg-[#D4AF37] transition-all hover:shadow-md hover:scale-105 shrink-0 flex items-center justify-center group/btn">
-            <ShoppingCart className="w-4 h-4 hidden group-hover/btn:block" />
-            <span className="text-sm font-bold leading-none w-4 h-4 flex items-center justify-center group-hover/btn:hidden">+</span>
-          </button>
-        </div>
+          ) : (
+            <div className="flex items-end justify-between mt-auto mb-1">
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base font-bold text-gray-900 leading-none">${displayPrice}</span>
+                  {(activeOffer || originalPrice > displayPrice) && (
+                    <span className="text-[10px] text-gray-400 line-through leading-none">${originalPrice}</span>
+                  )}
+                </div>
+              </div>
+              <button onClick={handleAddToCart} className="bg-[#08183A] text-white p-2.5 rounded-full hover:bg-[#D4AF37] transition-all hover:shadow-md hover:scale-105 shrink-0 flex items-center justify-center group/btn">
+                <ShoppingCart className="w-4 h-4 hidden group-hover/btn:block" />
+                <span className="text-sm font-bold leading-none w-4 h-4 flex items-center justify-center group-hover/btn:hidden">+</span>
+              </button>
+            </div>
+          )}
       </div>
     </div>
   );

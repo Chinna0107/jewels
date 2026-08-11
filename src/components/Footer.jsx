@@ -88,8 +88,8 @@ export function Footer() {
             © {new Date().getFullYear()} Houra Jewels LLC. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-xs text-gray-100/50">
-            <Link to="#" className="transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Privacy Policy</Link>
-            <Link to="#" className="transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Terms of Service</Link>
+            <Link to="/privacy-policy" className="transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Privacy Policy</Link>
+            <Link to="/terms-of-service" className="transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Terms of Service</Link>
           </div>
         </div>
       </div>

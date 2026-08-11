@@ -12,9 +12,9 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState(null);
   
   const initialFormData = { 
-    name: "", description: "", product_code: "", stock: 0, category: "", model: "", is_active: true, offer_id: "", allow_reviews: true,
+    name: "", description: "", product_code: "", category: "", model: "", is_active: true, allow_reviews: true,
     variants: [
-      { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" }] }
+      { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" }] }
     ],
     details: [],
     reviews: []
@@ -26,6 +26,8 @@ export function AdminProductsPage() {
   const [uploading, setUploading] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [search, setSearch] = useState("");
+  const [stockSort, setStockSort] = useState("none");
+  const [offerFilter, setOfferFilter] = useState("all");
 
   useEffect(() => {
     fetchData();
@@ -125,7 +127,6 @@ export function AdminProductsPage() {
     setFormData({ 
       ...product, 
       model: product.model || "", 
-      offer_id: product.offer_id || "",
       variants: variants,
       details: product.details || [],
       reviews: product.reviews || [],
@@ -152,10 +153,7 @@ export function AdminProductsPage() {
       const token = localStorage.getItem("token");
       const url = isNew ? `${BACKEND_URL}/admin/products` : `${BACKEND_URL}/admin/products/${editProduct.id}`;
       
-      const payload = {
-        ...formData,
-        offer_id: formData.offer_id ? Number(formData.offer_id) : null
-      };
+      const payload = { ...formData };
 
       const res = await fetch(url, {
         method: isNew ? "POST" : "PUT",
@@ -174,7 +172,7 @@ export function AdminProductsPage() {
   };
 
   const addVariant = () => {
-    setFormData({ ...formData, variants: [...formData.variants, { color: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" }] }] });
+    setFormData({ ...formData, variants: [...formData.variants, { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" }] }] });
   };
   
   const removeVariant = (index) => {
@@ -217,7 +215,7 @@ export function AdminProductsPage() {
 
   const addSizeToVariant = (vIndex) => {
     const updated = [...formData.variants];
-    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0, code: "", weight: "" });
+    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" });
     setFormData({ ...formData, variants: updated });
   };
   
@@ -242,12 +240,42 @@ export function AdminProductsPage() {
   const selectedCatObj = categories.find(c => c.name === formData.category);
   const availableModels = selectedCatObj?.models || [];
 
-  const filteredProducts = products.filter(p => {
+  const skuRows = [];
+  products.forEach(p => {
+    let variants = p.variants;
+    if (!variants || variants.length === 0) {
+      variants = [{ color: p.color, images: p.images || (p.image_url ? [p.image_url] : []) }];
+    }
+    variants.forEach((v, vIndex) => {
+      const sizes = v.sizes && v.sizes.length > 0 ? v.sizes : [{ size: "Default", stock: p.stock || 0, code: p.product_code || "" }];
+      sizes.forEach((s, sIndex) => {
+        skuRows.push({
+          product: p,
+          variant: v,
+          size: s,
+          vIndex,
+          sIndex,
+          skuId: `${p.id}-${vIndex}-${sIndex}`
+        });
+      });
+    });
+  });
+
+  const filteredSkus = skuRows.filter(row => {
     const s = search.toLowerCase();
-    const nameMatch = p.name?.toLowerCase().includes(s);
-    const catMatch = p.category?.toLowerCase().includes(s);
-    const codeMatch = p.product_code?.toLowerCase().includes(s) || (p.variants && p.variants.some(v => v.code?.toLowerCase().includes(s)));
-    return nameMatch || catMatch || codeMatch;
+    const nameMatch = row.product.name?.toLowerCase().includes(s);
+    const catMatch = row.product.category?.toLowerCase().includes(s);
+    const codeMatch = row.size.code?.toLowerCase().includes(s);
+    const colorMatch = row.variant.color?.toLowerCase().includes(s);
+    
+    if (search && !nameMatch && !catMatch && !codeMatch && !colorMatch) return false;
+    if (offerFilter === "has_offer" && !row.size.offer_id) return false;
+    if (offerFilter === "no_offer" && row.size.offer_id) return false;
+    return true;
+  }).sort((a, b) => {
+    if (stockSort === "asc") return (a.size.stock || 0) - (b.size.stock || 0);
+    if (stockSort === "desc") return (b.size.stock || 0) - (a.size.stock || 0);
+    return 0;
   });
 
   if (loading) return (
@@ -263,12 +291,22 @@ export function AdminProductsPage() {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#08183A]">Products</h1>
           <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">Manage inventory, variants, and pricing</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <div className="relative">
             <Search className="w-4 h-4 text-[#08183A]/40 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search SKUs..."
               className="pl-9 pr-4 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none w-full sm:w-64" />
           </div>
+          <select value={stockSort} onChange={e => setStockSort(e.target.value)} className="px-3 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none">
+            <option value="none">Stock: Default</option>
+            <option value="asc">Stock: Low to High</option>
+            <option value="desc">Stock: High to Low</option>
+          </select>
+          <select value={offerFilter} onChange={e => setOfferFilter(e.target.value)} className="px-3 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none">
+            <option value="all">Offers: All</option>
+            <option value="has_offer">Has Offer</option>
+            <option value="no_offer">No Offer</option>
+          </select>
           <button onClick={handleAdd}
             className="flex items-center gap-2 bg-[#08183A] hover:bg-[#D4AF37] text-white px-4 py-2 rounded-xl font-semibold transition-colors whitespace-nowrap">
             <Plus className="w-4 h-4" /> Add
@@ -281,23 +319,21 @@ export function AdminProductsPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#FDF8F0] border-b border-[#08183A]/10">
-                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Product</th>
-                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Code</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Product (Variant/Size)</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Code (SKU)</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Category</th>
-                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Variants</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Stock Availability</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Offer</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#08183A]/5">
-              {filteredProducts.map(product => {
-                let variants = product.variants;
-                if (!variants || variants.length === 0) {
-                  variants = [{ color: product.color, images: product.images || [product.image_url] }];
-                }
-                const firstImg = variants[0]?.images?.[0];
+              {filteredSkus.map(row => {
+                const firstImg = row.variant.images?.[0] || row.product.image_url;
+                const offerObj = offers.find(o => o.id == row.size.offer_id);
                 return (
-                  <tr key={product.id} className="hover:bg-[#FDF8F0]/50 transition-colors">
+                  <tr key={row.skuId} className="hover:bg-[#FDF8F0]/50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-[#08183A]/10">
@@ -307,31 +343,45 @@ export function AdminProductsPage() {
                             <div className="w-full h-full flex items-center justify-center text-gray-400"><Package className="w-5 h-5" /></div>
                           )}
                         </div>
-                        <div className="font-sans font-bold text-[#08183A] line-clamp-1">{product.name}</div>
+                        <div>
+                          <div className="font-sans font-bold text-[#08183A] line-clamp-1">{row.product.name}</div>
+                          <div className="text-[10px] font-semibold text-gray-500">{row.variant.color} • Size: {row.size.size}</div>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-[#08183A]/70">{product.product_code || "-"}</td>
-                    <td className="px-4 py-3 text-sm text-[#08183A]/70">{product.category}</td>
-                    <td className="px-4 py-3 text-sm text-[#08183A]/70">
-                      <span className="text-[#08183A] font-semibold">{variants.length} color(s)</span>
+                    <td className="px-4 py-3 text-sm font-mono text-[#08183A]/80 font-bold">{row.size.code || "-"}</td>
+                    <td className="px-4 py-3 text-sm text-[#08183A]/70">{row.product.category}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-md text-[11px] font-bold ${
+                        row.size.stock <= 0 ? 'bg-red-100 text-red-700' :
+                        row.size.stock <= 5 ? 'bg-orange-100 text-orange-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {row.size.stock} in stock
+                      </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {product.is_active ? 'Active' : 'Draft'}
+                      {offerObj ? (
+                        <span className="text-[10px] font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">{offerObj.discount_percentage}% OFF</span>
+                      ) : <span className="text-xs text-gray-400">-</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${row.product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {row.product.is_active ? 'Active' : 'Draft'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => handleEdit(product)} className="p-1.5 text-[#08183A] hover:bg-[#08183A]/10 rounded"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(product.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleEdit(row.product)} className="p-1.5 text-[#08183A] hover:bg-[#08183A]/10 rounded"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(row.product.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
                 );
               })}
-              {filteredProducts.length === 0 && (
+              {filteredSkus.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-4 py-12 text-center text-[#08183A]/50">No products found.</td>
+                  <td colSpan="7" className="px-4 py-12 text-center text-[#08183A]/50">No variants/SKUs found.</td>
                 </tr>
               )}
             </tbody>
@@ -386,14 +436,12 @@ export function AdminProductsPage() {
                 )}
                 
                 <div className={availableModels.length === 0 ? 'col-span-1' : 'col-span-2'}>
-                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Active Offer</label>
-                  <select value={formData.offer_id || ""} onChange={(e) => setFormData({ ...formData, offer_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none">
-                    <option value="">No Offer</option>
-                    {offers.filter(o => o.is_active).map(o => (
-                      <option key={o.id} value={o.id}>{o.title} ({o.discount_percentage}% OFF)</option>
-                    ))}
-                  </select>
+                  <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Allow Reviews</label>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="checkbox" checked={formData.allow_reviews} onChange={(e) => setFormData({ ...formData, allow_reviews: e.target.checked })}
+                      className="w-4 h-4 text-[#08183A]" />
+                    <span className="text-sm font-sans font-semibold text-[#08183A] cursor-pointer">Enable reviews</span>
+                  </div>
                 </div>
               </div>
 
@@ -420,7 +468,11 @@ export function AdminProductsPage() {
                           <input value={variant.color} onChange={(e) => updateVariantField(vIndex, 'color', e.target.value)} placeholder="e.g. Gold, Rose Gold"
                             className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none" />
                         </div>
-
+                        <div>
+                          <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Instagram Reel Link</label>
+                          <input value={variant.instagram_link || ""} onChange={(e) => updateVariantField(vIndex, 'instagram_link', e.target.value)} placeholder="https://instagram.com/reel/..."
+                            className="w-full px-3 py-2 rounded-lg bg-white border border-[#08183A]/10 focus:outline-none text-blue-600" />
+                        </div>
                       </div>
 
                       {/* Images for this variant */}
@@ -459,10 +511,20 @@ export function AdminProductsPage() {
                           {variant.sizes.map((sizeObj, sIndex) => (
                             <div key={sIndex} className="flex flex-wrap items-center gap-2 bg-white p-2 rounded border border-gray-200">
                               <input value={sizeObj.size} onChange={e => updateSizeField(vIndex, sIndex, 'size', e.target.value)} placeholder="Size (e.g. S, 10g)" className="flex-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none min-w-[80px]" />
-                              <input value={sizeObj.code || ""} onChange={e => updateSizeField(vIndex, sIndex, 'code', e.target.value)} placeholder="Code (e.g. RING-001-S)" className="w-32 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
-                              <input type="number" value={sizeObj.mrp} onChange={e => updateSizeField(vIndex, sIndex, 'mrp', e.target.value)} placeholder="MRP ($)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
+                              <input value={sizeObj.code || ""} onChange={e => updateSizeField(vIndex, sIndex, 'code', e.target.value)} placeholder="Code * (e.g. RING-001)" className={`w-32 px-2 py-1.5 bg-gray-50 border rounded text-sm focus:outline-none ${!sizeObj.code ? 'border-red-300' : 'border-gray-200'}`} />
+                              <input type="number" value={sizeObj.mrp} onChange={e => updateSizeField(vIndex, sIndex, 'mrp', e.target.value)} placeholder="MRP ($)" className="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <input type="number" value={sizeObj.our_price} onChange={e => updateSizeField(vIndex, sIndex, 'our_price', e.target.value)} placeholder="Our Price ($)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
-                              <input type="number" value={sizeObj.stock} onChange={e => updateSizeField(vIndex, sIndex, 'stock', Number(e.target.value))} placeholder="Stock" className="w-20 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
+                              <div className="flex items-center gap-1 w-28 bg-gray-50 border border-gray-200 rounded px-2 py-0.5">
+                                <span className="text-xs text-gray-500 font-bold w-6 text-center">{sizeObj.stock || 0}</span>
+                                <div className="h-4 w-px bg-gray-300"></div>
+                                <input type="number" value={sizeObj.stock_delta || ""} onChange={e => updateSizeField(vIndex, sIndex, 'stock_delta', e.target.value)} placeholder="+/- Qty" className="flex-1 w-full bg-transparent text-sm focus:outline-none text-center" />
+                              </div>
+                              <select value={sizeObj.offer_id || ""} onChange={e => updateSizeField(vIndex, sIndex, 'offer_id', e.target.value)} className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none">
+                                <option value="">No Offer</option>
+                                {offers.filter(o => o.is_active).map(o => (
+                                  <option key={o.id} value={o.id}>{o.discount_percentage}% OFF</option>
+                                ))}
+                              </select>
                               <input value={sizeObj.weight || ""} onChange={e => updateSizeField(vIndex, sIndex, 'weight', e.target.value)} placeholder="Weight (g)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <button onClick={() => removeSizeFromVariant(vIndex, sIndex)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                             </div>

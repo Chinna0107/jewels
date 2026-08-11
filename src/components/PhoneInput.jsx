@@ -226,17 +226,23 @@ export const COUNTRIES = [
   { name: 'Zimbabwe', iso: 'ZW', code: '263' },
 ];
 
-// Parse a stored value like "+911234567890" → { iso: 'IN', dialCode: '91', number: '1234567890' }
+// Stored format: "ISO:+dialCodenumber" e.g. "US:+11234567890"
 export function parsePhone(value = '') {
+  if (value.includes(':')) {
+    const [iso, rest] = value.split(':');
+    const country = COUNTRIES.find(c => c.iso === iso);
+    if (country) return { iso, dialCode: country.code, number: rest.slice(country.code.length + 1) };
+  }
   if (!value.startsWith('+')) return { iso: 'US', dialCode: '1', number: value };
-  const match = COUNTRIES.find(c => value.startsWith(`+${c.code}`));
+  const sorted = [...COUNTRIES].sort((a, b) => b.code.length - a.code.length);
+  const match = sorted.find(c => value.startsWith(`+${c.code}`));
   if (match) return { iso: match.iso, dialCode: match.code, number: value.slice(match.code.length + 1) };
   return { iso: 'US', dialCode: '1', number: value.slice(1) };
 }
 
-// Returns full value like "+911234567890"
-export function formatPhone(dialCode, number) {
-  return `+${dialCode}${number.replace(/\D/g, '')}`;
+// Returns full value like "US:+11234567890"
+export function formatPhone(dialCode, number, iso = '') {
+  return `${iso}:+${dialCode}${number.replace(/\D/g, '')}`;
 }
 
 export function PhoneInput({ value = '', onChange, className = '', inputClassName = '', placeholder = 'Phone number', dark = false, allowedCountries = [] }) {
@@ -263,7 +269,7 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
     setIsoCode(c.iso);
     setOpen(false);
     setSearch('');
-    onChange(formatPhone(c.code, number));
+    onChange(formatPhone(c.code, number, c.iso));
   };
 
   const selected = COUNTRIES.find(c => c.iso === isoCode) || COUNTRIES.find(c => c.iso === 'US');
@@ -272,7 +278,7 @@ export function PhoneInput({ value = '', onChange, className = '', inputClassNam
   const handleNumber = (e) => {
     const n = e.target.value.replace(/\D/g, '');
     setNumber(n);
-    onChange(formatPhone(dialCode, n));
+    onChange(formatPhone(dialCode, n, isoCode));
   };
 
   const displayCountries = allowedCountries.length > 0 

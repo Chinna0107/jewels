@@ -115,7 +115,7 @@ export function CartPage() {
       const res = await fetch(`${BACKEND_URL}/general/validate-coupon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode, cartValue: subtotal, cartQty: items.reduce((s, i) => s + i.qty, 0), user_id: user?.id })
+        body: JSON.stringify({ code: couponCode, cartValue: subtotal, cartQty: items.reduce((s, i) => s + i.qty, 0), user_id: user?.id, cartItems: items })
       });
       const data = await res.json();
       if (data.success) {
@@ -180,7 +180,7 @@ export function CartPage() {
                 </button>
                 
                 <div className="w-20 h-20 bg-white rounded-lg shrink-0 p-1 border border-brand-gold/10">
-                  <img src={item.product.images && item.product.images.length > 0 ? item.product.images[0] : item.product.image_url} alt={item.product.name} className="w-full h-full object-contain" />
+                  <img src={item.variant?.image || (item.product.images && item.product.images.length > 0 ? item.product.images[0] : item.product.image_url)} alt={item.product.name} className="w-full h-full object-contain" />
                 </div>
                 
                 <div className="flex flex-col justify-between py-1 flex-grow pr-6">
@@ -190,14 +190,14 @@ export function CartPage() {
                       <p className="text-[10px] text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded inline-block">
                         {item.variant?.size || 'Standard'}
                       </p>
-                      {item.product.color && (
+                      {item.variant?.color && (
                         <p className="text-[10px] text-[#08183A] font-medium bg-[#08183A]/10 px-1.5 py-0.5 rounded inline-block">
-                          {item.product.color}
+                          {item.variant.color}
                         </p>
                       )}
-                      {item.variant?.code && (
+                      {(item.variant?.size_code || item.variant?.code) && (
                         <p className="text-[10px] text-brand-gold font-mono font-bold bg-brand-gold/10 px-1.5 py-0.5 rounded inline-block">
-                          {item.variant.code}
+                          {item.variant?.size_code || item.variant?.code}
                         </p>
                       )}
                     </div>
@@ -342,8 +342,8 @@ export function CartPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="p-6 text-center space-y-4">
-              <div className="text-5xl">🌴</div>
-              <h2 className="font-serif text-xl font-bold text-[#08183A]">We're on Vacation!</h2>
+              {/* <div className="text-5xl">🌴</div> */}
+              <h2 className="font-serif text-xl font-bold text-[#08183A]">Orders are temporarily paused</h2>
               <p className="text-sm text-[#08183A]/70 leading-relaxed">
                 {vacation.message || 'We are temporarily not accepting orders. Please check back soon!'}
               </p>

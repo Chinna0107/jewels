@@ -17,6 +17,15 @@ export function SignupPage() {
   const [step, setStep] = useState('form'); // 'form' | 'phone_otp' | 'email_otp' | 'done'
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', country: '' });
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const pwRules = [
+    { label: 'At least 8 characters', ok: form.password.length >= 8 },
+    { label: 'At least 1 number', ok: /\d/.test(form.password) },
+    { label: 'At least 1 special character', ok: /[^A-Za-z0-9]/.test(form.password) },
+  ];
+  const passwordValid = pwRules.every(r => r.ok);
   const [phoneOtp, setPhoneOtp] = useState(['', '', '', '', '', '']);
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [localError, setLocalError] = useState('');
@@ -108,8 +117,10 @@ export function SignupPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setLocalError('');
+    if (!consentAccepted) { setLocalError('Please accept the Privacy Policy and Terms of Service to continue.'); return; }
+    if (!passwordValid) { setPasswordTouched(true); setLocalError('Password does not meet the requirements.'); return; }
     const res = await signup(form.name, form.email, form.phone, form.password, form.country);
-    if (res.success) setStep('phone_otp');
+    if (res.success) setStep('email_otp');
     else setLocalError(res.error);
   };
 
@@ -278,16 +289,39 @@ export function SignupPage() {
                       <Lock className="w-4 h-4 text-brand-dark-blue/40 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         name="password" type={showPass ? 'text' : 'password'} value={form.password}
-                        onChange={handleChange} required minLength={6}
-                        placeholder="Min 6 characters"
-                        className="w-full bg-white border border-brand-gold/20 rounded-xl px-4 py-3.5 pl-11 pr-12 text-sm text-brand-dark-blue placeholder:text-brand-dark-blue/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 transition-shadow"
+                        onChange={handleChange} onBlur={() => setPasswordTouched(true)} required
+                        placeholder="Min 8 chars, 1 number, 1 special"
+                        className={`w-full bg-white border rounded-xl px-4 py-3.5 pl-11 pr-12 text-sm text-brand-dark-blue placeholder:text-brand-dark-blue/30 focus:outline-none focus:ring-2 transition-shadow ${
+                          passwordTouched && !passwordValid ? 'border-red-400 focus:ring-red-200' : 'border-brand-gold/20 focus:ring-brand-gold/40'
+                        }`}
                       />
                       <button type="button" onClick={() => setShowPass(!showPass)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-dark-blue/40 hover:text-brand-dark-blue transition-colors">
                         {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {passwordTouched && (
+                      <div className="mt-2 space-y-1">
+                        {pwRules.map((r, i) => (
+                          <p key={i} className={`text-xs flex items-center gap-1.5 ${r.ok ? 'text-green-600' : 'text-red-500'}`}>
+                            <span>{r.ok ? '✓' : '✗'}</span> {r.label}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Consent */}
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-brand-dark-blue rounded shrink-0" />
+                    <span className="text-xs text-brand-dark-blue/70 leading-relaxed">
+                      I confirm that I am at least 13 years old, agree to the Houra Jewels{' '}
+                      <Link to="/terms-of-service" target="_blank" className="font-bold text-brand-dark-blue underline">Terms & Conditions</Link>,
+                      and acknowledge the Houra Jewels{' '}
+                      <Link to="/privacy-policy" target="_blank" className="font-bold text-brand-dark-blue underline">Privacy Policy</Link>.
+                    </span>
+                  </label>
 
                   {displayError && (
                     <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">
@@ -479,16 +513,39 @@ export function SignupPage() {
                   <Lock className="w-4 h-4 text-[#D4AF37] absolute left-4 top-1/2 -translate-y-1/2" />
                   <input
                     name="password" type={showPass ? 'text' : 'password'} value={form.password}
-                    onChange={handleChange} required minLength={6}
-                    placeholder="Min 6 characters"
-                    className="w-full bg-transparent border border-white/10 rounded-xl px-4 py-3.5 pl-11 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all"
+                    onChange={handleChange} onBlur={() => setPasswordTouched(true)} required
+                    placeholder="Min 8 chars, 1 number, 1 special"
+                    className={`w-full bg-transparent border rounded-xl px-4 py-3.5 pl-11 pr-12 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 transition-all ${
+                      passwordTouched && !passwordValid ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/30' : 'border-white/10 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/50'
+                    }`}
                   />
                   <button type="button" onClick={() => setShowPass(!showPass)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[#D4AF37] hover:text-[#D4AF37]/80 transition-colors">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {passwordTouched && (
+                  <div className="mt-2 space-y-1">
+                    {pwRules.map((r, i) => (
+                      <p key={i} className={`text-xs flex items-center gap-1.5 ${r.ok ? 'text-green-400' : 'text-red-400'}`}>
+                        <span>{r.ok ? '✓' : '✗'}</span> {r.label}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Consent - Mobile */}
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[#D4AF37] rounded shrink-0" />
+                <span className="text-[11px] text-white/60 leading-relaxed">
+                  I confirm that I am at least 13 years old, agree to the Houra Jewels{' '}
+                  <Link to="/terms-of-service" target="_blank" className="text-[#D4AF37] font-bold underline">Terms & Conditions</Link>,
+                  and acknowledge the Houra Jewels{' '}
+                  <Link to="/privacy-policy" target="_blank" className="text-[#D4AF37] font-bold underline">Privacy Policy</Link>.
+                </span>
+              </label>
 
               {displayError && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">

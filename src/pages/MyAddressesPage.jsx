@@ -9,17 +9,74 @@ import usePlacesAutocomplete, { getDetails } from 'use-places-autocomplete';
 
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
-function AddressAutocomplete({ value, onChange, onSelect }) {
-  const { ready, value: inputVal, suggestions: { status, data }, setValue, clearSuggestions } = usePlacesAutocomplete({ debounce: 300, defaultValue: value });
+function AddressAutocomplete({ value, onChange, onSelect, mapsLoaded }) {
+  const [inputVal, setInputVal] = useState(value || '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [apiError, setApiError] = useState(!mapsLoaded);
+  const autocompleteService = React.useRef(null);
+  const placesService = React.useRef(null);
+  const debounceTimer = React.useRef(null);
+  const containerRef = React.useRef(null);
 
-  const handleSelect = async (s) => {
-    setValue(s.description, false);
-    clearSuggestions();
-    try {
-      const details = await getDetails({ placeId: s.place_id, fields: ['address_components'] });
-      const get = (type) => details.address_components?.find(c => c.types.includes(type))?.long_name || '';
-      const line1 = `${get('street_number')} ${get('route')}`.trim() || get('premise') || get('sublocality_level_1') || '';
-      setValue(line1, false);
+  React.useEffect(() => {
+    if (mapsLoaded && window.google?.maps?.places) {
+      try {
+        autocompleteService.current = new window.google.maps.places.AutocompleteService();
+        placesService.current = new window.google.maps.places.PlacesService(document.createElement('div'));
+        setApiError(false);
+      } catch (err) {
+        setApiError(true);
+      }
+    } else if (!mapsLoaded) {
+      setApiError(true);
+    }
+  }, [mapsLoaded]);
+
+  React.useEffect(() => {
+    setInputVal(value || '');
+  }, [value]);
+
+  React.useEffect(() => {
+    const handler = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setSuggestions([]); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleInput = (e) => {
+    const v = e.target.value;
+    setInputVal(v);
+    onChange(v);
+    if (apiError) return;
+    clearTimeout(debounceTimer.current);
+    if (!v.trim() || !autocompleteService.current) { setSuggestions([]); return; }
+    debounceTimer.current = setTimeout(() => {
+      autocompleteService.current.getPlacePredictions({ input: v }, (results, status) => {
+        const PS = window.google.maps.places.PlacesServiceStatus;
+        if (status === PS.OK) {
+          setSuggestions(results);
+        } else {
+          setSuggestions([]);
+          if (status === PS.OVER_QUERY_LIMIT || status === PS.REQUEST_DENIED || status === 'UNKNOWN_ERROR') {
+            setApiError(true);
+          }
+        }
+      });
+    }, 300);
+  };
+
+  const handleSelect = (s) => {
+    setSuggestions([]);
+    placesService.current.getDetails({ placeId: s.place_id, fields: ['address_components'] }, (place, status) => {
+      const PS = window.google.maps.places.PlacesServiceStatus;
+      if (status !== PS.OK) {
+        const line1 = s.structured_formatting.main_text;
+        setInputVal(line1); onChange(line1);
+        if (status === PS.OVER_QUERY_LIMIT || status === PS.REQUEST_DENIED) setApiError(true);
+        return;
+      }
+      const get = (type) => place.address_components?.find(c => c.types.includes(type))?.long_name || '';
+      const line1 = `${get('street_number')} ${get('route')}`.trim() || get('premise') || get('sublocality_level_1') || s.structured_formatting.main_text;
+      setInputVal(line1);
       onChange(line1);
       onSelect({
         line1,
@@ -28,23 +85,32 @@ function AddressAutocomplete({ value, onChange, onSelect }) {
         pincode: get('postal_code'),
         country: get('country'),
       });
-    } catch (e) { console.error(e); }
+    });
   };
 
+  if (apiError) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-1.5 text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span className="text-xs font-semibold">Address lookup unavailable. Please type your address manually.</span>
+        </div>
+        <input value={inputVal} onChange={handleInput} placeholder="Enter your full address..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50" />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative">
-      <input
-        value={inputVal}
-        onChange={e => { setValue(e.target.value); onChange(e.target.value); }}
-        disabled={!ready}
-        placeholder="Start typing your address..."
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
-      />
-      {status === 'OK' && data.length > 0 && (
+    <div className="relative" ref={containerRef}>
+      <input value={inputVal} onChange={handleInput} placeholder="Start typing your address..."
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50" />
+      <p className="text-[10px] text-gray-400 mt-1 pl-1">You can edit this field freely after selecting a suggestion.</p>
+      {suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-          {data.map(s => (
+          {suggestions.map(s => (
             <li key={s.place_id}>
-              <button type="button" onClick={() => handleSelect(s)}
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleSelect(s); }}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-brand-gold/5 flex items-start gap-2.5 border-b border-gray-50 last:border-0">
                 <MapPin className="w-3.5 h-3.5 text-brand-gold shrink-0 mt-0.5" />
                 <div>
@@ -66,7 +132,7 @@ function AddressForm({ onClose, onSave, saving, mapsLoaded, initial }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
-  const required = ['name', 'line1', 'city', 'pincode', 'mobile'];
+  const required = ['name', 'line1', 'city', 'state', 'pincode', 'country', 'mobile'];
 
   const validate = () => {
     const e = {};
@@ -85,9 +151,10 @@ function AddressForm({ onClose, onSave, saving, mapsLoaded, initial }) {
       <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
         {label}{required.includes(key) && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      {opts.autocomplete && mapsLoaded ? (
+      {opts.autocomplete ? (
         <AddressAutocomplete
           value={form[key]}
+          mapsLoaded={mapsLoaded}
           onChange={v => setForm(f => ({ ...f, line1: v }))}
           onSelect={({ line1, city, state, pincode, country }) =>
             setForm(f => ({ ...f, line1: line1 || f.line1, city: city || f.city, state: state || f.state, pincode: pincode || f.pincode, country: country || f.country }))
@@ -121,9 +188,9 @@ function AddressForm({ onClose, onSave, saving, mapsLoaded, initial }) {
           {field('line1', 'Address Line 1', { full: true, autocomplete: true })}
           {field('line2', 'Address Line 2', { full: true, placeholder: 'Apartment, suite, unit (optional)' })}
           {field('city', 'City')}
-          {field('state', 'State', { placeholder: 'State (optional)' })}
+          {field('state', 'State')}
           {field('pincode', 'ZIP Code')}
-          {field('country', 'Country', { placeholder: 'Country (optional)' })}
+          {field('country', 'Country')}
           <div className="col-span-2">
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
               Mobile Number<span className="text-red-500 ml-0.5">*</span>

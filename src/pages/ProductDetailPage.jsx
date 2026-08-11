@@ -16,7 +16,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const variantCode = searchParams.get('variantCode');
   const { products, loading, fetchData } = useStoreData();
   const product = products.find(p => p.id.toString() === id);
@@ -66,7 +66,17 @@ export function ProductDetailPage() {
     if (variants && variants.length > 0 && !selectedVariant) {
       let match = null;
       if (variantCode) {
-        match = variants.find(v => v.code === variantCode);
+        // Try matching variant code first
+        match = variants.find(v => v.code === variantCode) ||
+                variants.find(v => (v.color || '').toLowerCase().trim() === variantCode.toLowerCase().trim());
+        // If no variant match, try matching by size code
+        if (!match) {
+          match = variants.find(v => (v.sizes || []).some(s => s.code === variantCode));
+          if (match) {
+            const matchedSize = match.sizes.find(s => s.code === variantCode);
+            if (matchedSize) setTimeout(() => setSelectedSize(matchedSize), 0);
+          }
+        }
       }
       setSelectedVariant(match || variants[0]);
     }
@@ -74,7 +84,11 @@ export function ProductDetailPage() {
 
   useEffect(() => {
     if (selectedVariant && selectedVariant.sizes && selectedVariant.sizes.length > 0) {
-      setSelectedSize(selectedVariant.sizes[0]);
+      const firstSize = selectedVariant.sizes[0];
+      setSelectedSize(firstSize);
+      if (firstSize.code) setSearchParams({ variantCode: firstSize.code });
+      else if (selectedVariant.code) setSearchParams({ variantCode: selectedVariant.code });
+      else if (selectedVariant.color) setSearchParams({ variantCode: selectedVariant.color });
     } else {
       setSelectedSize(null);
     }
@@ -154,7 +168,8 @@ export function ProductDetailPage() {
     const sizeToUse = selectedSize || { size: 'Standard', mrp: 0, our_price: 0 };
     const priceToUse = getDisplayPrice(Number(sizeToUse.our_price) || Number(sizeToUse.mrp) || 0);
     const itemColor = selectedVariant?.color || product.color;
-    addToCart(product, { ...sizeToUse, price: priceToUse }, quantity, itemColor);
+    const variantImage = selectedVariant?.images?.[0] || product.image_url;
+    addToCart(product, { ...sizeToUse, price: priceToUse, image: variantImage, size_code: sizeToUse.code }, quantity, itemColor);
   };
 
   const handleBuyNow = () => {
@@ -292,8 +307,8 @@ export function ProductDetailPage() {
               <h1 className="text-3xl md:text-[40px] font-serif font-bold text-brand-dark-blue leading-tight">
                 {product.name}
               </h1>
-              {selectedSize?.code && (
-                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {selectedSize.code}</p>
+              {(selectedSize?.code || selectedVariant?.code) && (
+                <p className="text-gray-500 font-mono text-sm tracking-wider">CODE: {selectedSize?.code || selectedVariant?.code}</p>
               )}
               
               {reviewCount > 0 && (
@@ -328,7 +343,10 @@ export function ProductDetailPage() {
                 </p>
               )}
               {isOutOfStock && (
-                <p className="text-sm font-bold text-gray-400 mt-2">Out of Stock</p>
+                <p className="text-sm font-bold text-red-600 mt-2 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-600" />
+                  Out of Stock
+                </p>
               )}
             </div>
 
@@ -350,7 +368,7 @@ export function ProductDetailPage() {
                     {variants.map((v, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setSelectedVariant(v)}
+                        onClick={() => { setSelectedVariant(v); setSearchParams(v.code ? { variantCode: v.code } : { variantCode: v.color || idx }); }}
                         className={`px-4 py-2 rounded-xl border-2 font-bold transition-colors ${
                           selectedVariant === v ? 'border-brand-dark-blue bg-brand-dark-blue text-white' : 'border-gray-200 bg-white text-brand-dark-blue hover:border-brand-dark-blue/50'
                         }`}
@@ -379,7 +397,7 @@ export function ProductDetailPage() {
                       return (
                         <button
                           key={idx}
-                          onClick={() => setSelectedSize(sizeObj)}
+                          onClick={() => { setSelectedSize(sizeObj); if (sizeObj.code) setSearchParams({ variantCode: sizeObj.code }); }}
                           className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 relative ${
                             isSelected 
                               ? 'border-brand-dark-blue bg-brand-dark-blue/5' 
@@ -457,8 +475,8 @@ export function ProductDetailPage() {
             {/* Trust Badges */}
             <div className="grid grid-cols-2 gap-3 mt-4">
               {[
-                { icon: <Truck className="w-4 h-4 text-brand-gold" />, label: 'Free Shipping' },
-                { icon: <RotateCcw className="w-4 h-4 text-brand-gold" />, label: '7 Days Return' },
+                // { icon: <Truck className="w-4 h-4 text-brand-gold" />, label: 'Free Shipping' },
+                // { icon: <RotateCcw className="w-4 h-4 text-brand-gold" />, label: '7 Days Return' },
                 { icon: <ShieldCheck className="w-4 h-4 text-brand-gold" />, label: 'Tarnish Free' },
                 { icon: <Droplet className="w-4 h-4 text-brand-gold" />, label: 'Waterproof' },
                 { icon: <Feather className="w-4 h-4 text-brand-gold" />, label: 'Hypoallergenic' },

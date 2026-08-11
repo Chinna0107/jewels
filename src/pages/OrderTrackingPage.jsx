@@ -114,19 +114,32 @@ export function OrderTrackingPage() {
               </div>
             </div>
 
+            {/* Transaction ID */}
+            {order?.stripe_payment_intent_id && (
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Transaction ID</p>
+                <p className="text-xs font-mono text-brand-dark-blue break-all">{order.stripe_payment_intent_id}</p>
+              </div>
+            )}
+
             {/* Items */}
             {order?.items?.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Items Ordered</p>
                 {order.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+                    {(item.product?.images?.[0] || item.product?.image_url || item.image_url) && (
+                      <div className="w-14 h-14 rounded-xl border border-gray-200 bg-white p-1 shrink-0 overflow-hidden">
+                        <img src={item.product?.images?.[0] || item.product?.image_url || item.image_url} alt={item.product?.name || item.name} className="w-full h-full object-contain" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{item.product?.name || item.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{item.product?.name || item.name}{item.variant?.color ? ` — ${item.variant.color}` : ''}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-xs text-gray-500">Qty: {item.qty || 1}</span>
-                        {(item.product?.product_code || item.product_code) && (
+                        {(item.variant?.code || item.product?.product_code || item.product_code) && (
                           <span className="text-xs font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
-                            #{item.product?.product_code || item.product_code}
+                            #{item.variant?.code || item.product?.product_code || item.product_code}
                           </span>
                         )}
                       </div>

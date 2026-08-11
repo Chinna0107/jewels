@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
+import { useCartStore } from './useCartStore';
+import { useWishlistStore } from './useWishlistStore';
 
 // Decode JWT and check expiry without any library
 function isTokenExpired(token) {
@@ -171,6 +173,8 @@ export const useAuthStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('token');
     set({ user: null, token: null, addresses: [], orders: [] });
+    useCartStore.getState().clearCart();
+    useWishlistStore.setState({ items: [] });
   },
 
   isLoggedIn: () => !!get().token,

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Store, CheckCircle, CreditCard, ChevronLeft, UserCircle2 } from 'lucide-react';
+import { ShieldCheck, Store, CheckCircle, CreditCard, ChevronLeft, UserCircle2, ShoppingCart } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useElements } from '@stripe/react-stripe-js';
 import { Header } from '../components/Header';
@@ -43,6 +43,7 @@ export function PickupPage() {
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [stripeCardElement, setStripeCardElement] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   
   const overlayRef = useRef(null);
   const iconRef = useRef(null);
@@ -229,6 +230,61 @@ export function PickupPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Steps */}
           <div className="lg:col-span-8">
+            {/* Mobile Order Summary (collapsible) */}
+            <div className="lg:hidden mb-4">
+              <button
+                onClick={() => setSummaryOpen(o => !o)}
+                className="w-full flex items-center justify-between bg-white/90 border border-brand-gold/20 rounded-2xl px-4 py-3.5 shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-brand-gold" />
+                  <span className="text-sm font-bold text-brand-dark-blue">Order Summary</span>
+                  <span className="text-xs bg-brand-gold/10 text-brand-gold font-bold px-2 py-0.5 rounded-full">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-brand-gold">${finalTotal.toFixed(2)}</span>
+                  <svg className={`w-4 h-4 text-brand-dark-blue/50 transition-transform ${summaryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </button>
+              {summaryOpen && (
+                <div className="mt-2 bg-white/90 border border-brand-gold/20 rounded-2xl p-4 shadow-sm space-y-4">
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {items.map(item => (
+                      <div key={`${item.product.id}-${item.variant?.size}`} className="flex gap-3">
+                        <div className="w-14 h-14 bg-white rounded-xl border border-brand-gold/10 p-1 shrink-0">
+                          <img src={item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</p>
+                          <p className="text-xs text-brand-dark-blue/60">Qty: {item.qty} | {item.variant?.size || 'Standard'}</p>
+                          <p className="text-sm font-bold text-brand-gold">${((item.variant?.price || item.product.price) * item.qty).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-dashed border-brand-gold/20 pt-3 space-y-1.5">
+                    <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                      <span>Item Total</span><span className="font-medium">${subtotal.toFixed(2)}</span>
+                    </div>
+                    {appliedCoupon && (
+                      <div className="flex justify-between text-sm text-brand-gold">
+                        <span>Coupon ({appliedCoupon.code})</span><span>- ${discount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {taxAmount > 0 && (
+                      <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                        <span>Tax ({taxConfig?.settings?.tax_percentage ?? 0}%)</span>
+                        <span className="font-medium">${taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-brand-dark-blue text-base pt-2 border-t border-brand-gold/20">
+                      <span>Grand Total</span><span className="text-brand-gold">${finalTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {renderStepIndicator()}
 
             {step === 1 && (

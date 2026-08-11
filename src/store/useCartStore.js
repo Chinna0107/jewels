@@ -99,14 +99,40 @@ export const useCartStore = create(
         const coupon = get().appliedCoupon;
         if (!coupon) return 0;
         
+        const cartItems = get().items;
+        let eligibleSubtotal = 0;
+        
+        const hasCatTarget = coupon.applicable_categories && coupon.applicable_categories.length > 0;
+        const hasCodeTarget = coupon.applicable_product_codes && coupon.applicable_product_codes.length > 0;
+        
+        if (hasCatTarget || hasCodeTarget) {
+          cartItems.forEach(item => {
+            let isEligible = false;
+            if (hasCatTarget && coupon.applicable_categories.includes(item.category)) {
+              isEligible = true;
+            }
+            if (hasCodeTarget && coupon.applicable_product_codes.includes(item.code)) {
+              isEligible = true;
+            }
+            if (isEligible) {
+              const currentPrice = item.our_price && item.our_price > 0 ? item.our_price : item.mrp;
+              eligibleSubtotal += (currentPrice * (item.qty || 1));
+            }
+          });
+        } else {
+          eligibleSubtotal = subtotal; // No restrictions, applies to all
+        }
+        
+        if (eligibleSubtotal <= 0) return 0;
+
         let discount = 0;
         const discountValue = Number(coupon.discount_value) || 0;
         if (coupon.discount_type === 'percentage') {
-          discount = subtotal * (discountValue / 100);
+          discount = eligibleSubtotal * (discountValue / 100);
         } else {
           discount = discountValue; // flat amount
         }
-        return discount > subtotal ? subtotal : discount;
+        return discount > eligibleSubtotal ? eligibleSubtotal : discount;
       },
 
       getTotal: () => {

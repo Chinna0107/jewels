@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, Star, Flame, Sparkles, Circle, Gift, Wind, Bell, Droplet, Flower2, Cloud, Grid } from 'lucide-react';
+import { Search, Heart, ShoppingCart, Star, Flame, Sparkles, Circle, Gift, Wind, Bell, Droplet, Flower2, Cloud, Grid, Package, MapPin, Globe, Users, Store } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
 import { useStoreData } from '../store/useStoreData';
@@ -12,6 +12,140 @@ import imgHeroBanner from '../assets/hero_banner.png';
 import bannerJewelry from '../assets/banner_jewelry.jpg';
 import imgMeditation from '../assets/story_meditation.png';
 import imgAarti from '../assets/story_aarti.png';
+
+// Inline Instagram icon (not available in this version of lucide-react)
+function InstagramIcon({ className, style }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <circle cx="12" cy="12" r="4"/>
+      <circle cx="17.5" cy="6.5" r="0.01" fill="currentColor" stroke="currentColor" strokeWidth="3"/>
+    </svg>
+  );
+}
+// ── Count-up hook (triggers when element enters viewport) ────────────────────
+function useCountUp(target, duration = 1800, suffix = '') {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const step = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            // Ease out cubic
+            const ease = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.floor(ease * target));
+            if (progress < 1) requestAnimationFrame(step);
+            else setCount(target);
+          };
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return { count, ref };
+}
+
+// ── Individual stat tile ─────────────────────────────────────────────────────
+function StatTile({ icon: Icon, target, prefix = '', suffix = '', label, link, color = '#D4AF37', decimals = 0 }) {
+  const { count, ref } = useCountUp(Math.round(target * Math.pow(10, decimals)), 2000);
+  const displayVal = decimals > 0
+    ? (count / Math.pow(10, decimals)).toFixed(decimals)
+    : count;
+
+  const inner = (
+    <div ref={ref} className="flex flex-col items-center gap-2 group cursor-default">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center mb-1 shadow-lg transition-transform duration-300 group-hover:scale-110"
+        style={{ background: `${color}18`, border: `1.5px solid ${color}50` }}
+      >
+        <Icon className="w-5 h-5" style={{ color }} />
+      </div>
+      <div className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
+        {prefix}{displayVal}{suffix}
+      </div>
+      <div className="text-[11px] md:text-xs font-semibold text-white/60 text-center leading-snug max-w-[100px]">{label}</div>
+    </div>
+  );
+
+  if (link) {
+    return (
+      <a href={link} target="_blank" rel="noopener noreferrer" className="contents">
+        <div ref={ref} className="flex flex-col items-center gap-2 group cursor-pointer">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-1 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:ring-2 ring-offset-2 ring-offset-[#0d1f3f]"
+            style={{ background: `${color}25`, border: `1.5px solid ${color}80`, ringColor: color }}
+          >
+            <Icon className="w-5 h-5" style={{ color }} />
+          </div>
+          <div className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none group-hover:underline underline-offset-2">
+            {prefix}{displayVal}{suffix}
+          </div>
+          <div className="text-[11px] md:text-xs font-semibold text-white/60 text-center leading-snug max-w-[100px] group-hover:text-white/90 transition-colors">{label}</div>
+        </div>
+      </a>
+    );
+  }
+  return inner;
+}
+
+// ── Stats banner ─────────────────────────────────────────────────────────────
+function StatsBanner() {
+  const stats = [
+    { icon: InstagramIcon, target: 12.6, decimals: 1, suffix: 'K', label: 'Instagram Family', color: '#E1306C', link: 'https://www.instagram.com/' },
+    { icon: Package,   target: 1000, suffix: '+', label: 'Orders Delivered Across USA', color: '#D4AF37' },
+    { icon: MapPin,    target: 500,  suffix: '+', label: 'Pick Up Orders', color: '#60a5fa' },
+    { icon: Globe,     target: 20,   suffix: '+', label: 'International Orders', color: '#34d399' },
+    { icon: Users,     target: 1000, suffix: '+', label: 'Happy Customers', color: '#f472b6' },
+    { icon: Store,     target: 15,   suffix: '+', label: 'Offline Expo Stalls', color: '#a78bfa' },
+  ];
+
+  return (
+    <div className="animate-section px-4 md:px-8 mb-10">
+      <div
+        className="relative rounded-2xl overflow-hidden py-8 px-6 md:px-10"
+        style={{
+          background: 'linear-gradient(135deg, #08183A 0%, #0d2552 60%, #08183A 100%)',
+          boxShadow: '0 8px 40px rgba(8,24,58,0.35), inset 0 1px 0 rgba(212,175,55,0.15)'
+        }}
+      >
+        {/* Decorative gold top border */}
+        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)' }} />
+        {/* Subtle pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #D4AF37 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+
+        <div className="relative z-10">
+          {/* Heading */}
+          <div className="text-center mb-8">
+            <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#D4AF37] mb-1">Our Journey So Far</p>
+            <h2 className="font-serif text-xl md:text-2xl font-bold text-white">Trusted by Thousands Across the Globe</h2>
+          </div>
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-6 md:gap-4">
+            {stats.map((s, i) => (
+              <StatTile key={i} {...s} />
+            ))}
+          </div>
+        </div>
+
+        {/* Decorative gold bottom border */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)' }} />
+      </div>
+    </div>
+  );
+}
 
 export function HomePage() {
   const container = useRef(null);
@@ -249,6 +383,9 @@ export function HomePage() {
             </div>
           </div>
         )}
+
+        {/* ── Stats Banner ─────────────────────────────────────── */}
+        <StatsBanner />
 
         {/* Offers Section */}
         {products.filter(p => p.is_offer).length > 0 && (

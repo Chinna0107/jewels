@@ -219,7 +219,7 @@ function DesktopFullHeader({ cartCount, wishlistCount, token, user, handleLogout
               <div className="relative group">
                 <div className="flex items-center cursor-pointer py-2 px-1">
                   <span className="text-sm font-medium text-gray-200 group-hover:text-brand-gold transition-colors">
-                    Offers
+                    Sale
                   </span>
                   <ChevronDown className="w-4 h-4 ml-1 text-gray-200 group-hover:text-brand-gold transition-transform group-hover:-rotate-180" />
                 </div>
@@ -277,6 +277,11 @@ export function Header({ variant = 'default', title, showShare = false }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
   const [mobileOffersOpen, setMobileOffersOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileSearchQ, setMobileSearchQ] = useState('');
+  const mobileSearchRef = useRef(null);
+  const mobileInputRef = useRef(null);
+  const { products } = useStoreData();
   const cartItems = useCartStore((state) => state.items);
   const cartCount = cartItems.reduce((acc, item) => acc + item.qty, 0);
 
@@ -285,6 +290,17 @@ export function Header({ variant = 'default', title, showShare = false }) {
 
   const { token, user, logout, fetchProfile } = useAuthStore();
   const { categories, offers } = useStoreData();
+
+  const mobileSearchTrimmed = mobileSearchQ.trim().toLowerCase();
+  const mobileSearchResults = mobileSearchTrimmed
+    ? products.filter(p =>
+        p.name?.toLowerCase().includes(mobileSearchTrimmed) ||
+        p.category?.toLowerCase().includes(mobileSearchTrimmed)
+      ).slice(0, 6)
+    : [];
+
+  const openMobileSearch = () => { setMobileSearchOpen(true); setMobileSearchQ(''); setTimeout(() => mobileInputRef.current?.focus(), 100); };
+  const closeMobileSearch = () => { setMobileSearchOpen(false); setMobileSearchQ(''); };
   const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
@@ -541,7 +557,7 @@ export function Header({ variant = 'default', title, showShare = false }) {
 
             {/* Right: Icons */}
             <div className="flex items-center gap-1 z-10">
-              <button onClick={() => navigate('/search')} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+              <button onClick={openMobileSearch} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 <Search className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
               </button>
               {token ? (
@@ -567,6 +583,74 @@ export function Header({ variant = 'default', title, showShare = false }) {
           </div>
         </header>
       </div>
+
+      {/* Mobile Search Overlay */}
+      <AnimatePresence>
+        {mobileSearchOpen && (
+          <motion.div
+            key="mobile-search"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] md:hidden flex flex-col"
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeMobileSearch} />
+            <div className="relative bg-brand-dark-blue px-4 pt-4 pb-3 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2.5">
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    ref={mobileInputRef}
+                    type="text"
+                    value={mobileSearchQ}
+                    onChange={e => setMobileSearchQ(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && mobileSearchTrimmed) { closeMobileSearch(); navigate(`/search?q=${encodeURIComponent(mobileSearchTrimmed)}`); }
+                      if (e.key === 'Escape') closeMobileSearch();
+                    }}
+                    placeholder="Search products, categories..."
+                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-sm focus:outline-none"
+                  />
+                  {mobileSearchQ && (
+                    <button onClick={() => setMobileSearchQ('')}><X className="w-4 h-4 text-gray-400" /></button>
+                  )}
+                </div>
+                <button onClick={closeMobileSearch} className="text-white/70 font-semibold text-sm shrink-0">Cancel</button>
+              </div>
+              {mobileSearchTrimmed && (
+                <div className="mt-2 bg-white rounded-2xl overflow-hidden shadow-xl">
+                  {mobileSearchResults.length > 0 ? (
+                    <>
+                      {mobileSearchResults.map(p => {
+                        const img = p.variants?.[0]?.images?.[0] || p.image_url;
+                        return (
+                          <button key={p.id}
+                            onClick={() => { closeMobileSearch(); navigate(`/product/${p.id}`); }}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-brand-beige transition-colors text-left border-b border-gray-50 last:border-0">
+                            {img && <img src={img} className="w-10 h-10 rounded-lg object-cover shrink-0" />}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-brand-dark-blue line-clamp-1">{p.name}</p>
+                              <p className="text-xs text-brand-dark-blue/50">{p.category}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => { closeMobileSearch(); navigate(`/search?q=${encodeURIComponent(mobileSearchTrimmed)}`); }}
+                        className="w-full text-center text-xs font-bold text-brand-gold py-3 border-t border-brand-gold/10 hover:bg-brand-beige transition-colors">
+                        See all results for "{mobileSearchQ}"
+                      </button>
+                    </>
+                  ) : (
+                    <div className="px-4 py-5 text-sm text-brand-dark-blue/50 text-center">No results for "{mobileSearchQ}"</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

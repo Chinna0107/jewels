@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, ShoppingBag, FileText, RefreshCw, Store, Truck, MapPin, MessageCircle } from 'lucide-react';
+import { Package, ShoppingBag, FileText, RefreshCw, Store, Truck, MapPin, MessageCircle, CreditCard, ExternalLink, Tag } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCartStore } from '../store/useCartStore';
 import { Header } from '../components/Header';
@@ -45,20 +45,25 @@ export function MyOrdersPage() {
 
     const isPickup = order.order_type === 'pickup';
     const subtotal = items.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || item.price || 0) * item.qty), 0);
-    const shippingCost = !isPickup && Number(order.total) - subtotal > 0 ? Number(order.total) - subtotal : 0;
+    const discountAmt = parseFloat(order.discount_amount) || 0;
+    const shippingCost = parseFloat(order.shipping_fee) ?? (!isPickup && Number(order.total) - subtotal > 0 ? Number(order.total) - subtotal : 0);
+    const taxAmt = parseFloat(order.tax_amount) || 0;
     const orderDate = order.created_at
       ? new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })
       : '—';
 
     const rows = items.map((item, idx) => {
-      const img = item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
-      const code = item.product?.product_code || item.product_code || '';
+      const variantColor = (item.variant?.color || '').toLowerCase().trim();
+      const matchedVariant = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
+      const img = item.variant?.image || matchedVariant?.images?.[0] || item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
+      const absImg = img && img.startsWith('http') ? img : (img ? `${window.location.origin}${img.startsWith('/') ? '' : '/'}${img}` : '');
+      const code = item.variant?.sku || item.variant?.code || matchedVariant?.code || item.product?.product_code || item.product_code || item.sku || '';
       return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#FFFAF9'}">
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;color:#888;">${idx + 1}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;">
           <div style="display:flex;align-items:center;gap:10px;">
-            ${img ? `<img src="${img}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;" />` : `<div style="width:44px;height:44px;background:#FDF8F0;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;"></div>`}
+            ${absImg ? `<img src="${absImg}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;" />` : `<div style="width:44px;height:44px;background:#FDF8F0;border-radius:6px;border:1px solid #f0e0c0;flex-shrink:0;"></div>`}
             <div>
               <div style="font-weight:700;color:#222;font-size:9.5pt;">${escapeHtml(item.product?.name || item.name || '')}</div>
               ${code ? `<div style="font-size:8pt;color:#b8860b;font-weight:600;margin-top:2px;">#${escapeHtml(code)}</div>` : ''}
@@ -68,6 +73,7 @@ export function MyOrdersPage() {
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${escapeHtml(item.variant?.size || item.size || '—')}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;">${item.qty}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:right;font-size:9pt;font-weight:600;">$${Number(item.variant?.price || item.product?.price || item.price || 0).toFixed(2)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:right;font-size:9pt;font-weight:700;color:#08183A;">$${(Number(item.variant?.price || item.product?.price || item.price || 0) * item.qty).toFixed(2)}</td>
       </tr>`;
     }).join('');
 
@@ -93,15 +99,16 @@ export function MyOrdersPage() {
 <table style="width:100%;border-collapse:collapse;border-bottom:3px solid #08183A;padding-bottom:16px;margin-bottom:20px;">
   <tr>
     <td style="vertical-align:middle;width:50%;">
-      <img src="${logoUrl}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
+      <img src="${new URL(logoUrl, window.location.href).href}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
     </td>
     <td style="vertical-align:top;text-align:right;">
       <div style="font-size:20pt;font-weight:900;color:#08183A;letter-spacing:-0.5px;">INVOICE</div>
       <div style="font-size:9pt;color:#555;margin-top:6px;line-height:1.7;">
         <strong>Invoice No:</strong> #${escapeHtml(order.order_number || String(order.id))}<br>
         <strong>Date:</strong> ${orderDate}<br>
-        <strong>Order Type:</strong> <span style="font-weight:700;color:${isPickup ? '#1d4ed8' : '#059669'};">${isPickup ? '🏪 Store Pickup' : '🚚 Home Delivery'}</span><br>
+        <strong>Order Type:</strong> <span style="font-weight:700;color:${isPickup ? '#1d4ed8' : '#059669'};">${isPickup ? '🏪 Store Pickup' : '🚚 Shipping'}</span><br>
         <strong>Status:</strong> ${escapeHtml(order.status)}
+        ${order.stripe_payment_intent_id ? `<br><strong>Transaction ID:</strong> <span style="font-family:monospace;font-size:8pt;color:#555;">${escapeHtml(order.stripe_payment_intent_id)}</span>` : ''}
       </div>
     </td>
   </tr>
@@ -141,7 +148,8 @@ export function MyOrdersPage() {
       <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:left;width:45%;">Item</th>
       <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:15%;">Size</th>
       <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:center;width:10%;">Qty</th>
-      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:right;width:15%;">Price</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:right;width:12%;">Unit Price</th>
+      <th style="padding:10px 12px;color:#D4AF37;font-size:9pt;text-align:right;width:13%;">Total</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
@@ -154,7 +162,9 @@ export function MyOrdersPage() {
     <td style="width:45%;">
       <table style="width:100%;border-collapse:collapse;">
         <tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Subtotal</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;width:110px;">$${subtotal.toFixed(2)}</td></tr>
+        ${discountAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#059669;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Discount${order.coupon_code ? ' (' + order.coupon_code + ')' : ''}</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;color:#059669;">-$${discountAmt.toFixed(2)}</td></tr>` : ''}
         ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
+        ${taxAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Tax</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${taxAmt.toFixed(2)}</td></tr>` : ''}
         <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
       </table>
     </td>
@@ -231,6 +241,9 @@ export function MyOrdersPage() {
                     <p className="text-xs text-[#08183A]/60 mt-1">
                       Placed on {new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })}
                     </p>
+                    {order.stripe_payment_intent_id && (
+                      <p className="text-[10px] text-gray-400 font-mono mt-1">Txn: {order.stripe_payment_intent_id}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex items-center gap-1.5 shadow-sm ${
@@ -282,21 +295,34 @@ export function MyOrdersPage() {
 
                 {/* Pickup Info Banner */}
                 {order.order_type === 'pickup' && (
-                  <div className="mx-6 mb-2 bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <MessageCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <p className="text-xs text-blue-700 leading-relaxed">
-                        Once your order is ready, our team will message you for pickup via <strong>WhatsApp/Text</strong> from <strong>+1 940-465-6563</strong>
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
-                      <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-blue-800">Pickup Location</p>
-                        <p className="text-xs text-blue-700">2965 FM1385, Aubrey, TX 76227</p>
-                        <a href="https://maps.google.com/?q=2965+FM1385,+Aubrey,+TX+76227" target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-600 font-bold underline hover:text-blue-800">View on Google Maps →</a>
+                  <div className="mx-6 mb-4 space-y-3">
+                    {/* Notification */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <MessageCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-blue-700 leading-relaxed">
+                          Once your order is ready, our team will message you for pickup via <strong>WhatsApp/Text</strong> from <strong>+1 940-465-6563</strong>
+                        </p>
                       </div>
+                      <div className="flex items-start gap-3 border-t border-blue-200 pt-3">
+                        <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-blue-800">Pickup Location</p>
+                          <p className="text-xs text-blue-700">2965 FM1385, Aubrey, TX 76227</p>
+                          <a href="https://maps.google.com/?q=2965+FM1385,+Aubrey,+TX+76227" target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-blue-600 font-bold underline hover:text-blue-800">View on Google Maps →</a>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Pickup T&C */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2">⚠️ Pickup Terms & Conditions</p>
+                      <ul className="space-y-1.5 text-xs text-amber-800 leading-relaxed list-none">
+                        <li className="flex items-start gap-2"><span className="shrink-0 mt-0.5">•</span><span>Please inspect your item(s) carefully at the time of pickup before leaving the store.</span></li>
+                        <li className="flex items-start gap-2"><span className="shrink-0 mt-0.5">•</span><span><strong>Any damage must be reported within 1–2 business days</strong> of pickup. Claims made after this window cannot be accepted.</span></li>
+                        <li className="flex items-start gap-2"><span className="shrink-0 mt-0.5">•</span><span>Bring a valid photo ID and your order confirmation when picking up.</span></li>
+                        <li className="flex items-start gap-2"><span className="shrink-0 mt-0.5">•</span><span>Orders not picked up within 7 days of the ready notification may be subject to restocking.</span></li>
+                      </ul>
                     </div>
                   </div>
                 )}
@@ -304,47 +330,190 @@ export function MyOrdersPage() {
                 {/* Items */}
                 <div className="px-6 py-4 bg-white">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Array.isArray(order.items) && order.items.map((item, i) => (
-                      <div key={i} className="flex items-start gap-4 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors">
-                        <div className="w-16 h-16 bg-[#FDF8F0] rounded-xl flex items-center justify-center shrink-0 border border-[#08183A]/10 overflow-hidden">
-                          {item.image_url || item.product?.image_url ? (
-                            <img src={item.image_url || item.product?.image_url} alt={item.name || item.product?.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package className="w-8 h-8 text-[#08183A]/40" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0 pt-1">
-                          <p className="text-sm font-bold text-[#08183A] line-clamp-1">
-                            <Link to={`/product/${item.product?.id || item.id}`} className="hover:text-[#D4AF37] transition-colors">
-                              {item.name || item.product?.name || 'Product'}
-                            </Link>
-                          </p>
-                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                            <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">Qty: {item.qty || 1}</span>
-                            {(item.size || item.variant?.size) && (
-                              <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">{item.size || item.variant?.size}</span>
-                            )}
-                            {(item.product?.product_code || item.product_code) && (
-                              <span className="text-xs text-[#D4AF37] font-bold bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
-                                #{item.product?.product_code || item.product_code}
-                              </span>
+                    {(() => {
+                      let parsedItems = [];
+                      try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+                      return parsedItems.map((item, i) => {
+                        const variantColor = (item.variant?.color || '').toLowerCase().trim();
+                        const matchedVariant = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
+                        const variantImg = item.variant?.image || matchedVariant?.images?.[0] || item.product?.images?.[0] || item.product?.image_url;
+                        const variantCode = item.variant?.code || matchedVariant?.code;
+                        const sizeCode = item.variant?.size ? matchedVariant?.sizes?.find(s => s.size === item.variant.size)?.code : null;
+                        const urlCode = sizeCode || variantCode || variantColor;
+                        const productName = item.product?.name || item.name || 'Product';
+                        const productId = item.product?.id || item.id;
+                        const unitPrice = Number(item.variant?.price || item.product?.price || item.price || 0);
+                        const qty = item.qty || 1;
+                        return (
+                        <div key={i} className="flex items-start gap-4 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors">
+                          <div className="w-16 h-16 bg-[#FDF8F0] rounded-xl flex items-center justify-center shrink-0 border border-[#08183A]/10 overflow-hidden">
+                            {variantImg ? (
+                              <img src={variantImg} alt={productName} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="w-8 h-8 text-[#08183A]/40" />
                             )}
                           </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <p className="text-sm font-bold text-[#08183A] line-clamp-1">
+                              <Link to={`/product/${productId}${urlCode ? `?variantCode=${urlCode}` : ''}`} className="hover:text-[#D4AF37] transition-colors">
+                                {productName}{item.variant?.color ? ` — ${item.variant.color}` : ''}
+                              </Link>
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {(item.size || item.variant?.size) && (
+                                <span className="text-xs text-[#08183A]/60 bg-white px-2 py-0.5 rounded-md border border-gray-100">{item.size || item.variant?.size}</span>
+                              )}
+                              {variantCode && (
+                                <span className="text-xs text-[#D4AF37] font-bold bg-[#D4AF37]/10 px-2 py-0.5 rounded-md border border-[#D4AF37]/20">#{variantCode}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className="text-xs text-[#08183A]/50">${unitPrice.toFixed(2)} × {qty}</span>
+                              <span className="text-xs text-[#08183A]/30">=</span>
+                              <span className="text-xs font-bold text-[#08183A]">${(unitPrice * qty).toFixed(2)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm font-bold text-[#08183A] pt-1">${Number(item.price || item.variant?.price || item.product?.price || 0).toLocaleString('en-IN')}</p>
-                      </div>
-                    ))}
+                      );
+                    });
+                    })()}
                   </div>
                 </div>
 
+                {/* Price Summary */}
+                {(() => {
+                  let parsedItems = [];
+                  try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+                  const subtotal = parsedItems.reduce((sum, item) => sum + (Number(item.variant?.price || item.product?.price || item.price || 0) * (item.qty || 1)), 0);
+                  const discount = parseFloat(order.discount_amount) || 0;
+                  const shipping = parseFloat(order.shipping_fee) || 0;
+                  const tax = parseFloat(order.tax_amount) || 0;
+                  const taxRate = subtotal > 0 && tax > 0 ? ((tax / (subtotal - discount + shipping)) * 100).toFixed(2) : null;
+                  return (
+                    <div className="mx-6 mb-4 rounded-xl border border-gray-100 overflow-hidden">
+                      <div className="px-4 py-2 bg-[#08183A]/5 border-b border-gray-100">
+                        <p className="text-[10px] font-bold text-[#08183A]/50 uppercase tracking-wider">Price Summary</p>
+                      </div>
+                      <div className="px-4 py-3 space-y-2 bg-white">
+                        {/* Per-item breakdown */}
+                        {parsedItems.map((item, i) => {
+                          const unitPrice = Number(item.variant?.price || item.product?.price || item.price || 0);
+                          const qty = item.qty || 1;
+                          const name = item.product?.name || item.name || 'Item';
+                          return (
+                            <div key={i} className="flex justify-between text-xs text-[#08183A]/70">
+                              <span className="truncate max-w-[60%]">{name}{qty > 1 ? ` ×${qty}` : ''}</span>
+                              <span className="font-semibold shrink-0">
+                                {qty > 1 ? <span className="text-[#08183A]/40 mr-1">${unitPrice.toFixed(2)} ea</span> : null}
+                                ${(unitPrice * qty).toFixed(2)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="border-t border-dashed border-gray-100 pt-2 mt-1 space-y-1.5">
+                          <div className="flex justify-between text-xs text-[#08183A]/70">
+                            <span>Item Total</span>
+                            <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                          </div>
+                          {discount > 0 && (
+                            <div className="flex justify-between text-xs text-green-600">
+                              <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{order.coupon_code ? `Discount (${order.coupon_code})` : 'Discount'}</span>
+                              <span className="font-semibold">-${discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {shipping > 0 && (
+                            <div className="flex justify-between text-xs text-[#08183A]/70">
+                              <span>Shipping Fee</span>
+                              <span className="font-semibold">${shipping.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {tax > 0 && (
+                            <div className="flex justify-between text-xs text-[#08183A]/70">
+                              <span>Tax{taxRate ? ` (${taxRate}%)` : ''}</span>
+                              <span className="font-semibold">${tax.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-[#08183A] border-t border-gray-200 pt-2 mt-1">
+                          <span>Grand Total</span>
+                          <span className="text-[#D4AF37]">${Number(order.total).toFixed(2)}</span>
+                        </div>
+                        <p className="text-center text-[10px] text-[#08183A]/40 pt-1">🔒 100% Secure Transaction</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Payment Details */}
+                <div className="mx-6 mb-4 rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-2 bg-[#08183A]/5 border-b border-gray-100">
+                    <p className="text-[10px] font-bold text-[#08183A]/50 uppercase tracking-wider">Payment Details</p>
+                  </div>
+                  <div className="px-4 py-3 bg-white space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[#08183A]/60">Payment Mode</span>
+                      <span className="text-xs font-bold text-[#08183A] capitalize flex items-center gap-1.5">
+                        {order.payment_method === 'stripe' ? (
+                          <><CreditCard className="w-3.5 h-3.5 text-[#635BFF]" /> Online (Card)</>  
+                        ) : order.payment_method === 'cod' ? (
+                          <>💵 Cash on Delivery</>
+                        ) : (
+                          order.payment_method || '—'
+                        )}
+                      </span>
+                    </div>
+                    {order.card_last4 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#08183A]/60">Card</span>
+                        <span className="text-xs font-bold text-[#08183A] font-mono flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-[#08183A]/40" />
+                          •••• •••• •••• {order.card_last4}
+                          {order.card_brand && <span className="text-[#08183A]/40 font-sans capitalize ml-1">{order.card_brand}</span>}
+                        </span>
+                      </div>
+                    )}
+                    {order.payment_method === 'cod' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#08183A]/60">Amount Pending</span>
+                        <span className="text-xs font-bold text-amber-600">${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {order.stripe_payment_intent_id && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-xs text-[#08183A]/60 shrink-0">Transaction ID</span>
+                        <span className="text-[10px] font-mono text-[#08183A]/70 truncate">{order.stripe_payment_intent_id}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tracking Section — shipping orders only */}
+                {order.order_type !== 'pickup' && (order.tracking_id || order.tracking_link) && (
+                  <div className="mx-6 mb-4 rounded-xl border border-purple-100 overflow-hidden">
+                    <div className="px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
+                      <Truck className="w-3.5 h-3.5 text-purple-600" />
+                      <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Shipment Tracking</p>
+                    </div>
+                    <div className="px-4 py-3 bg-white space-y-2">
+                      {order.tracking_id && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[#08183A]/60">Tracking ID</span>
+                          <span className="text-xs font-mono font-bold text-[#08183A]">{order.tracking_id}</span>
+                        </div>
+                      )}
+                      {order.tracking_link && (
+                        <a href={order.tracking_link} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-between w-full mt-1 px-3 py-2 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                          <span className="text-xs font-bold text-purple-700">Track Package</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-purple-600" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Footer Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-end gap-3 px-6 py-4 bg-[#FDF8F0] border-t border-[#08183A]/10">
-                  {order.tracking_link && (
-                    <a href={order.tracking_link} target="_blank" rel="noopener noreferrer"
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#08183A] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-900 transition-colors shadow-sm sm:mr-auto">
-                      📦 Track Order
-                    </a>
-                  )}
                   <button onClick={() => openInvoice(order)}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#08183A] border border-[#08183A]/20 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#08183A]/5 transition-colors shadow-sm">
                     <FileText className="w-4 h-4 text-[#08183A]" /> Download Invoice
