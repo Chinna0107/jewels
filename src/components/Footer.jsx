@@ -52,13 +52,14 @@ export function Footer() {
             <Link to="/category/all" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Shop All</Link>
             <Link to="/profile" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>My Account</Link>
             <Link to="/my-orders" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Order Tracking</Link>
+            <Link to="/contact" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Contact Us</Link>
           </div>
 
           {/* Customer Service */}
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-bold mb-2" style={{ color: '#C6A184' }}>Customer Service</h3>
-            <Link to="/contact" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Contact Us</Link>
-            <Link to="/about" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>About Us</Link>
+            <Link to="/terms-of-service" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Terms & Conditions</Link>
+            <Link to="/privacy-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Privacy Policy</Link>
             <Link to="/shipping-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Shipping Policy</Link>
             <Link to="/returns-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Returns & Exchanges</Link>
             <Link to="/contact#faq-section" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>FAQs</Link>

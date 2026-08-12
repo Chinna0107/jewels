@@ -5,6 +5,16 @@ import { useWishlistStore } from '../store/useWishlistStore';
 import { useCartStore } from '../store/useCartStore';
 import { useStoreData } from '../store/useStoreData';
 
+function InstagramIcon({ className }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.01" fill="currentColor" stroke="currentColor" strokeWidth="3" />
+    </svg>
+  );
+}
+
 export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
   const navigate = useNavigate();
   const { toggleWishlist, items: wishlistItems } = useWishlistStore();
@@ -32,7 +42,9 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
     }
   }
   const firstImg = firstVariant.images && firstVariant.images.length > 0 ? firstVariant.images[0] : "";
-  const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0 ? firstVariant.sizes[0] : { size: 'Standard', mrp: 0, our_price: 0 };
+  const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0 
+    ? { ...firstVariant.sizes[0], stock: firstVariant.sizes[0].stock ?? product.stock ?? 0 } 
+    : { size: 'Standard', mrp: 0, our_price: 0, stock: product.stock ?? 0 };
   
   const originalPrice = Number(defaultSize.mrp) || Number(defaultSize.our_price) || 0;
   let displayPrice = Number(defaultSize.our_price) || originalPrice;
@@ -52,8 +64,8 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
   const totalStock = variants.reduce((sum, v) => {
     const sizes = v.sizes && v.sizes.length > 0 ? v.sizes : [];
     return sum + sizes.reduce((s2, sz) => s2 + (Number(sz.stock) || 0), 0);
-  }, 0);
-  const isOutOfStock = totalStock <= 0;
+  }, product.stock !== undefined ? Number(product.stock) : 0);
+  const isOutOfStock = totalStock <= 0 || (defaultSize.stock !== undefined && Number(defaultSize.stock) <= 0 && variants.length === 1 && (!firstVariant.sizes || firstVariant.sizes.length <= 1));
 
   const handleWishlist = (e) => {
     e.preventDefault();
@@ -75,10 +87,20 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
     }
   };
 
-  const handleAddToCart = (e) => {
+  const handleInstagram = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, { ...defaultSize, price: displayPrice }, 1, firstVariant.color);
+    const reelUrl = product.instagram_reel_url || firstVariant?.instagram_link;
+    if (reelUrl) {
+      window.open(reelUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleAddToCart = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOutOfStock) return;
+    await addToCart(product, { ...defaultSize, price: displayPrice, stock: defaultSize.stock }, 1, firstVariant.color);
   };
 
   const handleCardClick = () => {
@@ -104,9 +126,6 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
         <div className="flex flex-col justify-center flex-grow">
           <div className="flex justify-between items-start">
             <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
-            {(firstVariant.code || product.product_code) && (
-               <span className="text-[9px] text-gray-400 font-mono ml-2 shrink-0">{firstVariant.code || product.product_code}</span>
-            )}
           </div>
           
           <div className="flex items-center gap-1 mb-2">
@@ -151,6 +170,15 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
           >
             <Share2 className="w-4 h-4" />
           </button>
+          {(product.instagram_reel_url || firstVariant?.instagram_link) && (
+            <button 
+              onClick={handleInstagram}
+              title="Watch Instagram Reel"
+              className="p-1.5 bg-white/90 rounded-full shadow-sm text-[#E1306C] hover:scale-110 transition-transform"
+            >
+              <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
+            </button>
+          )}
         </div>
       </Link>
     );
@@ -168,6 +196,15 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
         <button onClick={handleShare} className="p-1.5 hover:scale-110 transition-transform bg-white/90 rounded-full shadow-sm">
           <Share2 className="w-4 h-4 text-gray-400" />
         </button>
+        {(product.instagram_reel_url || firstVariant?.instagram_link) && (
+          <button 
+            onClick={handleInstagram} 
+            title="Watch Instagram Reel"
+            className="p-1.5 hover:scale-110 transition-transform bg-white/90 rounded-full shadow-sm text-[#E1306C]"
+          >
+            <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
+          </button>
+        )}
       </div>
 
       <div className="relative aspect-square bg-gray-50 overflow-hidden rounded-xl mb-3">
@@ -176,13 +213,8 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
             {parseFloat(activeOffer.discount_percentage)}% OFF
           </div>
         )}
-        {isOutOfStock && (
-          <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
-            <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">Out of Stock</span>
-          </div>
-        )}
         {firstImg ? (
-          <img src={firstImg} alt={product.name} className={`w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110 ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
+          <img src={firstImg} alt={product.name} className="w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
         )}
@@ -192,9 +224,6 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
         <div className="flex justify-between items-start mb-1.5">
           <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{product.name}</h3>
         </div>
-        {(firstVariant.code || product.product_code) && (
-           <div className="text-[10px] text-gray-400 font-mono mb-1">{firstVariant.code || product.product_code}</div>
-        )}
         
         <div className="flex items-center gap-1 mb-2">
           <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />

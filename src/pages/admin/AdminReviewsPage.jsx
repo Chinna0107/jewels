@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Plus, Trash2, Edit2, X, Save, MessageSquare } from 'lucide-react';
+import { Star, Plus, Trash2, Edit2, X, Save, MessageSquare, Upload, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
 
-const EMPTY = { name: '', rating: 5, review: '', is_active: true };
+const EMPTY = { name: '', rating: 5, review: '', image_url: '', is_active: true };
 
 export function AdminReviewsPage() {
   const [reviews, setReviews] = useState([]);
@@ -12,6 +12,7 @@ export function AdminReviewsPage() {
   const [modal, setModal] = useState(null); // null | 'add' | review object
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { fetchReviews(); }, []);
 
@@ -31,7 +32,43 @@ export function AdminReviewsPage() {
   };
 
   const openAdd = () => { setForm(EMPTY); setModal('add'); };
-  const openEdit = (r) => { setForm({ name: r.name, rating: r.rating, review: r.review, is_active: r.is_active ?? true }); setModal(r); };
+  const openEdit = (r) => { 
+    setForm({ 
+      name: r.name, 
+      rating: r.rating, 
+      review: r.review, 
+      image_url: r.image_url || '', 
+      is_active: r.is_active ?? true 
+    }); 
+    setModal(r); 
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const body = new FormData();
+      body.append('image', file);
+      const res = await fetch(`${BACKEND_URL}/admin/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body
+      });
+      const data = await res.json();
+      if (data.url) {
+        setForm(prev => ({ ...prev, image_url: data.url }));
+      } else {
+        alert(data.error || 'Failed to upload image');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.review.trim()) return;
@@ -100,7 +137,7 @@ export function AdminReviewsPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#FDF8F0] border-b border-[#08183A]/10">
-                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Client & Image</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Stars</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Review</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Status</th>
@@ -112,10 +149,23 @@ export function AdminReviewsPage() {
                 <tr key={r.id} className="hover:bg-[#FDF8F0]/50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#08183A] text-[#D4AF37] flex items-center justify-center font-bold text-sm shrink-0">
-                        {r.name?.charAt(0).toUpperCase()}
+                      {r.image_url ? (
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-[#08183A]/20 shrink-0">
+                          <img src={r.image_url} alt={r.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#08183A] text-[#D4AF37] flex items-center justify-center font-bold text-sm shrink-0">
+                          {r.name?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-semibold text-[#08183A] text-sm block">{r.name}</span>
+                        {r.image_url ? (
+                          <span className="text-[10px] text-green-600 font-medium">Image attached</span>
+                        ) : (
+                          <span className="text-[10px] text-gray-400">No image</span>
+                        )}
                       </div>
-                      <span className="font-semibold text-[#08183A] text-sm">{r.name}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -153,39 +203,84 @@ export function AdminReviewsPage() {
       {modal !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-[#08183A]/10 flex items-center justify-between">
+            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-[#08183A]/10 flex items-center justify-between shrink-0">
               <h2 className="font-serif text-lg font-bold text-[#08183A]">{modal === 'add' ? 'Add Review' : 'Edit Review'}</h2>
               <button onClick={() => setModal(null)} className="text-[#08183A]/40 hover:text-[#08183A]"><X className="w-5 h-5" /></button>
             </div>
-            <div className="p-6 space-y-4">
+            
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
-                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-1 block">Name</label>
+                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-1 block">Customer Name</label>
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="Customer name"
+                  placeholder="e.g. Sarah M."
                   className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none text-sm" />
               </div>
+
+              {/* Review Image Upload Section */}
               <div>
-                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-2 block">Stars</label>
+                <div className="flex justify-between items-baseline mb-1">
+                  <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider block">Review Image</label>
+                  <span className="text-[11px] text-[#08183A]/50 font-medium">Standard 4:3 aspect ratio recommended</span>
+                </div>
+                
+                <div className="flex items-center gap-3 bg-[#FDF8F0] p-3 rounded-xl border border-[#08183A]/10">
+                  {form.image_url ? (
+                    <div className="w-20 h-15 aspect-[4/3] rounded-lg overflow-hidden border border-[#08183A]/20 shrink-0 relative group">
+                      <img src={form.image_url} alt="Review attachment" className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => setForm({ ...form, image_url: '' })}
+                        className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-15 aspect-[4/3] rounded-lg bg-white border border-dashed border-[#08183A]/20 shrink-0 flex flex-col items-center justify-center text-[#08183A]/30">
+                      <ImageIcon className="w-6 h-6" />
+                      <span className="text-[9px] mt-0.5">4:3 Ratio</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <input type="file" id="rev_image" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    <label 
+                      htmlFor="rev_image" 
+                      className={`inline-flex items-center gap-2 bg-[#08183A] hover:bg-[#D4AF37] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploading ? 'Uploading...' : form.image_url ? 'Change Image' : 'Upload Image'}
+                    </label>
+                    <p className="text-[10px] text-[#08183A]/50 mt-1">Upload a customer photo or product photo in 4:3 or standard size</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-2 block">Rating</label>
                 <StarPicker value={form.rating} onChange={v => setForm({ ...form, rating: v })} />
               </div>
+              
               <div>
-                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-1 block">Review</label>
+                <label className="text-xs font-bold text-[#08183A]/60 uppercase tracking-wider mb-1 block">Review Text</label>
                 <textarea value={form.review} onChange={e => setForm({ ...form, review: e.target.value })}
-                  rows={4} placeholder="Write the review..."
+                  rows={4} placeholder="Write the review content..."
                   className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none text-sm resize-none" />
               </div>
-              <div className="flex items-center gap-2">
+              
+              <div className="flex items-center gap-2 pt-1">
                 <input type="checkbox" id="rev_active" checked={form.is_active}
-                  onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4" />
+                  onChange={e => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 accent-[#08183A]" />
                 <label htmlFor="rev_active" className="text-sm font-semibold text-[#08183A] cursor-pointer">Show on homepage</label>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-[#08183A]/10 flex gap-3">
+
+            <div className="px-6 py-4 border-t border-[#08183A]/10 flex gap-3 shrink-0">
               <button onClick={() => setModal(null)} className="flex-1 px-4 py-2 bg-[#FDF8F0] text-[#08183A] rounded-xl font-semibold hover:bg-gray-100">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.review.trim()}
+              <button onClick={handleSave} disabled={saving || uploading || !form.name.trim() || !form.review.trim()}
                 className="flex-1 px-4 py-2 bg-[#08183A] text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-[#D4AF37] transition-colors">
-                {saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save</>}
+                {saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Review</>}
               </button>
             </div>
           </motion.div>

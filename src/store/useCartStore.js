@@ -23,33 +23,102 @@ export const useCartStore = create(
       deliveryCharge: 0,
       appliedCoupon: null,
       
-      addToCart: (product, variant, qty = 1, color) => {
-        const stock = variant?.stock !== undefined ? Number(variant.stock) : Number(product?.stock || 0);
-        if (stock <= 0) {
+      addToCart: async (product, variant, qty = 1, color) => {
+        if (!product || !product.id) return false;
+
+        const variantWithColor = { ...variant, color: color || variant?.color || product?.color || '' };
+        const state = get();
+        const existingItem = state.items.find(
+          (i) => i.product.id === product.id && i.variant?.size === variantWithColor?.size && i.variant?.color === variantWithColor?.color
+        );
+        const existingQty = existingItem ? existingItem.qty : 0;
+        const requestedTotalQty = existingQty + qty;
+
+        // Determine stock locally first
+        let localStock = variant?.stock !== undefined && variant?.stock !== null ? Number(variant.stock) : Number(product?.stock || 0);
+
+        if (localStock <= 0) {
           useToastStore.getState().showToast('This item is out of stock', 'error');
-          return;
+          return false;
         }
-        const variantWithColor = { ...variant, color: color || variant?.color || '' };
-        set((state) => {
-          const existingItemIndex = state.items.findIndex(
+
+        if (existingQty >= localStock) {
+          useToastStore.getState().showToast(`Maximum available stock (${localStock}) already in your cart`, 'error');
+          return false;
+        }
+
+        // Real-time backend stock validation
+        try {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+          const res = await fetch(`${backendUrl}/general/check-stock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              items: [{
+                product: { id: product.id, name: product.name },
+                variant: { color: variantWithColor.color, size: variantWithColor.size },
+                qty: requestedTotalQty
+              }]
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.available && data.unavailable && data.unavailable.length > 0) {
+              const unavail = data.unavailable[0];
+              const serverAvailable = unavail.available !== undefined ? Number(unavail.available) : 0;
+
+              if (serverAvailable <= 0) {
+                useToastStore.getState().showToast('This item is out of stock', 'error');
+                return false;
+              }
+
+              if (existingQty >= serverAvailable) {
+                useToastStore.getState().showToast(`Maximum available stock (${serverAvailable}) already in your cart`, 'error');
+                return false;
+              }
+
+              localStock = serverAvailable;
+            }
+          }
+        } catch (err) {
+          console.warn("Real-time stock check failed, relying on local stock:", err);
+        }
+
+        let addedSuccessfully = false;
+        set((prevState) => {
+          const existingItemIndex = prevState.items.findIndex(
             (i) => i.product.id === product.id && i.variant?.size === variantWithColor?.size && i.variant?.color === variantWithColor?.color
           );
 
           if (existingItemIndex > -1) {
-            const newItems = [...state.items];
-            const newQty = newItems[existingItemIndex].qty + qty;
-            if (newQty > stock) {
-              useToastStore.getState().showToast(`Only ${stock} in stock`, 'error');
-              newItems[existingItemIndex].qty = stock;
+            const newItems = [...prevState.items];
+            const currentQty = newItems[existingItemIndex].qty;
+            if (currentQty >= localStock) {
+              return prevState;
+            }
+            const newQty = Math.min(currentQty + qty, localStock);
+            newItems[existingItemIndex].qty = newQty;
+            addedSuccessfully = true;
+            if (currentQty + qty > localStock) {
+              useToastStore.getState().showToast(`Only ${localStock} in stock. Adjusted quantity in cart.`, 'error');
             } else {
-              newItems[existingItemIndex].qty = newQty;
+              useToastStore.getState().showToast(`Added ${product.name} to cart!`);
             }
             return { items: newItems };
           }
 
-          return { items: [...state.items, { product, variant: variantWithColor, qty: Math.min(qty, stock) }] };
+          const addQty = Math.min(qty, localStock);
+          addedSuccessfully = true;
+          if (qty > localStock) {
+            useToastStore.getState().showToast(`Only ${localStock} in stock. Added available quantity to cart.`, 'error');
+          } else {
+            useToastStore.getState().showToast(`Added ${product.name} to cart!`);
+          }
+          return { items: [...prevState.items, { product, variant: variantWithColor, qty: addQty }] };
         });
-        useToastStore.getState().showToast(`Added ${product.name} to cart!`);
+
+        return addedSuccessfully;
       },
       
       removeFromCart: (productId, variant) => set((state) => {

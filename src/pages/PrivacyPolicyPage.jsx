@@ -1,5 +1,7 @@
 import React from 'react';
 import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
+import { Link } from 'react-router-dom';
 
 export function PrivacyPolicyPage() {
   return (
@@ -49,7 +51,7 @@ export function PrivacyPolicyPage() {
           
           <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Teen Users</h3>
           <p>
-            Individuals between 13 and 17 years of age may use the website subject to our Terms & Conditions and applicable law.
+            Individuals between 13 and 17 years of age may use the website subject to our <Link to="/terms-of-service" className="text-brand-gold underline font-semibold">Terms & Conditions</Link> and applicable law.
           </p>
           <p>
             We encourage parents and guardians to discuss online privacy and safe shopping practices with teenagers.
@@ -99,7 +101,9 @@ export function PrivacyPolicyPage() {
             <li>Discounts or promotional codes used</li>
             <li>Shipping information</li>
             <li>Delivery status</li>
-            <li>Returns, Exchanges, Refunds</li>
+            <li>Returns</li>
+            <li>Exchanges</li>
+            <li>Refunds</li>
             <li>Order-related communications</li>
             <li>Customer order history</li>
           </ul>
@@ -131,7 +135,8 @@ export function PrivacyPolicyPage() {
           <p>When you visit our website, certain information may be collected automatically, including:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li>IP address</li>
-            <li>Browser type and Device type</li>
+            <li>Browser type</li>
+            <li>Device type</li>
             <li>Operating system</li>
             <li>Approximate location based on IP address</li>
             <li>Pages visited</li>
@@ -147,7 +152,8 @@ export function PrivacyPolicyPage() {
           <p>We may collect personal information:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li>Directly from you when you create an account</li>
-            <li>When you place an order or update your account</li>
+            <li>When you place an order</li>
+            <li>When you update your account</li>
             <li>When you contact customer support</li>
             <li>When you subscribe to marketing communications</li>
             <li>When you participate in promotions or events</li>
@@ -163,19 +169,24 @@ export function PrivacyPolicyPage() {
           <p>We may use your information to:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li>Create and manage your customer account</li>
-            <li>Process orders and payments</li>
+            <li>Process orders</li>
+            <li>Process payments</li>
             <li>Fulfill and ship purchases</li>
-            <li>Provide delivery updates and maintain order history</li>
+            <li>Provide delivery updates</li>
+            <li>Maintain order history</li>
             <li>Process returns, exchanges, and refunds</li>
-            <li>Provide customer support, respond to questions and requests</li>
+            <li>Provide customer support</li>
+            <li>Respond to questions and requests</li>
           </ul>
 
           <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Website Operations</h3>
           <p>We may use information to:</p>
           <ul className="list-disc pl-6 space-y-1">
-            <li>Operate our website and maintain functionality</li>
+            <li>Operate our website</li>
+            <li>Maintain website functionality</li>
             <li>Remember account and shopping preferences</li>
-            <li>Improve website performance and troubleshoot technical issues</li>
+            <li>Improve website performance</li>
+            <li>Troubleshoot technical issues</li>
             <li>Understand how customers use our website</li>
             <li>Personalize certain aspects of the shopping experience</li>
             <li>Maintain website security</li>
@@ -185,93 +196,287 @@ export function PrivacyPolicyPage() {
           <p>We may use information to:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li>Detect and prevent fraudulent transactions</li>
-            <li>Protect customer accounts and detect unauthorized activity</li>
+            <li>Protect customer accounts</li>
+            <li>Detect unauthorized activity</li>
             <li>Protect our website and systems</li>
-            <li>Investigate security incidents and prevent abuse</li>
+            <li>Investigate security incidents</li>
+            <li>Prevent abuse or misuse of our services</li>
           </ul>
 
           <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Communications</h3>
-          <p>We may use your information to send account-related messages, order confirmations, order status updates, shipping notifications, delivery notifications, return or refund communications, customer service responses, and other transactional communications.</p>
+          <p>We may use your information to send:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Account-related messages</li>
+            <li>Order confirmations</li>
+            <li>Order status updates</li>
+            <li>Shipping notifications</li>
+            <li>Delivery notifications</li>
+            <li>Return or refund communications</li>
+            <li>Customer service responses</li>
+            <li>Other transactional communications</li>
+          </ul>
           <p>Some transactional communications may be necessary to provide the services you requested and may not be treated as marketing communications.</p>
 
           <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Marketing</h3>
-          <p>Where permitted by applicable law, we may use your information to send marketing communications regarding new products, collections, special offers, promotions, sales, events, and Houra Jewels updates.</p>
-          <p>Where consent is required, we will obtain the appropriate consent. You can unsubscribe from marketing emails at any time by using the unsubscribe mechanism included in the communication or by contacting us.</p>
+          <p>Where permitted by applicable law, we may use your information to send marketing communications regarding:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>New products</li>
+            <li>New collections</li>
+            <li>Special offers</li>
+            <li>Promotions</li>
+            <li>Sales</li>
+            <li>Events</li>
+            <li>Houra Jewels updates</li>
+          </ul>
+          <p>Where consent is required, we will obtain the appropriate consent.</p>
+          <p>You can unsubscribe from marketing emails at any time by using the unsubscribe mechanism included in the communication or by contacting us.</p>
           <p>Unsubscribing from marketing communications will not prevent us from sending necessary transactional or service-related communications.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">6. Marketing Consent</h2>
-          <p>Marketing communications are separate from your ability to create an account or place an order. Where applicable, we may provide a separate optional marketing checkbox during account registration, checkout, or another interaction.</p>
-          <p>Marketing consent is not required to purchase products from Houra Jewels. You may withdraw marketing consent at any time.</p>
+          <p>Marketing communications are separate from your ability to create an account or place an order.</p>
+          <p>Where applicable, we may provide a separate optional marketing checkbox during account registration, checkout, or another interaction.</p>
+          <p>For example:</p>
+          <blockquote className="border-l-4 border-brand-gold pl-4 py-2 italic text-gray-600 bg-gray-50 rounded-r">
+            “Yes, I would like to receive emails from Houra Jewels about new products, promotions, special offers, and updates. I understand that I can unsubscribe at any time.”
+          </blockquote>
+          <p>Marketing consent is not required to purchase products from Houra Jewels.</p>
+          <p>You may withdraw marketing consent at any time.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">7. Cookies and Similar Technologies</h2>
-          <p>We may use cookies, pixels, tags, scripts, local storage, and similar technologies. These technologies may help us keep you signed in, maintain your shopping cart, remember preferences, understand website usage, improve website functionality, maintain website security, measure website performance, understand marketing campaign performance, and provide or measure advertising, where applicable.</p>
-          <p>Some cookies may be necessary for the website to function. Other cookies may be used for analytics, personalization, advertising, or other purposes depending on the tools implemented on our website.</p>
-          <p>You may be able to control certain cookies through your browser or device settings. Where required by applicable law, we will provide additional cookie choices or consent mechanisms.</p>
+          <p>We may use cookies, pixels, tags, scripts, local storage, and similar technologies.</p>
+          <p>These technologies may help us:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Keep you signed in</li>
+            <li>Maintain your shopping cart</li>
+            <li>Remember preferences</li>
+            <li>Understand website usage</li>
+            <li>Improve website functionality</li>
+            <li>Maintain website security</li>
+            <li>Measure website performance</li>
+            <li>Understand marketing campaign performance</li>
+            <li>Provide or measure advertising, where applicable</li>
+          </ul>
+          <p>Some cookies may be necessary for the website to function.</p>
+          <p>Other cookies may be used for analytics, personalization, advertising, or other purposes depending on the tools implemented on our website.</p>
+          <p>You may be able to control certain cookies through your browser or device settings.</p>
+          <p>Where required by applicable law, we will provide additional cookie choices or consent mechanisms.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">8. How We Share Personal Information</h2>
-          <p>We do not sell personal information as a source of revenue. We may, however, disclose or make personal information available to third parties when reasonably necessary to operate our business, provide our services, or fulfill the purposes described in this Privacy Policy.</p>
+          <p>We do not sell personal information as a source of revenue.</p>
+          <p>We may, however, disclose or make personal information available to third parties when reasonably necessary to operate our business, provide our services, or fulfill the purposes described in this Privacy Policy.</p>
+          <p>These third parties may include:</p>
+          
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Payment Providers</h3>
+          <p>Payment processors may process payment information to authorize and complete transactions.</p>
+          
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Shipping and Delivery Providers</h3>
+          <p>We may provide shipping and delivery companies with information necessary to fulfill and deliver your order, such as:</p>
           <ul className="list-disc pl-6 space-y-1">
-            <li><strong>Payment Providers:</strong> Processors may process payment information to authorize and complete transactions.</li>
-            <li><strong>Shipping and Delivery Providers:</strong> We may provide shipping companies with information necessary to fulfill and deliver your order.</li>
-            <li><strong>Website and Technology Providers:</strong> We may use third-party providers for hosting, e-commerce services, cloud infrastructure, database services, security, fraud prevention, customer support, email delivery, analytics, and website performance.</li>
-            <li><strong>Marketing and Advertising Providers:</strong> We may use third-party services for email marketing, campaign management, advertising, conversion measurement, analytics, and retargeting.</li>
-            <li><strong>Professional and Business Service Providers:</strong> We may share information with accountants, attorneys, consultants, auditors, and insurers.</li>
+            <li>Name</li>
+            <li>Shipping address</li>
+            <li>Phone number</li>
+            <li>Order information</li>
           </ul>
-          <p>We may also disclose personal information for legal and safety purposes, or in connection with business transactions like mergers or acquisitions.</p>
+
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Website and Technology Providers</h3>
+          <p>We may use third-party providers for:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Website hosting</li>
+            <li>E-commerce services</li>
+            <li>Cloud infrastructure</li>
+            <li>Database services</li>
+            <li>Security</li>
+            <li>Fraud prevention</li>
+            <li>Customer support</li>
+            <li>Email delivery</li>
+            <li>Analytics</li>
+            <li>Website performance</li>
+          </ul>
+
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Marketing and Advertising Providers</h3>
+          <p>Where applicable, we may use third-party services for:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Email marketing</li>
+            <li>Marketing campaign management</li>
+            <li>Advertising</li>
+            <li>Conversion measurement</li>
+            <li>Analytics</li>
+            <li>Retargeting</li>
+          </ul>
+          <p>Some of these providers may use cookies, pixels, or similar technologies.</p>
+          <p>The actual providers used by Houra Jewels may change over time.</p>
+
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Professional and Business Service Providers</h3>
+          <p>We may share information with service providers such as accountants, attorneys, consultants, auditors, insurers, and other professionals where reasonably necessary for our business operations.</p>
+
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Legal and Safety Purposes</h3>
+          <p>We may disclose personal information when reasonably necessary to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Comply with applicable law</li>
+            <li>Respond to valid legal processes</li>
+            <li>Respond to government requests</li>
+            <li>Protect our legal rights</li>
+            <li>Protect our customers or others</li>
+            <li>Investigate fraud</li>
+            <li>Investigate security incidents</li>
+            <li>Enforce our agreements</li>
+            <li>Prevent illegal activity</li>
+          </ul>
+
+          <h3 className="text-lg font-bold text-[#08183A] mt-6 mb-2">Business Transactions</h3>
+          <p>If Houra Jewels is involved in a merger, acquisition, financing, restructuring, sale of assets, sale of the business, bankruptcy, or similar transaction, personal information may be transferred as part of that transaction, subject to applicable law.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">9. Third-Party Service Providers</h2>
-          <p>Third-party companies that provide services to Houra Jewels may process personal information on our behalf or independently according to their own privacy practices. We encourage you to review the privacy policies of third-party services you interact with.</p>
+          <p>Third-party companies that provide services to Houra Jewels may process personal information on our behalf or independently according to their own privacy practices.</p>
+          <p>Examples may include payment processors, shipping providers, website hosting providers, analytics providers, email providers, security providers, and advertising providers.</p>
+          <p>These companies may have their own privacy policies.</p>
+          <p>We encourage you to review the privacy policies of third-party services you interact with.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">10. Order History and Customer Accounts</h2>
-          <p>If you create an Houra Jewels account, we may maintain information associated with your account. This allows you to view your order history and helps us provide customer service and manage transactions. You may request deletion of your account or certain personal information, subject to applicable legal and business recordkeeping requirements.</p>
+          <p>If you create an Houra Jewels account, we may maintain information associated with your account, including:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Account details</li>
+            <li>Saved addresses</li>
+            <li>Orders</li>
+            <li>Purchases</li>
+            <li>Returns</li>
+            <li>Refunds</li>
+            <li>Exchanges</li>
+            <li>Customer service interactions</li>
+            <li>Communication preferences</li>
+          </ul>
+          <p>This information allows you to view your order history and helps us provide customer service and manage transactions.</p>
+          <p>You may request deletion of your account or certain personal information, subject to applicable legal and business recordkeeping requirements.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">11. Data Security</h2>
-          <p>We use reasonable administrative, technical, and organizational safeguards designed to protect personal information against unauthorized access, use, disclosure, alteration, or destruction. However, no website, internet transmission, electronic storage system, or security measure can be guaranteed to be completely secure.</p>
+          <p>We use reasonable administrative, technical, and organizational safeguards designed to protect personal information against unauthorized access, use, disclosure, alteration, or destruction.</p>
+          <p>These measures may include appropriate access controls, security monitoring, encryption or secure transmission technologies where appropriate, and security practices provided by our third-party service providers.</p>
+          <p>However, no website, internet transmission, electronic storage system, or security measure can be guaranteed to be completely secure.</p>
+          <p>Therefore, while we take reasonable steps to protect your information, we cannot guarantee absolute security.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">12. Data Retention</h2>
-          <p>We retain personal information only for as long as reasonably necessary for the purposes described in this Privacy Policy. Different categories of information may be retained for different periods. When information is no longer reasonably necessary, we may delete, anonymize, or securely dispose of it, subject to applicable legal and business requirements.</p>
+          <p>We retain personal information only for as long as reasonably necessary for the purposes described in this Privacy Policy, including:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Providing services</li>
+            <li>Managing customer accounts</li>
+            <li>Processing transactions</li>
+            <li>Maintaining order records</li>
+            <li>Providing customer support</li>
+            <li>Preventing fraud</li>
+            <li>Resolving disputes</li>
+            <li>Enforcing agreements</li>
+            <li>Complying with tax, accounting, legal, and regulatory requirements</li>
+          </ul>
+          <p>Different categories of information may be retained for different periods.</p>
+          <p>When information is no longer reasonably necessary, we may delete, anonymize, or securely dispose of it, subject to applicable legal and business requirements.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">13. Children's and Teen Privacy</h2>
-          <p>Houra Jewels is a 13+ general-audience website and is not directed toward children under 13. We do not knowingly collect personal information from children under 13 through account registration. If we learn that we have collected personal information from a child under 13 in circumstances where parental consent was legally required, we will take reasonable steps to delete the information.</p>
+          <p>Houra Jewels is a 13+ general-audience website and is not directed toward children under 13.</p>
+          <p>We do not knowingly collect personal information from children under 13 through account registration or knowingly permit children under 13 to create accounts.</p>
+          <p>If we learn that we have collected personal information from a child under 13 in circumstances where parental consent was legally required, we will take reasonable steps to delete the information as required by applicable law.</p>
+          <p>If a parent or guardian believes that a child under 13 has provided personal information to Houra Jewels, they may contact us using the information in the “Contact Us” section.</p>
+          <p>For users between 13 and 17, we may collect information necessary to provide account, shopping, payment, shipping, customer support, and other disclosed services.</p>
+          <p>We do not knowingly use a teenager's information for purposes that are prohibited by applicable law.</p>
+          <p>Where applicable law provides additional privacy rights or protections for minors, we will honor those requirements.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">14. Your Privacy Rights</h2>
-          <p>Depending on where you live and which privacy laws apply to you, you may have certain rights concerning your personal information, such as the right to know what we collect, access it, request correction or deletion, or opt out of certain processing activities.</p>
-          <p>The availability and scope of these rights depend on applicable law. Certain exceptions may apply, for example, we may be required to retain certain information to complete a transaction or comply with legal obligations.</p>
+          <p>Depending on where you live and which privacy laws apply to you, you may have certain rights concerning your personal information.</p>
+          <p>These rights may include:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Right to know what personal information we collect</li>
+            <li>Right to access personal information</li>
+            <li>Right to request correction of inaccurate information</li>
+            <li>Right to request deletion of personal information</li>
+            <li>Right to obtain a copy of certain personal information</li>
+            <li>Right to opt out of certain processing activities</li>
+            <li>Right to opt out of certain targeted advertising</li>
+            <li>Right to opt out of certain sale or sharing of personal information where applicable</li>
+            <li>Right to withdraw consent where processing is based on consent</li>
+            <li>Right to appeal certain privacy-request decisions</li>
+            <li>Right to receive equal treatment for exercising applicable privacy rights</li>
+          </ul>
+          <p>The availability and scope of these rights depend on applicable law.</p>
+          <p>Certain exceptions may apply. For example, we may be permitted or required to retain certain information to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Complete a transaction</li>
+            <li>Provide a service</li>
+            <li>Maintain required business records</li>
+            <li>Comply with legal obligations</li>
+            <li>Detect or prevent fraud</li>
+            <li>Protect security</li>
+            <li>Resolve disputes</li>
+            <li>Establish or defend legal claims</li>
+          </ul>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">15. How to Submit a Privacy Request</h2>
-          <p>If you would like to exercise an applicable privacy right, please contact us using the information provided in the “Contact Us” section. For security purposes, we may need to verify your identity before completing certain requests.</p>
+          <p>If you would like to exercise an applicable privacy right, please contact us using the information provided in the “Contact Us” section.</p>
+          <p>Your request should provide enough information for us to understand what you are requesting.</p>
+          <p>For security purposes, we may need to verify your identity before completing certain requests.</p>
+          <p>We will process applicable privacy requests according to the requirements and timelines of the laws that apply to the request.</p>
+          <p>If applicable law provides a right to appeal our decision, you may contact us to request an appeal.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">18. International Visitors</h2>
-          <p>Houra Jewels is based in the United States. If you access our website from outside the United States, your personal information may be processed or stored in the United States or other countries where our service providers operate. By using our website, you understand that your information may be transferred to and processed in the United States.</p>
+          <p>Houra Jewels is based in the United States.</p>
+          <p>If you access our website from outside the United States, your personal information may be processed or stored in the United States or other countries where our service providers operate.</p>
+          <p>Privacy laws in those locations may differ from the laws in your country.</p>
+          <p>By using our website, you understand that your information may be transferred to and processed in the United States, subject to applicable law.</p>
+          <p>Where required by applicable law, we will implement appropriate safeguards for international transfers.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">19. Third-Party Websites and Social Media</h2>
-          <p>Our website may contain links to third-party websites, applications, social media platforms, payment services, shipping services, or other third-party services. Houra Jewels does not control the privacy practices of third-party websites or services.</p>
+          <p>Our website may contain links to third-party websites, applications, social media platforms, payment services, shipping services, or other third-party services.</p>
+          <p>Houra Jewels does not control the privacy practices of third-party websites or services.</p>
+          <p>If you leave our website or interact with a third-party service, that third party's privacy policy may apply.</p>
+          <p>We encourage you to review the privacy policies of third parties before providing personal information.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">20. Social Media Interactions</h2>
           <p>If you interact with Houra Jewels through social media platforms, those platforms may collect information about you according to their own privacy policies.</p>
+          <p>If you voluntarily post, comment, tag, message, or otherwise interact with Houra Jewels publicly, information you provide may be visible to others depending on the platform and your account settings.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">21. Promotional Events and Customer Content</h2>
-          <p>From time to time, Houra Jewels may conduct promotions, giveaways, events, or customer-content campaigns. If you voluntarily submit information, photographs, reviews, testimonials, or other content, we may use that information according to the terms disclosed when you submit it and applicable law.</p>
+          <p>From time to time, Houra Jewels may conduct promotions, giveaways, events, or customer-content campaigns.</p>
+          <p>If you voluntarily submit information, photographs, reviews, testimonials, or other content, we may use that information according to the terms disclosed when you submit it and applicable law.</p>
+          <p>Where separate permission is required to use your name, image, testimonial, photograph, or other content for promotional purposes, we will obtain the appropriate permission.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">22. Account Deletion</h2>
-          <p>You may request that your Houra Jewels account be deleted by contacting us. When an account deletion request is received, we may delete or deactivate information associated with the account, subject to applicable law and legitimate business requirements.</p>
+          <p>You may request that your Houra Jewels account be deleted by contacting us.</p>
+          <p>When an account deletion request is received, we may delete or deactivate information associated with the account, subject to applicable law and legitimate business requirements.</p>
+          <p>Deleting an account may not result in immediate deletion of every record.</p>
+          <p>For example, we may retain certain transactions, tax, accounting, fraud-prevention, dispute, or legal records when required or reasonably necessary.</p>
+          <p>Where information must be retained, we will limit its use to the purposes for which retention is required or permitted.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">23. Changes to This Privacy Policy</h2>
-          <p>We may update this Privacy Policy from time to time. When we update this Privacy Policy, we will update the “Last Updated” date at the top. We encourage you to periodically review this Privacy Policy.</p>
+          <p>We may update this Privacy Policy from time to time.</p>
+          <p>Changes may be made because of:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Changes to our business</li>
+            <li>New products or services</li>
+            <li>Changes to our website</li>
+            <li>Changes to technology</li>
+            <li>Changes to third-party service providers</li>
+            <li>Changes to applicable laws</li>
+            <li>Changes to our privacy practices</li>
+          </ul>
+          <p>When we update this Privacy Policy, we will update the “Last Updated” date at the top.</p>
+          <p>If we make a material change and applicable law requires additional notice, we may provide notice through our website, email, account notification, or another appropriate method.</p>
+          <p>We encourage you to periodically review this Privacy Policy.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">24. Contact Us</h2>
           <p>If you have questions about this Privacy Policy, want to exercise an applicable privacy right, or believe that personal information has been collected from a child under 13, please contact us:</p>
           <ul className="list-none pl-0 space-y-2 font-medium">
             <li><strong>Houra Jewels</strong></li>
-            <li>Privacy Email: <a href="mailto:privacy@hourajewels.com" className="text-brand-gold underline">privacy@hourajewels.com</a></li>
+            <li>Privacy Email: <a href="mailto:support@hourajewels.com" className="text-brand-gold underline">support@hourajewels.com</a></li>
             <li>Website: <a href="https://hourajewels.com" target="_blank" rel="noopener noreferrer" className="text-brand-gold underline">https://hourajewels.com</a></li>
+            <li>Business Address: 2965 FM1385, Aubrey, TX 76227</li>
           </ul>
+          <p className="text-sm text-gray-600 mt-2">When contacting us regarding a privacy request, please provide enough information for us to identify and process your request.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">25. Your Acknowledgment</h2>
-          <p>By using the Houra Jewels website, you acknowledge that you have had an opportunity to review this Privacy Policy. Where a separate consent is legally required for a particular processing activity, Houra Jewels will obtain that consent separately.</p>
-          <p>This Privacy Policy does not replace the Houra Jewels Terms & Conditions.</p>
+          <p>By using the Houra Jewels website, you acknowledge that you have had an opportunity to review this Privacy Policy.</p>
+          <p>Where a separate consent is legally required for a particular processing activity, Houra Jewels will obtain that consent separately.</p>
+          <p>This Privacy Policy does not replace the Houra Jewels <Link to="/terms-of-service" className="text-brand-gold underline font-semibold">Terms & Conditions</Link>.</p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

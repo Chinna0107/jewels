@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 
@@ -103,73 +104,202 @@ export function TermsOfServicePage() {
           <p><strong>ALL SALES ARE FINAL.</strong></p>
           <p>Due to the nature of our products, Houra Jewels does not accept returns or exchanges for change of mind, incorrect selection, incorrect size, personal preference, or other reasons not specifically covered by our policies.</p>
           <p>Please carefully review your product selection, quantity, size, color, style, shipping information, and other order details before completing your purchase. By placing an order, you acknowledge and agree to our no-return and no-exchange policy.</p>
+          <p className="mt-4 font-semibold text-[#08183A]">Shipping & Return Policy</p>
+          <p>Please review our <Link to="/shipping-policy" className="text-brand-gold underline font-semibold">Shipping Policy</Link> and <Link to="/returns-policy" className="text-brand-gold underline font-semibold">Return & Exchange Policy</Link> for more details.</p>
+          <p>The Shipping & Return Policy is incorporated into these Terms by reference.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">11. Shipping</h2>
-          <p>Estimated delivery dates are estimates and are not guaranteed unless expressly stated otherwise. Shipping delays may occur due to circumstances outside our control, including carrier delays, weather, holidays, address issues, customs, transportation disruptions, or other unforeseen circumstances. Once an order has been handed over to the shipping carrier, carrier-related delays may be outside Houra Jewels' control.</p>
+          <p>Shipping terms, available shipping methods, estimated delivery times, shipping charges, and procedures for damaged or missing packages are described in our:</p>
+          <p className="font-semibold text-[#08183A]">Shipping & Return Policy</p>
+          <p>Please review our <Link to="/shipping-policy" className="text-brand-gold underline font-semibold">Shipping Policy</Link> and <Link to="/returns-policy" className="text-brand-gold underline font-semibold">Return & Exchange Policy</Link> for detailed information.</p>
+          <p>Estimated delivery dates are estimates and are not guaranteed unless expressly stated otherwise.</p>
+          <p>Shipping delays may occur due to circumstances outside our control, including carrier delays, weather, holidays, address issues, customs, transportation disruptions, or other unforeseen circumstances.</p>
+          <p>Once an order has been handed over to the shipping carrier, carrier-related delays may be outside Houra Jewels' control.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">12. Incorrect or Incomplete Shipping Information</h2>
-          <p>Customers are responsible for providing accurate shipping information during checkout. Please carefully verify Name, Street address, Apartment/unit number, City, State, ZIP code, and Phone number.</p>
-          <p>Houra Jewels is not responsible for delays, failed deliveries, returned packages, or additional shipping costs resulting from incorrect or incomplete information provided by the customer. If an order is returned to us because of an incorrect or incomplete address, additional shipping charges may apply if reshipment is available.</p>
+          <p>Customers are responsible for providing accurate shipping information during checkout.</p>
+          <p>Please carefully verify:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Name</li>
+            <li>Street address</li>
+            <li>Apartment/unit number</li>
+            <li>City</li>
+            <li>State</li>
+            <li>ZIP code</li>
+            <li>Phone number</li>
+          </ul>
+          <p>Houra Jewels is not responsible for delays, failed deliveries, returned packages, or additional shipping costs resulting from incorrect or incomplete information provided by the customer.</p>
+          <p>If an order is returned to us because of an incorrect or incomplete address, additional shipping charges may apply if reshipment is available.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">13. Damaged, Missing, or Incorrect Products</h2>
-          <p>If you receive a product that is damaged, incorrect, or missing from your order, please contact us. You may be required to provide photographs, videos, packaging information, order information, or other documentation so that we can investigate the issue.</p>
+          <p>If you receive a product that is damaged, incorrect, or missing from your order, please follow the procedure described in our:</p>
+          <p className="font-semibold text-[#08183A]">Shipping & Return Policy</p>
+          <p>Please review our <Link to="/shipping-policy" className="text-brand-gold underline font-semibold">Shipping Policy</Link> and <Link to="/returns-policy" className="text-brand-gold underline font-semibold">Return & Exchange Policy</Link> for detailed information.</p>
+          <p>You may be required to provide photographs, videos, packaging information, order information, or other documentation so that we can investigate the issue.</p>
           <p>To protect customers and prevent fraudulent claims, we may require that the package and its contents be documented promptly after delivery.</p>
+          <p>Please review the Shipping & Return Policy for applicable reporting deadlines and procedures.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">14. No Cancellation Policy</h2>
-          <p>Because orders may be processed shortly after purchase, cancellation requests may not always be possible. Once an order has entered processing, been packed, or been shipped, cancellation may not be available.</p>
-          <p>If you need to request cancellation, contact us as soon as possible after placing your order. A cancellation request is not guaranteed to be accepted. If an order cannot be canceled, the applicable All Sales Are Final policy will apply.</p>
+          <p>Because orders may be processed shortly after purchase, cancellation requests may not always be possible.</p>
+          <p>Once an order has entered processing, been packed, or been shipped, cancellation may not be available.</p>
+          <p>If you need to request cancellation, contact us as soon as possible after placing your order.</p>
+          <p>A cancellation request is not guaranteed to be accepted.</p>
+          <p>If an order cannot be canceled, the applicable All Sales Are Final policy will apply.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">15. Refunds</h2>
-          <p>Except where otherwise required by applicable law, purchases from Houra Jewels are final and are not eligible for refunds due to change of mind, incorrect selection, personal preference, or ordering the wrong product.</p>
-          <p>If a refund is approved under applicable law, the refund will generally be issued to the original payment method. Processing times may vary depending on the payment provider.</p>
+          <p>Except where otherwise required by applicable law or specifically provided in our Shipping & Return Policy, purchases from Houra Jewels are final and are not eligible for refunds due to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Change of mind</li>
+            <li>Incorrect selection</li>
+            <li>Personal preference</li>
+            <li>Incorrect size selection</li>
+            <li>Ordering the wrong product</li>
+            <li>No longer wanting the product</li>
+            <li>Failure to review product information before purchase</li>
+          </ul>
+          <p>If a refund is approved under our Shipping & Return Policy or applicable law, the refund will generally be issued to the original payment method.</p>
+          <p>Processing times may vary depending on the payment provider or financial institution.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">16. Promotions, Discounts, and Offers</h2>
-          <p>From time to time, Houra Jewels may offer promotions, discounts, coupons, free products, or other special offers. Each promotion may have its own terms. Promotions may not be combined unless expressly stated. Houra Jewels reserves the right to modify, suspend, or terminate a promotion where permitted by applicable law.</p>
+          <p>From time to time, Houra Jewels may offer promotions, discounts, coupons, free products, or other special offers.</p>
+          <p>Each promotion may have its own terms, including:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Start and end dates</li>
+            <li>Eligible products</li>
+            <li>Minimum purchase requirements</li>
+            <li>Quantity limitations</li>
+            <li>Coupon restrictions</li>
+            <li>Availability requirements</li>
+          </ul>
+          <p>Promotions may not be combined unless expressly stated.</p>
+          <p>Houra Jewels reserves the right to modify, suspend, or terminate a promotion where permitted by applicable law.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">17. Gift Cards and Promotional Credits</h2>
-          <p>If Houra Jewels offers gift cards, store credits, promotional credits, or similar products, additional terms may apply. Any applicable expiration dates, redemption restrictions, refund rules, or other conditions will be disclosed at the time the gift card or credit is issued.</p>
+          <p>If Houra Jewels offers gift cards, store credits, promotional credits, or similar products, additional terms may apply.</p>
+          <p>Any applicable expiration dates, redemption restrictions, refund rules, or other conditions will be disclosed at the time the gift card or credit is issued.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">18. Intellectual Property</h2>
-          <p>All content on the Houra Jewels website is owned by or licensed to Houra Jewels and may be protected by applicable intellectual property laws. You may not copy, reproduce, modify, distribute, publish, sell, create derivative works from, or commercially exploit our website content without our prior written permission.</p>
+          <p>All content on the Houra Jewels website, including but not limited to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Brand names</li>
+            <li>Logos</li>
+            <li>Product photographs</li>
+            <li>Product descriptions</li>
+            <li>Graphics</li>
+            <li>Designs</li>
+            <li>Videos</li>
+            <li>Text</li>
+            <li>Website layout</li>
+            <li>Marketing materials</li>
+            <li>Images</li>
+            <li>Product names</li>
+          </ul>
+          <p>is owned by or licensed to Houra Jewels and may be protected by applicable intellectual property laws.</p>
+          <p>You may not copy, reproduce, modify, distribute, publish, sell, create derivative works from, or commercially exploit our website content without our prior written permission.</p>
+          <p>Unauthorized use of our intellectual property is prohibited.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">19. Customer Reviews and Submitted Content</h2>
-          <p>By submitting content (reviews, photographs, testimonials), you grant Houra Jewels a non-exclusive, worldwide, royalty-free license to use, reproduce, display, publish, modify, and distribute the content for legitimate business, marketing, promotional, or operational purposes, subject to applicable law.</p>
-          
+          <p>If you submit reviews, photographs, testimonials, comments, suggestions, or other content to Houra Jewels, you represent that:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>You have the right to submit the content.</li>
+            <li>The content does not violate another person's rights.</li>
+            <li>The content is not unlawful, fraudulent, defamatory, or misleading.</li>
+            <li>The content does not contain malicious software or harmful code.</li>
+          </ul>
+          <p>By submitting content, you grant Houra Jewels a non-exclusive, worldwide, royalty-free license to use, reproduce, display, publish, modify, and distribute the content for legitimate business, marketing, promotional, or operational purposes, subject to applicable law and any separate permissions that may be required.</p>
+          <p>We may remove submitted content that violates these Terms or applicable law.</p>
+
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">20. Prohibited Activities</h2>
-          <p>You agree not to use the website for unlawful purposes, attempt to gain unauthorized access, interfere with website functionality, impersonate another person, commit payment fraud, or use the website in a way that violates applicable law. We reserve the right to suspend or terminate access for violations of these Terms.</p>
+          <p>You agree not to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Use the website for unlawful purposes</li>
+            <li>Attempt to gain unauthorized access to our systems</li>
+            <li>Interfere with website functionality</li>
+            <li>Introduce malicious code or software</li>
+            <li>Attempt to bypass security measures</li>
+            <li>Use automated systems to scrape or copy website content without authorization</li>
+            <li>Impersonate another person</li>
+            <li>Use another person's account without authorization</li>
+            <li>Provide false information</li>
+            <li>Commit payment fraud</li>
+            <li>Submit fraudulent chargebacks or disputes</li>
+            <li>Abuse promotional offers</li>
+            <li>Resell products in violation of applicable restrictions</li>
+            <li>Use the website in a way that violates applicable law</li>
+          </ul>
+          <p>We reserve the right to suspend or terminate access for violations of these Terms.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">21. Website Availability</h2>
-          <p>We attempt to keep the website available and functioning properly. However, we do not guarantee that the website will always be available, error-free, secure, or free from interruptions. The website may occasionally be unavailable due to circumstances outside our control.</p>
+          <p>We attempt to keep the website available and functioning properly.</p>
+          <p>However, we do not guarantee that the website will always be:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Available</li>
+            <li>Error-free</li>
+            <li>Secure</li>
+            <li>Free from interruptions</li>
+            <li>Free from viruses or other harmful components</li>
+          </ul>
+          <p>The website may occasionally be unavailable due to maintenance, upgrades, technical problems, security incidents, hosting issues, or circumstances outside our control.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">22. Third-Party Services</h2>
-          <p>Our website may rely on third-party services. Third-party services may have their own terms and privacy policies. Houra Jewels is not responsible for the independent policies, practices, availability, or performance of third-party services.</p>
+          <p>Our website may rely on third-party services, including payment processors, shipping providers, website hosting providers, analytics providers, marketing providers, authentication services, and other technology providers.</p>
+          <p>Third-party services may have their own terms and privacy policies.</p>
+          <p>Houra Jewels is not responsible for the independent policies, practices, availability, or performance of third-party services.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">23. Privacy</h2>
-          <p>Your use of the Houra Jewels website is also governed by our Privacy Policy. The Privacy Policy explains how we collect, use, disclose, retain, and protect personal information.</p>
+          <p>Your use of the Houra Jewels website is also governed by our Privacy Policy.</p>
+          <p>Please review our <Link to="/privacy-policy" className="text-brand-gold underline font-semibold">Privacy Policy</Link>.</p>
+          <p>The Privacy Policy explains how we collect, use, disclose, retain, and protect personal information.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">24. Disclaimer of Warranties</h2>
-          <p>To the maximum extent permitted by applicable law, the Houra Jewels website and its content are provided on an “as is” and “as available” basis. Houra Jewels disclaims warranties that are not expressly provided in these Terms.</p>
+          <p>To the maximum extent permitted by applicable law, the Houra Jewels website and its content are provided on an “as is” and “as available” basis.</p>
+          <p>To the extent permitted by law, Houra Jewels disclaims warranties that are not expressly provided in these Terms, including implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
+          <p>Nothing in these Terms excludes or limits warranties or rights that cannot legally be excluded or limited under applicable law.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">25. Limitation of Liability</h2>
-          <p>To the maximum extent permitted by applicable law, Houra Jewels will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages arising from or related to your use of the website or purchase of products. Our total liability will not exceed the amount you actually paid to Houra Jewels.</p>
+          <p>To the maximum extent permitted by applicable law, Houra Jewels and its owners, employees, contractors, service providers, and affiliates will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages arising from or related to your use of the website or purchase of products.</p>
+          <p>To the maximum extent permitted by applicable law, our total liability arising from a particular order or transaction will not exceed the amount you actually paid to Houra Jewels for the product or transaction giving rise to the claim.</p>
+          <p>Nothing in these Terms is intended to exclude or limit liability that cannot legally be excluded or limited under applicable law.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">26. Indemnification</h2>
-          <p>To the maximum extent permitted by applicable law, you agree to indemnify and hold harmless Houra Jewels from claims, damages, losses, liabilities, and reasonable expenses arising from your violation of these Terms, misuse of our website, violation of applicable law, or fraudulent activities.</p>
+          <p>To the maximum extent permitted by applicable law, you agree to indemnify and hold harmless Houra Jewels, its owners, employees, contractors, and service providers from claims, damages, losses, liabilities, and reasonable expenses arising from your:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Violation of these Terms;</li>
+            <li>Misuse of our website;</li>
+            <li>Violation of applicable law; or</li>
+            <li>Fraudulent, unauthorized, or unlawful activities.</li>
+          </ul>
+          <p>This provision does not require you to indemnify Houra Jewels for losses caused by Houra Jewels' own unlawful conduct, negligence, or other circumstances where such indemnification cannot legally be required.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">27. Governing Law</h2>
           <p>These Terms will be governed by applicable laws of the State of Texas, without regard to conflict-of-law principles, except where applicable law requires otherwise.</p>
+          <p>Any dispute will be handled in accordance with applicable law and the dispute-resolution provisions contained in these Terms.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">28. Dispute Resolution</h2>
           <p>Before initiating formal legal proceedings regarding a dispute, we encourage you to contact Houra Jewels and give us an opportunity to investigate and attempt to resolve the issue.</p>
+          <p>You may contact us using the information provided below.</p>
+          <p>Nothing in this section limits any rights or remedies that cannot legally be waived.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">29. Changes to These Terms</h2>
-          <p>We may update these Terms from time to time. When we update these Terms, we will update the “Last Updated” date. Your continued use of the website after updated Terms become effective constitutes acceptance of the updated Terms.</p>
+          <p>We may update these Terms from time to time.</p>
+          <p>Changes may be made due to:</p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li>Changes to our business</li>
+            <li>Changes to products or services</li>
+            <li>Changes to website functionality</li>
+            <li>Changes to payment or shipping providers</li>
+            <li>Changes to applicable law</li>
+            <li>Changes to our policies</li>
+          </ul>
+          <p>When we update these Terms, we will update the “Last Updated” date.</p>
+          <p>Your continued use of the website after updated Terms become effective constitutes acceptance of the updated Terms, to the extent permitted by applicable law.</p>
+          <p>For material changes where required by law, we may provide additional notice.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">30. Severability</h2>
           <p>If any provision of these Terms is determined to be invalid, unlawful, or unenforceable, the remaining provisions will continue to apply to the extent permitted by applicable law.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">31. Entire Agreement</h2>
-          <p>These Terms, together with our Privacy Policy and other policies expressly incorporated into these Terms, constitute the agreement between you and Houra Jewels concerning your use of the website and purchases made through the website.</p>
+          <p>These Terms, together with our Privacy Policy and other policies expressly incorporated into these Terms, constitute the agreement between you and Houra Jewels concerning your use of the website and purchases made through the website, except where additional terms are expressly provided.</p>
 
           <h2 className="text-xl md:text-2xl font-bold text-[#08183A] mt-10 mb-4">32. Contact Us</h2>
           <p>If you have questions regarding these Terms, an order, payment, or another issue, please contact us:</p>
@@ -177,9 +307,11 @@ export function TermsOfServicePage() {
             <li><strong>Houra Jewels</strong></li>
             <li>Email: <a href="mailto:support@hourajewels.com" className="text-brand-gold underline">support@hourajewels.com</a></li>
             <li>Website: <a href="https://hourajewels.com" target="_blank" rel="noopener noreferrer" className="text-brand-gold underline">https://hourajewels.com</a></li>
+            <li>Address: 2965 FM1385, Aubrey, TX 76227</li>
           </ul>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

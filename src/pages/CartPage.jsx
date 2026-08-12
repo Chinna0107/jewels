@@ -70,11 +70,32 @@ export function CartPage() {
       .catch(() => {});
   }, []);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (vacation.is_active) {
       setShowVacationModal(true);
       return;
     }
+
+    // Validate stock of all cart items before proceeding
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+      const stockRes = await fetch(`${BACKEND_URL}/general/check-stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      if (stockRes.ok) {
+        const stockData = await stockRes.json();
+        if (!stockData.available && stockData.unavailable && stockData.unavailable.length > 0) {
+          const names = stockData.unavailable.map(u => `"${u.name}" (${u.available ?? 0} available)`).join(', ');
+          showToast(`Stock unavailable: ${names}`, 'error');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Stock check before checkout failed, proceeding:", err);
+    }
+
     // Re-validate coupon conditions before proceeding
     if (appliedCoupon) {
       const cartQty = items.reduce((s, i) => s + i.qty, 0);
@@ -91,18 +112,20 @@ export function CartPage() {
         return;
       }
     }
-    // If pickup is disabled by admin, go directly to checkout
+
+    // If pickup is disabled by admin, go directly to checkout with shipping
     if (!pickupEnabled) {
-      navigate('/checkout', { state: { couponCode } });
+      navigate('/checkout', { state: { couponCode, orderType: 'shipping' } });
       return;
     }
+
+    // Show popup modal for choosing delivery method
     setShowDeliveryModal(true);
   };
 
   const handleDeliveryChoice = (type) => {
     setShowDeliveryModal(false);
-    if (type === 'pickup') navigate('/pickup');
-    else navigate('/checkout', { state: { couponCode, orderType: 'shipping' } });
+    navigate('/checkout', { state: { couponCode, orderType: type } });
   };
 
   const subtotal = getSubtotal();
@@ -337,6 +360,8 @@ export function CartPage() {
           </div>
         </div>
       )}
+
+
       {/* Vacation Modal */}
       {showVacationModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">

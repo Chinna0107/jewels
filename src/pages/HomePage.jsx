@@ -17,9 +17,9 @@ import imgAarti from '../assets/story_aarti.png';
 function InstagramIcon({ className, style }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-      <circle cx="12" cy="12" r="4"/>
-      <circle cx="17.5" cy="6.5" r="0.01" fill="currentColor" stroke="currentColor" strokeWidth="3"/>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.01" fill="currentColor" stroke="currentColor" strokeWidth="3" />
     </svg>
   );
 }
@@ -103,12 +103,12 @@ function StatTile({ icon: Icon, target, prefix = '', suffix = '', label, link, c
 // ── Stats banner ─────────────────────────────────────────────────────────────
 function StatsBanner() {
   const stats = [
-    { icon: InstagramIcon, target: 12.6, decimals: 1, suffix: 'K', label: 'Instagram Family', color: '#E1306C', link: 'https://www.instagram.com/' },
-    { icon: Package,   target: 1000, suffix: '+', label: 'Orders Delivered Across USA', color: '#D4AF37' },
-    { icon: MapPin,    target: 500,  suffix: '+', label: 'Pick Up Orders', color: '#60a5fa' },
-    { icon: Globe,     target: 20,   suffix: '+', label: 'International Orders', color: '#34d399' },
-    { icon: Users,     target: 1000, suffix: '+', label: 'Happy Customers', color: '#f472b6' },
-    { icon: Store,     target: 15,   suffix: '+', label: 'Offline Expo Stalls', color: '#a78bfa' },
+    { icon: InstagramIcon, target: 12.6, decimals: 1, suffix: 'K', label: 'Instagram Family', color: '#E1306C', link: 'https://www.instagram.com/hourajewels?igsh=c2llNGRzM2RpbHZ3&utm_source=qr' },
+    { icon: Package, target: 1000, suffix: '+', label: 'Orders Delivered Across USA', color: '#D4AF37' },
+    { icon: MapPin, target: 500, suffix: '+', label: 'Pick Up Orders', color: '#60a5fa' },
+    { icon: Globe, target: 20, suffix: '+', label: 'International Orders', color: '#34d399' },
+    { icon: Users, target: 1000, suffix: '+', label: 'Happy Customers', color: '#f472b6' },
+    { icon: Store, target: 15, suffix: '+', label: 'Offline Expo Stalls', color: '#a78bfa' },
   ];
 
   return (
@@ -268,7 +268,7 @@ export function HomePage() {
                 <img src="https://images.pexels.com/photos/265906/pexels-photo-265906.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" alt="Jewelry Collection" className="w-full h-full object-cover object-right transition-transform duration-1000 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#FDF8F0] via-[#FDF8F0]/95 to-[#FDF8F0]/0 z-10 pointer-events-none w-full md:w-[80%]"></div>
               </div>
-              
+
               {/* Content */}
               <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-12 z-10 w-[70%]">
                 <h2 className="text-[#08183A] text-2xl md:text-4xl lg:text-[40px] font-bold mb-3 md:mb-4 leading-[1.2] font-serif tracking-wide drop-shadow-sm">
@@ -422,7 +422,7 @@ export function HomePage() {
         )}
 
         {/* Customer Reviews — auto-scroll */}
-        {reviews.length > 0 && (
+        {reviews.filter(r => r.image_url).length > 0 && (
           <section className="mb-4 overflow-hidden">
             <div className="px-4 md:px-24 mb-6">
               <h3 className="font-serif font-bold text-2xl text-brand-dark-blue">What Our Clients Say</h3>
@@ -435,29 +435,9 @@ export function HomePage() {
                 style={{ width: 'max-content' }}
               >
                 {/* Duplicate for seamless loop */}
-                {[...reviews, ...reviews].map((rev, idx) => (
-                  <div key={idx} className="w-[280px] md:w-[320px] shrink-0 bg-white border border-brand-gold/20 p-6 rounded-[20px] shadow-sm hover:shadow-xl transition-shadow duration-300 relative group">
-                    <div className="absolute top-5 right-5 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="text-brand-dark-blue">
-                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-                      </svg>
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-11 h-11 rounded-full bg-brand-dark-blue text-brand-gold flex items-center justify-center font-bold text-base shrink-0">
-                        {rev.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <span className="block font-bold text-brand-dark-blue text-sm">{rev.name}</span>
-                        <div className="flex gap-0.5 mt-1">
-                          {[1,2,3,4,5].map(i => (
-                            <Star key={i} className={`w-3 h-3 ${i <= rev.rating ? 'fill-brand-gold text-brand-gold' : 'fill-gray-200 text-gray-200'}`} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-brand-dark-blue/75 italic leading-relaxed">
-                      "{rev.review}"
-                    </p>
+                {[...reviews.filter(r => r.image_url), ...reviews.filter(r => r.image_url)].map((rev, idx) => (
+                  <div key={idx} className="w-[260px] md:w-[300px] aspect-[4/3] shrink-0 bg-white border border-brand-gold/20 rounded-[20px] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 relative group">
+                    <img src={rev.image_url} alt="Client review showcase" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                 ))}
               </div>

@@ -193,16 +193,16 @@ export function MyOrdersPage() {
     }
   };
 
-  const handleReorder = (order) => {
+  const handleReorder = async (order) => {
     let items = [];
     try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
     
-    items.forEach(item => {
+    for (const item of items) {
       // Reconstruct the product/variant object expected by addToCart
-      const productObj = item.product || { id: item.id, name: item.name, price: item.price, image_url: item.image_url };
-      const variantObj = item.variant || null;
-      addToCart(productObj, variantObj, item.qty);
-    });
+      const productObj = item.product || { id: item.id || item.product_id, name: item.name, price: item.price, image_url: item.image_url };
+      const variantObj = item.variant || { size: item.size, color: item.color, price: item.price };
+      await addToCart(productObj, variantObj, item.qty || 1, item.color || variantObj?.color);
+    }
     
     navigate('/cart');
   };

@@ -300,7 +300,7 @@ export function CheckoutPage() {
   });
   
   const [orderType, setOrderType] = useState(location.state?.orderType || 'shipping');
-  const initialStep = token ? (location.state?.orderType ? 2.5 : 2) : 1;
+  const initialStep = token ? (location.state?.orderType === 'pickup' ? 3 : 2.5) : 1;
   const [step, setStep] = useState(initialStep);
   const [pickupContact, setPickupContact] = useState({ name: '', email: '', phone: '' });
   const [pickupDialCode, setPickupDialCode] = useState('US');
@@ -471,16 +471,16 @@ export function CheckoutPage() {
 
   const couponCode = appliedCoupon?.code || location.state?.couponCode || '';
 
-  // Redirect to cart if empty
+  // Redirect to cart if empty (only if order is not being placed and not succeeded)
   useEffect(() => {
-    if (items.length === 0 && !isPlacingOrder) {
+    if (items.length === 0 && !isPlacingOrder && !orderSuccess) {
       navigate('/cart');
     }
-  }, [items, navigate, isPlacingOrder]);
+  }, [items, navigate, isPlacingOrder, orderSuccess]);
 
   // If user logs in mid-way
   useEffect(() => {
-    if (token && step === 1) setStep(location.state?.orderType ? 2.5 : 2);
+    if (token && step === 1) setStep(location.state?.orderType === 'pickup' ? 3 : 2.5);
   }, [token, step]);
 
   // Auto-select saved address or show new form
@@ -623,7 +623,12 @@ export function CheckoutPage() {
       if (orderType === 'pickup') {
         const createOrderData = await createOrder('cod', null);
         if (createOrderData.success) {
-          setTimeout(() => { clearCart(); navigate(`/order-tracking/${createOrderData.order.order_number}`); }, 2000);
+          setIsPlacingOrder(false);
+          setOrderSuccess(true);
+          setTimeout(() => {
+            clearCart();
+            navigate(`/order-tracking/${createOrderData.order.order_number}`);
+          }, 3000);
         } else {
           showToast('Failed to place pickup order.', 'error');
           setIsPlacingOrder(false);
@@ -655,7 +660,10 @@ export function CheckoutPage() {
         if (createOrderData.success) {
           setIsPlacingOrder(false);
           setOrderSuccess(true);
-          setTimeout(() => { clearCart(); navigate(`/order-tracking/${createOrderData.order.order_number}`); }, 3000);
+          setTimeout(() => {
+            clearCart();
+            navigate(`/order-tracking/${createOrderData.order.order_number}`);
+          }, 3000);
         } else {
           showToast('Failed to place order after payment.', 'error');
           setPaymentError('Your payment was processed but we could not create your order. Please contact support with your payment reference.');
@@ -777,44 +785,7 @@ export function CheckoutPage() {
           <div className="lg:col-span-8 space-y-6">
 
 
-            {step === 2 && pickupEnabled && (
-              <div className="space-y-4 max-w-3xl mx-auto">
-                <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
-                    <Truck className="w-4 h-4 text-brand-gold" />
-                  </div>
-                  How would you like to receive your order?
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => { setOrderType('shipping'); setStep(2.5); }}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
-                      orderType === 'shipping' ? 'border-brand-gold bg-brand-gold/5' : 'border-gray-200 bg-white hover:border-brand-gold/40'
-                    }`}
-                  >
-                    <Truck className="w-10 h-10 text-brand-dark-blue" />
-                    <div className="text-center">
-                      <p className="font-bold text-brand-dark-blue">Shipping</p>
-                      <p className="text-xs text-gray-500 mt-1">Delivered to your address within 1–3 business days</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { setOrderType('pickup'); setStep(3); }}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
-                      orderType === 'pickup' ? 'border-brand-gold bg-brand-gold/5' : 'border-gray-200 bg-white hover:border-brand-gold/40'
-                    }`}
-                  >
-                    <Store className="w-10 h-10 text-brand-dark-blue" />
-                    <div className="text-center">
-                      <p className="font-bold text-brand-dark-blue">Store Pickup</p>
-                      <p className="text-xs text-gray-500 mt-1">Pick up from 2965 FM1385, Aubrey, TX 76227</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {(step === 2.5 || (step === 2 && !pickupEnabled)) && (
+            {step === 2.5 && (
           <div className="space-y-4 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">

@@ -12,7 +12,7 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState(null);
   
   const initialFormData = { 
-    name: "", description: "", product_code: "", category: "", model: "", is_active: true, allow_reviews: true,
+    name: "", description: "", product_code: "", instagram_reel_url: "", category: "", model: "", is_active: true, allow_reviews: true,
     variants: [
       { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" }] }
     ],
@@ -127,6 +127,7 @@ export function AdminProductsPage() {
     setFormData({ 
       ...product, 
       model: product.model || "", 
+      instagram_reel_url: product.instagram_reel_url || "",
       variants: variants,
       details: product.details || [],
       reviews: product.reviews || [],
@@ -449,6 +450,17 @@ export function AdminProductsPage() {
                 <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Description</label>
                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3}
                   className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none resize-none" />
+              </div>
+
+              <div>
+                <label className="text-xs font-sans font-semibold text-[#08183A]/70 mb-1 block">Instagram Reel / Post Link</label>
+                <input 
+                  type="url"
+                  value={formData.instagram_reel_url || ""} 
+                  onChange={(e) => setFormData({ ...formData, instagram_reel_url: e.target.value })} 
+                  placeholder="https://www.instagram.com/reel/..."
+                  className="w-full px-3 py-2 rounded-lg bg-[#FDF8F0] border border-[#08183A]/10 focus:outline-none text-sm" 
+                />
               </div>
 
               <div className="pt-3 border-t border-[#08183A]/10">
