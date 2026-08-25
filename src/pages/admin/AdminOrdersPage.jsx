@@ -151,10 +151,25 @@ function EditOrderModal({ order, onClose, onSaved }) {
 
   const [items, setItems] = useState(() => parseJ(order.items));
   const [address, setAddress] = useState(() => parseO(order.address));
-  const [customerPhone, setCustomerPhone] = useState(() => parseO(order.address).mobile || '');
+  
+  // Extract country code and phone number
+  const initialMobile = parseO(order.address).mobile || order.user_phone || '';
+  const initialCountryCode = initialMobile.startsWith('+') ? (initialMobile.match(/^\+\d{1,3}/) || ['+1'])[0] : '+1';
+  const initialPhone = initialMobile.startsWith('+') ? initialMobile.replace(/^\+\d{1,3}\s*/, '') : initialMobile;
+  
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [customerPhone, setCustomerPhone] = useState(initialPhone);
+  
+  const [trackingId, setTrackingId] = useState(order.tracking_id || '');
+  const [trackingLink, setTrackingLink] = useState(order.tracking_link || '');
+  
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
+  
+  const [applyProratedTax, setApplyProratedTax] = useState(true);
+  const [applyProratedDiscount, setApplyProratedDiscount] = useState(true);
+  const [emailingLink, setEmailingLink] = useState(false);
 
   // Product search for replacement
   const [allProducts, setAllProducts] = useState([]);
@@ -166,11 +181,18 @@ function EditOrderModal({ order, onClose, onSaved }) {
       .then(r => r.json()).then(d => setAllProducts(d.products || [])).catch(() => {});
   }, []);
 
-  const shipping = parseFloat(order.shipping_fee) || 0;
-  const tax = parseFloat(order.tax_amount) || 0;
-  const discount = parseFloat(order.discount_amount) || 0;
+  const originalTax = parseFloat(order.tax_amount) || 0;
+  const originalDiscount = parseFloat(order.discount_amount) || 0;
+  const originalItemsTotal = parseJ(order.items).reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
+  
   const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
-  const newTotal = Math.max(0, itemsTotal + shipping + tax - discount);
+  
+  const ratio = originalItemsTotal > 0 ? (itemsTotal / originalItemsTotal) : 1;
+  const currentTax = applyProratedTax ? (originalTax * ratio) : originalTax;
+  const currentDiscount = applyProratedDiscount ? (originalDiscount * ratio) : originalDiscount;
+  
+  const shipping = parseFloat(order.shipping_fee) || 0;
+  const newTotal = Math.max(0, itemsTotal + shipping + currentTax - currentDiscount);
   const oldTotal = parseFloat(order.total) || 0;
   const diff = parseFloat((newTotal - oldTotal).toFixed(2));
 
@@ -205,7 +227,11 @@ function EditOrderModal({ order, onClose, onSaved }) {
       } : { size: sizes?.[0]?.size || 'Standard', price },
       qty: 1,
     };
-    setItems(prev => prev.map((it, i) => i === replacingIdx ? newItem : it));
+    if (replacingIdx === 'new') {
+      setItems(prev => [...prev, newItem]);
+    } else {
+      setItems(prev => prev.map((it, i) => i === replacingIdx ? newItem : it));
+    }
     setReplacingIdx(null);
     setProductSearch('');
   };
@@ -236,22 +262,53 @@ function EditOrderModal({ order, onClose, onSaved }) {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
+      const fullPhone = customerPhone.trim() ? `${countryCode} ${customerPhone.trim()}` : '';
       const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ items, address: { ...address, mobile: customerPhone }, customer_phone: customerPhone, note }),
+        body: JSON.stringify({ 
+          items, 
+          address: { ...address, mobile: fullPhone }, 
+          customer_phone: fullPhone, 
+          tracking_id: trackingId,
+          tracking_link: trackingLink,
+          tax_amount: currentTax,
+          discount_amount: currentDiscount,
+          note 
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setResult(data);
         onSaved({ ...order, items: JSON.stringify(items), address: JSON.stringify({ ...address, mobile: customerPhone }), total: data.new_total, balance_due: data.balance_due, payment_link_url: data.payment_link_url });
       } else {
-        setResult({ error: data.error });
+        setResult({ error: data.error || 'Failed to update order' });
       }
     } catch (err) {
       setResult({ error: err.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const sendPaymentLinkEmail = async (url, amount) => {
+    setEmailingLink(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/email-payment-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ payment_link_url: url, balance_due: amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Payment link sent to customer email successfully!');
+      } else {
+        alert(data.error || 'Failed to send email');
+      }
+    } catch (err) {
+      alert('Network error while sending email');
+    } finally {
+      setEmailingLink(false);
     }
   };
 
@@ -306,6 +363,10 @@ function EditOrderModal({ order, onClose, onSaved }) {
                         <button onClick={() => sendPaymentLinkWhatsApp(result.payment_link_url)}
                           className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold transition-colors">
                           <MessageCircle className="w-4 h-4" /> Send Payment Link via WhatsApp
+                        </button>
+                        <button onClick={() => sendPaymentLinkEmail(result.payment_link_url, result.balance_due)} disabled={emailingLink}
+                          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold transition-colors disabled:opacity-50">
+                          <Mail className="w-4 h-4" /> {emailingLink ? 'Sending Email...' : 'Send Payment Link via Email'}
                         </button>
                         <button onClick={() => { navigator.clipboard.writeText(result.payment_link_url); }}
                           className="w-full flex items-center justify-center gap-2 bg-[#08183A] text-white py-2.5 rounded-xl text-xs font-bold transition-colors">
@@ -374,15 +435,19 @@ function EditOrderModal({ order, onClose, onSaved }) {
                     </div>
                   );
                 })}
+                <button onClick={() => { setReplacingIdx('new'); setProductSearch(''); }}
+                  className="w-full flex items-center justify-center gap-2 border border-dashed border-[#08183A]/30 text-[#08183A]/60 hover:text-[#08183A] hover:bg-[#FDF8F0] hover:border-[#08183A]/50 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-2">
+                  <Plus className="w-4 h-4" /> Add Product
+                </button>
               </div>
 
-              {/* Product search for replacement */}
+              {/* Product search for replacement / addition */}
               {replacingIdx !== null && (
                 <div className="mt-3 border border-blue-200 rounded-xl overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-200">
                     <Search className="w-4 h-4 text-blue-400 shrink-0" />
                     <input autoFocus value={productSearch} onChange={e => setProductSearch(e.target.value)}
-                      placeholder={`Replace item ${replacingIdx + 1} — search products...`}
+                      placeholder={replacingIdx === 'new' ? "Search products to add..." : `Replace item ${replacingIdx + 1} — search products...`}
                       className="flex-1 bg-transparent text-sm text-[#08183A] placeholder:text-gray-400 focus:outline-none" />
                     <button onClick={() => setReplacingIdx(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                   </div>
@@ -427,9 +492,34 @@ function EditOrderModal({ order, onClose, onSaved }) {
             {/* Customer Phone */}
             <div>
               <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider mb-2">Customer Phone</p>
-              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-                placeholder="+1 555 000 0000"
-                className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+              <div className="flex gap-2">
+                <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
+                  className="w-24 text-sm border border-[#08183A]/15 rounded-xl px-2 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30">
+                  <option value="+1">+1 (US/CA)</option>
+                  <option value="+44">+44 (UK)</option>
+                  <option value="+61">+61 (AU)</option>
+                  <option value="+91">+91 (IN)</option>
+                  <option value="+971">+971 (UAE)</option>
+                  <option value="+966">+966 (SA)</option>
+                  <option value="+65">+65 (SG)</option>
+                </select>
+                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+                  placeholder="555 000 0000"
+                  className="flex-1 text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+              </div>
+            </div>
+
+            {/* Manual Tracking */}
+            <div>
+              <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider mb-2">Manual Tracking (For alternative partners)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={trackingId} onChange={e => setTrackingId(e.target.value)}
+                  placeholder="Tracking ID (e.g. 1Z999999999)"
+                  className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+                <input value={trackingLink} onChange={e => setTrackingLink(e.target.value)}
+                  placeholder="Tracking Link URL (https://...)"
+                  className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+              </div>
             </div>
 
             {/* Note */}
@@ -438,6 +528,25 @@ function EditOrderModal({ order, onClose, onSaved }) {
               <input value={note} onChange={e => setNote(e.target.value)} placeholder="Reason for edit..."
                 className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
             </div>
+
+            {/* Prorating Options */}
+            {(originalTax > 0 || originalDiscount > 0) && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+                <p className="text-[10px] font-bold text-[#08183A]/60 uppercase tracking-wider mb-1">Price Adjustments</p>
+                {originalTax > 0 && (
+                  <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
+                    <input type="checkbox" checked={applyProratedTax} onChange={e => setApplyProratedTax(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Prorate Tax calculation based on new item total
+                  </label>
+                )}
+                {originalDiscount > 0 && (
+                  <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
+                    <input type="checkbox" checked={applyProratedDiscount} onChange={e => setApplyProratedDiscount(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Prorate Discount based on new item total
+                  </label>
+                )}
+              </div>
+            )}
 
             {/* Price diff summary */}
             <div className={`rounded-xl px-4 py-3 border flex items-center justify-between ${
@@ -474,8 +583,9 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   const orderTotal = parseFloat(order.total) || 0;
   const shipping = Math.max(0, parseFloat(order.shipping_fee) || 0);
   const tax = Math.max(0, parseFloat(order.tax_amount) || 0);
+  const discountAmount = Math.max(0, parseFloat(order.discount_amount) || 0);
   const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * i.qty, 0);
-  const derivedExtra = Math.max(0, orderTotal - itemsTotal);
+  const derivedExtra = Math.max(0, orderTotal - itemsTotal + discountAmount);
   const shippingDisplay = shipping || (tax ? derivedExtra - tax : derivedExtra);
   const taxDisplay = tax;
 
@@ -484,6 +594,7 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   
   const [refundShipping, setRefundShipping] = useState(true);
   const [refundTax, setRefundTax] = useState(true);
+  const [refundDiscount, setRefundDiscount] = useState(true);
   
   const [chargeType, setChargeType] = useState('flat'); // 'flat' | 'percent'
   const [chargeValue, setChargeValue] = useState(0);
@@ -501,14 +612,17 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   const isFullCancel = allSelected;
 
   const proratedTax = itemsTotal > 0 ? taxDisplay * (selectedItemsTotal / itemsTotal) : taxDisplay;
-  const actualShippingRefund = refundShipping && isFullCancel ? shippingDisplay : 0;
+  const proratedDiscount = itemsTotal > 0 ? discountAmount * (selectedItemsTotal / itemsTotal) : discountAmount;
+  
+  const actualShippingRefund = refundShipping ? shippingDisplay : 0;
   const actualTaxRefund = refundTax ? (isFullCancel ? taxDisplay : proratedTax) : 0;
+  const actualDiscountDeduction = refundDiscount ? (isFullCancel ? discountAmount : proratedDiscount) : 0;
 
-  const subtotalRefund = selectedItemsTotal + actualShippingRefund + actualTaxRefund;
+  const subtotalRefund = selectedItemsTotal + actualShippingRefund + actualTaxRefund - actualDiscountDeduction;
 
   const transactionCharge = chargeType === 'flat' 
     ? parseFloat(chargeValue || 0) 
-    : subtotalRefund * (parseFloat(chargeValue || 0) / 100);
+    : Math.max(0, subtotalRefund) * (parseFloat(chargeValue || 0) / 100);
 
   const refundTotal = cancelType === 'refund' ? Math.max(0, subtotalRefund - transactionCharge) : 0;
 
@@ -641,7 +755,7 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
             {cancelType === 'refund' && anySelected && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  {isFullCancel && shippingDisplay > 0 && (
+                  {shippingDisplay > 0 && (
                     <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={refundShipping} onChange={e => setRefundShipping(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
@@ -657,6 +771,15 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
                         <span className="text-sm font-bold text-[#08183A]">Refund Tax {isFullCancel ? '' : '(Prorated)'}</span>
                       </div>
                       <span className="font-bold text-[#08183A]">${(isFullCancel ? taxDisplay : proratedTax).toFixed(2)}</span>
+                    </label>
+                  )}
+                  {discountAmount > 0 && (
+                    <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer opacity-80">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={refundDiscount} onChange={e => setRefundDiscount(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                        <span className="text-sm font-bold text-[#08183A]">Deduct Applied Discount {isFullCancel ? '' : '(Prorated)'}</span>
+                      </div>
+                      <span className="font-bold text-red-600">-${(isFullCancel ? discountAmount : proratedDiscount).toFixed(2)}</span>
                     </label>
                   )}
                 </div>
@@ -720,6 +843,9 @@ export function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const [tracking, setTracking] = useState({});
   const [shipping, setShipping] = useState({});
   const [refundModal, setRefundModal] = useState(null); // order object
@@ -727,6 +853,7 @@ export function AdminOrdersPage() {
   const [refundResult, setRefundResult] = useState(null); // { success, refundId, amount }
   const [ratesModal, setRatesModal] = useState(null); // { orderId, rates }
   const [editModal, setEditModal] = useState(null); // order object
+  const [sendingInvoice, setSendingInvoice] = useState({}); // tracking email sending state
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -747,6 +874,8 @@ export function AdminOrdersPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
 
   const updateStatus = async (orderId, status) => {
     // Intercept cancellation — show refund modal first
@@ -854,7 +983,9 @@ export function AdminOrdersPage() {
     let address = {};
     try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
     
-    const phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
+    let phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
+    if (phone.length === 10) phone = '1' + phone;
+
     const t = tracking[order.id];
     const trackMsg = t?.id ? ` Your tracking ID is ${t.id}.${t.link ? ` Track here: ${t.link}` : ""}` : "";
     const msg = encodeURIComponent(`Hi ${order.user_name || address.name || "Customer"}! Your order #${order.order_number || order.id} status is now: *${order.status}*.${trackMsg}`);
@@ -902,7 +1033,7 @@ export function AdminOrdersPage() {
       const matchedVariant = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
       const img = item.variant?.image || matchedVariant?.images?.[0] || item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
       const absImg = img && img.startsWith('http') ? img : (img ? `${window.location.origin}${img.startsWith('/') ? '' : '/'}${img}` : '');
-      const code = item.variant?.sku || item.variant?.code || matchedVariant?.code || item.product?.product_code || item.product_code || item.sku || '';
+      const code = item.variant?.size_code || item.variant?.sku || item.variant?.code || matchedVariant?.code || item.product?.product_code || item.product_code || item.sku || '';
       return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#FFFAF9'}; ${isCancelled ? 'opacity: 0.6; filter: grayscale(1);' : ''}">
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;color:#888;">
@@ -950,7 +1081,13 @@ export function AdminOrdersPage() {
 <table style="width:100%;border-collapse:collapse;border-bottom:3px solid #08183A;padding-bottom:16px;margin-bottom:20px;">
   <tr>
     <td style="vertical-align:middle;width:50%;">
-      <img src="${new URL(logoUrl, window.location.href).href}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${new URL(logoUrl, window.location.href).href}" style="height:48px;width:auto;object-fit:contain;" alt="Houra Jewels Logo" />
+        <div style="display:flex;flex-direction:column;">
+          <span style="font-family:serif;font-weight:900;font-size:22px;color:#08183A;line-height:1;">Houra Jewels</span>
+          <span style="font-size:10px;font-weight:600;color:#D4AF37;letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;">By S & M</span>
+        </div>
+      </div>
     </td>
     <td style="vertical-align:top;text-align:right;">
       <div style="font-size:20pt;font-weight:900;color:#08183A;letter-spacing:-0.5px;">INVOICE</div>
@@ -986,9 +1123,34 @@ export function AdminOrdersPage() {
         ${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} ${escapeHtml(address.pincode || '')}<br>
         ${address.mobile ? `<strong>Phone:</strong> ${escapeHtml(address.mobile)}` : ''}
       </div>
-    </td>` : ''}
+    </td>` : `
+    <td style="width:4px;"></td>
+    <td style="width:50%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#f8fafc;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Payment Details</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong>Type:</strong> <span style="text-transform:capitalize;">${escapeHtml(order.payment_method || 'Card')}</span><br>
+        ${order.stripe_payment_intent_id ? `<strong>Transaction ID:</strong> <span style="font-family:monospace;">${escapeHtml(order.stripe_payment_intent_id)}</span><br>` : ''}
+        <strong>Amount Received:</strong> $${parseFloat(order.total || 0).toFixed(2)}
+      </div>
+    </td>
+    `}
   </tr>
 </table>
+
+${!isPickup ? `
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="width:100%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#f8fafc;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Payment Details</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;display:flex;justify-content:space-between;">
+        <div><strong>Type:</strong> <span style="text-transform:capitalize;">${escapeHtml(order.payment_method || 'Card')}</span></div>
+        ${order.stripe_payment_intent_id ? `<div><strong>Transaction ID:</strong> <span style="font-family:monospace;">${escapeHtml(order.stripe_payment_intent_id)}</span></div>` : ''}
+        <div><strong>Amount Received:</strong> $${parseFloat(order.total || 0).toFixed(2)}</div>
+      </div>
+    </td>
+  </tr>
+</table>
+` : ''}
 
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
   <thead>
@@ -1048,7 +1210,9 @@ export function AdminOrdersPage() {
     let address = {};
     try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
     
-    const phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
+    let phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
+    if (phone.length === 10) phone = '1' + phone;
+
     const itemsText = items.map((i) => `• ${i.product?.name} ×${i.qty} — $${(i.variant?.price || i.product?.price || 0) * i.qty}`).join("\n");
     const msg = encodeURIComponent(
       `Hi ${order.user_name || address.name || 'Customer'}! 🙏 Please find your *Invoice* for Order *#${order.order_number || order.id}* below:\n\n` +
@@ -1057,6 +1221,27 @@ export function AdminOrdersPage() {
       `Thank you for shopping with Houra Jewels!`
     );
     window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+  };
+
+  const sendEmailInvoice = async (order) => {
+    setSendingInvoice(p => ({ ...p, [order.id]: true }));
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/resend-invoice`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Email invoice sent successfully!");
+      } else {
+        alert("Failed to send email invoice: " + (data.error || "Unknown error"));
+      }
+    } catch (err) {
+      alert("Error sending email invoice");
+    } finally {
+      setSendingInvoice(p => ({ ...p, [order.id]: false }));
+    }
   };
 
   const printLabel = (order) => {
@@ -1140,7 +1325,28 @@ export function AdminOrdersPage() {
     </div>
   );
 
-  const filtered = orders.filter(o => (statusFilter === "all" || o.status === statusFilter) && o.order_type !== 'pickup');
+  const filtered = orders.filter(o => {
+    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (o.order_type === 'pickup') return false;
+    
+    if (search) {
+      const q = search.toLowerCase();
+      const matchId = String(o.order_number || o.id).toLowerCase().includes(q);
+      const matchEmail = (o.user_email || '').toLowerCase().includes(q);
+      
+      let matchAddressEmail = false;
+      try {
+        const addr = typeof o.address === 'string' ? JSON.parse(o.address) : (o.address || {});
+        matchAddressEmail = (addr.email || '').toLowerCase().includes(q);
+      } catch(e) {}
+      
+      if (!matchId && !matchEmail && !matchAddressEmail) return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedOrders = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -1149,6 +1355,15 @@ export function AdminOrdersPage() {
         <div>
           <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-[#08183A]">Orders</h1>
           <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">{orders.filter(o => o.order_type !== 'pickup').length} total</p>
+        </div>
+        <div className="relative w-full xs:w-64">
+          <Search className="w-4 h-4 text-[#08183A]/40 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            placeholder="Search by Order # or Email"
+            className="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all"
+          />
         </div>
       </div>
 
@@ -1176,7 +1391,7 @@ export function AdminOrdersPage() {
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
-          {filtered.map((order, i) => (
+          {paginatedOrders.map((order, i) => (
             <motion.div key={order.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               className="bg-white rounded-2xl border border-[#08183A]/10 overflow-hidden">
 
@@ -1191,9 +1406,9 @@ export function AdminOrdersPage() {
                     <span className={`text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full ${STATUS_COLORS[order.status] || "bg-[#FDF8F0] text-gray-500"}`}>
                       {order.status}
                     </span>
-                    {order.payment_method === 'cod' && (
+                    {order.payment_method === 'cod' && !order.stripe_payment_intent_id && (
                       <span className="text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                        COD (${order.total - (order.advance_paid || 0)} Pending)
+                        Balance (${order.total - (order.advance_paid || 0)} Pending)
                       </span>
                     )}
                     {Number(order.refund_amount) > 0 && (
@@ -1239,16 +1454,16 @@ export function AdminOrdersPage() {
                              </a>
                           )}
                           <div className="flex justify-between mt-2">
-                            <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`]}
-                              className="text-[10px] font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline w-full text-center">
+                            <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
+                              className="text-[10px] font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline w-full text-center disabled:opacity-50 disabled:cursor-not-allowed">
                               {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "Re-create Label (Shippo)"}
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`]}
-                            className="w-full flex items-center justify-center gap-2 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#08183A] px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors disabled:opacity-50">
+                          <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
+                            className="w-full flex items-center justify-center gap-2 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#08183A] px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "📦 Select Shipping Rate (Shippo)"}
                           </button>
                         </div>
@@ -1259,6 +1474,35 @@ export function AdminOrdersPage() {
                   {/* Balance Due Banner */}
                   {parseFloat(order.balance_due) > 0 && (
                     <BalanceDuePanel order={order} onUpdate={(updated) => setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o))} />
+                  )}
+
+                  {/* Refund Information */}
+                  {(order.status === 'cancelled' || parseFloat(order.refund_amount) > 0) && (
+                    <div className="pt-4 border-t border-[#08183A]/5">
+                      <p className="text-[10px] font-sans text-red-600 uppercase tracking-wider mb-3 font-bold">Refund Details</p>
+                      <div className="bg-red-50/50 rounded-xl p-4 border border-red-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-[10px] font-semibold text-red-500 uppercase">Refunded Amount</p>
+                          <p className="font-bold text-red-700 text-sm">${parseFloat(order.refund_amount || 0).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-red-500 uppercase">Transaction ID</p>
+                          <p className="font-semibold text-red-700 text-xs break-all">{order.refund_id || 'N/A'}</p>
+                        </div>
+                        {(() => {
+                          let hist = [];
+                          try { hist = typeof order.refund_history === 'string' ? JSON.parse(order.refund_history) : (order.refund_history || []); } catch {}
+                          const refundEvent = hist.length > 0 ? hist[hist.length - 1] : null;
+                          const dateStr = refundEvent?.timestamp || order.updated_at || order.created_at;
+                          return (
+                            <div>
+                              <p className="text-[10px] font-semibold text-red-500 uppercase">Refund Date</p>
+                              <p className="font-semibold text-red-700 text-xs">{dateStr ? new Date(dateStr).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }) : 'N/A'}</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   )}
 
                   {/* Edit History */}
@@ -1277,7 +1521,7 @@ export function AdminOrdersPage() {
                               <div className="flex justify-between">
                                 <span className="font-semibold">{new Date(h.timestamp).toLocaleString('en-IN')}</span>
                                 <span className={h.diff > 0 ? 'text-amber-600 font-bold' : h.diff < 0 ? 'text-green-600 font-bold' : 'text-gray-400'}>
-                                  {h.diff > 0 ? `+$${h.diff.toFixed(2)}` : h.diff < 0 ? `-$${Math.abs(h.diff).toFixed(2)}` : 'No change'}
+                                  {h.diff > 0 ? `+${h.diff.toFixed(2)}` : h.diff < 0 ? `-${Math.abs(h.diff).toFixed(2)}` : 'No change'}
                                 </span>
                               </div>
                               {h.note && <p className="text-[#08183A]/50 mt-0.5">{h.note}</p>}
@@ -1450,10 +1694,10 @@ export function AdminOrdersPage() {
                       <Pencil className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="truncate">Edit Order</span>
                     </button>
-                    <button onClick={() => printLabel(order)}
-                      className="flex items-center justify-center gap-1.5 bg-[#08183A] text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans hover:bg-[#08183A]/80 transition-colors">
-                      <Printer className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="truncate">Print Label</span>
+                    <button onClick={() => sendEmailInvoice(order)} disabled={sendingInvoice[order.id]}
+                      className="flex items-center justify-center gap-1.5 bg-[#08183A] text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans hover:bg-[#08183A]/80 transition-colors disabled:opacity-50">
+                      <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{sendingInvoice[order.id] ? "Sending..." : "Email Invoice"}</span>
                     </button>
                     <button onClick={() => notifyWhatsApp(order)}
                       className="flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans transition-colors">
@@ -1462,19 +1706,41 @@ export function AdminOrdersPage() {
                     </button>
                     <button onClick={() => openInvoice(order)}
                       className="flex items-center justify-center gap-1.5 bg-[#D4AF37] hover:bg-amber-500 text-[#08183A] px-3 py-2.5 rounded-xl text-xs font-semibold font-sans transition-colors">
-                      <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="truncate">Invoice</span>
+                      <Printer className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Print Invoice</span>
                     </button>
                     <button onClick={() => sendInvoiceWhatsApp(order)}
                       className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans transition-colors">
                       <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span className="truncate">Send Invoice</span>
+                      <span className="truncate">WA Invoice</span>
                     </button>
                   </div>
                 </div>
               )}
             </motion.div>
           ))}
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-sm text-[#08183A]/60">Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} orders</span>
+              <div className="flex gap-2">
+                <button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] bg-white hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <button 
+                  disabled={currentPage === totalPages} 
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] bg-white hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

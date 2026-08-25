@@ -55,7 +55,17 @@ function ForgotPassword({ onBack, dark = false }) {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) return setError('Password must be at least 6 characters');
+    const pwRules = [
+      { ok: newPassword.length >= 8, msg: 'Min 8 characters' },
+      { ok: /\d/.test(newPassword), msg: 'At least 1 number' },
+      { ok: /[^A-Za-z0-9]/.test(newPassword), msg: 'At least 1 special character' },
+    ];
+    const failedRule = pwRules.find(r => !r.ok);
+    if (failedRule) {
+      setError(`Password requirements: ${failedRule.msg}`);
+      return;
+    }
+
     setLoading(true); setError('');
     try {
       const res = await fetch(`${BACKEND_URL}/auth/reset-password`, {
@@ -147,8 +157,8 @@ function ForgotPassword({ onBack, dark = false }) {
             <label className={labelCls}>New Password</label>
             <div className="relative">
               <Lock className={`w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 ${dark ? 'text-[#D4AF37]' : 'text-brand-dark-blue/40'}`} />
-              <input type={showPass ? 'text' : 'password'} required minLength={6} value={newPassword}
-                onChange={e => setNewPassword(e.target.value)} placeholder="Min 6 characters" className={`${inputCls} pr-12`} />
+              <input type={showPass ? 'text' : 'password'} required minLength={8} value={newPassword}
+                onChange={e => setNewPassword(e.target.value)} placeholder="Min 8 chars, 1 num, 1 special" className={`${inputCls} pr-12`} />
               <button type="button" onClick={() => setShowPass(p => !p)}
                 className={`absolute right-4 top-1/2 -translate-y-1/2 ${dark ? 'text-[#D4AF37]' : 'text-brand-dark-blue/40'}`}>
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

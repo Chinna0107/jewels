@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Droplet, Feather, Check, ChevronLeft, ChevronRight, User, Truck, RotateCcw, Layers } from 'lucide-react';
+import { Share2, Heart, ShoppingCart, Star, ShieldCheck, Droplet, Feather, Check, ChevronLeft, ChevronRight, User, Truck, RotateCcw, Layers, PlayCircle } from 'lucide-react';
 import { Header } from '../components/Header';
 
 function InstagramIcon({ className }) {
@@ -96,9 +96,9 @@ export function ProductDetailPage() {
     if (selectedVariant && selectedVariant.sizes && selectedVariant.sizes.length > 0) {
       const firstSize = selectedVariant.sizes[0];
       setSelectedSize(firstSize);
-      if (firstSize.code) setSearchParams({ variantCode: firstSize.code });
-      else if (selectedVariant.code) setSearchParams({ variantCode: selectedVariant.code });
-      else if (selectedVariant.color) setSearchParams({ variantCode: selectedVariant.color });
+      if (firstSize.code) setSearchParams({ variantCode: firstSize.code }, { replace: true });
+      else if (selectedVariant.code) setSearchParams({ variantCode: selectedVariant.code }, { replace: true });
+      else if (selectedVariant.color) setSearchParams({ variantCode: selectedVariant.color }, { replace: true });
     } else {
       setSelectedSize(null);
     }
@@ -367,6 +367,31 @@ export function ProductDetailPage() {
               )}
             </div>
 
+            {(product.instagram_reel_url || selectedVariant?.instagram_link) && (
+              <div 
+                onClick={() => window.open(product.instagram_reel_url || selectedVariant?.instagram_link, '_blank', 'noopener,noreferrer')}
+                className="animate-info mt-6 cursor-pointer group relative overflow-hidden rounded-2xl border border-pink-100 bg-gradient-to-r from-pink-50/50 to-white shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#E1306C]/10 to-[#833AB4]/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
+                <div className="p-4 md:p-5 flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm border border-pink-100 group-hover:scale-110 transition-transform duration-300">
+                      <InstagramIcon className="w-6 h-6 text-[#E1306C]" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-brand-dark-blue text-sm md:text-base group-hover:text-[#E1306C] transition-colors">See how it looks in real life</h3>
+                      <p className="text-gray-500 text-xs md:text-sm mt-0.5">Watch our Instagram Reel</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[#E1306C] font-bold text-xs md:text-sm bg-white px-4 py-2 rounded-full shadow-sm group-hover:bg-gradient-to-r group-hover:from-[#E1306C] group-hover:to-[#C13584] group-hover:text-white transition-all duration-300">
+                    <PlayCircle className="w-4 h-4" />
+                    <span>Watch</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             {/* <div className="animate-info">
               <h3 className="font-bold text-brand-dark-blue text-lg mb-2">About this product</h3>
               <p className="text-brand-dark-blue/70 leading-relaxed font-medium">
@@ -385,7 +410,7 @@ export function ProductDetailPage() {
                     {variants.map((v, idx) => (
                       <button
                         key={idx}
-                        onClick={() => { setSelectedVariant(v); setSearchParams(v.code ? { variantCode: v.code } : { variantCode: v.color || idx }); }}
+                        onClick={() => { setSelectedVariant(v); setSearchParams(v.code ? { variantCode: v.code } : { variantCode: v.color || idx }, { replace: true }); }}
                         className={`px-4 py-2 rounded-xl border-2 font-bold transition-colors ${
                           selectedVariant === v ? 'border-brand-dark-blue bg-brand-dark-blue text-white' : 'border-gray-200 bg-white text-brand-dark-blue hover:border-brand-dark-blue/50'
                         }`}
@@ -414,7 +439,7 @@ export function ProductDetailPage() {
                       return (
                         <button
                           key={idx}
-                          onClick={() => { setSelectedSize(sizeObj); if (sizeObj.code) setSearchParams({ variantCode: sizeObj.code }); }}
+                          onClick={() => { setSelectedSize(sizeObj); if (sizeObj.code) setSearchParams({ variantCode: sizeObj.code }, { replace: true }); }}
                           className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 relative ${
                             isSelected 
                               ? 'border-brand-dark-blue bg-brand-dark-blue/5' 
@@ -460,12 +485,12 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Desktop Action Buttons */}
-            <div className="animate-info hidden md:flex items-center gap-4 pt-4">
+            {/* Action Buttons */}
+            <div className="animate-info flex items-center gap-3 md:gap-4 pt-4">
               <button 
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className={`flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-lg ${
+                className={`hidden md:flex flex-1 font-bold py-4 rounded-xl items-center justify-center gap-2 shadow-md transition-all text-lg ${
                   isOutOfStock 
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-brand-dark-blue text-brand-gold hover:bg-brand-dark-blue/90 shadow-brand-dark-blue/20'
@@ -476,25 +501,28 @@ export function ProductDetailPage() {
               
               <button 
                 onClick={handleWishlist}
-                className="w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
+                className="flex-1 md:flex-none md:w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
               >
                 <Heart className={`w-6 h-6 transition-colors ${isWishlisted ? 'fill-brand-gold text-brand-gold' : 'text-brand-dark-blue group-hover:text-brand-gold'}`} />
+                <span className="md:hidden ml-2 font-bold text-sm text-brand-dark-blue">Wishlist</span>
               </button>
               
               <button 
                 onClick={handleShare}
-                className="w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
+                className="flex-1 md:flex-none md:w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
               >
                 <Share2 className="w-5 h-5 text-brand-dark-blue group-hover:text-brand-gold transition-colors" />
+                <span className="md:hidden ml-2 font-bold text-sm text-brand-dark-blue">Share</span>
               </button>
 
               {(product.instagram_reel_url || selectedVariant?.instagram_link) && (
                 <button 
                   onClick={() => window.open(product.instagram_reel_url || selectedVariant?.instagram_link, '_blank', 'noopener,noreferrer')}
                   title="Watch Instagram Reel"
-                  className="w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
+                  className="flex-1 md:flex-none md:w-14 h-14 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100 hover:scale-105 transition-transform flex-shrink-0 group"
                 >
                   <InstagramIcon className="w-5 h-5 text-[#E1306C] group-hover:scale-110 transition-transform" />
+                  <span className="md:hidden ml-2 font-bold text-sm text-[#E1306C]">Reel</span>
                 </button>
               )}
             </div>
@@ -527,9 +555,15 @@ export function ProductDetailPage() {
                 </button>
                 <button 
                   onClick={() => setActiveTab('details')}
-                  className={`flex-1 py-4 text-sm font-bold transition-colors ${activeTab === 'details' ? 'text-brand-dark-blue border-b-2 border-brand-gold bg-brand-dark-blue/5' : 'text-gray-400 hover:text-brand-dark-blue'}`}
+                  className={`flex-1 py-4 text-sm font-bold transition-colors border-l border-gray-100 ${activeTab === 'details' ? 'text-brand-dark-blue border-b-2 border-brand-gold bg-brand-dark-blue/5' : 'text-gray-400 hover:text-brand-dark-blue'}`}
                 >
                   Details
+                </button>
+                <button 
+                  onClick={() => setActiveTab('care')}
+                  className={`flex-1 py-4 text-sm font-bold transition-colors border-l border-gray-100 ${activeTab === 'care' ? 'text-brand-dark-blue border-b-2 border-brand-gold bg-brand-dark-blue/5' : 'text-gray-400 hover:text-brand-dark-blue'}`}
+                >
+                  Care Tips
                 </button>
               </div>
               
@@ -568,6 +602,12 @@ export function ProductDetailPage() {
                     </div>
                   );
                 })()}
+
+                {activeTab === 'care' && (
+                  <div className="flex justify-center p-2">
+                    <img src="/images/inst.png" alt="Jewelry Care Tips" className="max-w-full h-auto rounded-lg shadow-sm" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -677,7 +717,7 @@ export function ProductDetailPage() {
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 mt-16 md:mt-24 mb-12">
           <div className="flex justify-between items-end mb-8">
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-brand-dark-blue">
-              People Also Bought
+             Customers Also Bought
             </h2>
             <button onClick={() => navigate('/category/all')} className="text-sm font-bold text-brand-gold hover:underline hidden md:block">
               View All

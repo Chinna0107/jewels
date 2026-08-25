@@ -5,11 +5,12 @@ import { useAuthStore } from '../store/useAuthStore';
 import api from '../utils/api';
 import { Header } from '../components/Header';
 import { PhoneInput } from '../components/PhoneInput';
+import { CountryPicker } from '../components/CountryPicker';
 
 export function AccountSettingsPage() {
   const navigate = useNavigate();
   const { token, user, fetchProfile, updateProfile, logout } = useAuthStore();
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
+  const [profileForm, setProfileForm] = useState({ name: '', phone: '', country: '' });
   const [passForm, setPassForm] = useState({ current: '', newPass: '', confirm: '' });
   const [showPass, setShowPass] = useState({ current: false, new: false });
   const [profileMsg, setProfileMsg] = useState('');
@@ -22,13 +23,17 @@ export function AccountSettingsPage() {
   }, [token]);
 
   useEffect(() => {
-    if (user) setProfileForm({ name: user.name || '', phone: user.phone || '' });
+    if (user) setProfileForm({ name: user.name || '', phone: user.phone || '', country: user.country || '' });
   }, [user]);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
+    if (!profileForm.country) {
+      setProfileMsg('Country field is mandatory');
+      return;
+    }
     setSaving(true);
-    const res = await updateProfile(profileForm.name, profileForm.phone);
+    const res = await updateProfile(profileForm.name, profileForm.phone, profileForm.country);
     setProfileMsg(res.success ? 'Profile updated!' : (res.error || 'Failed to update'));
     setSaving(false);
     setTimeout(() => setProfileMsg(''), 3000);
@@ -37,7 +42,15 @@ export function AccountSettingsPage() {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (passForm.newPass !== passForm.confirm) return setPassMsg('Passwords do not match');
-    if (passForm.newPass.length < 6) return setPassMsg('Min 6 characters');
+    
+    const pwRules = [
+      { ok: passForm.newPass.length >= 8, msg: 'Min 8 characters' },
+      { ok: /\d/.test(passForm.newPass), msg: 'At least 1 number' },
+      { ok: /[^A-Za-z0-9]/.test(passForm.newPass), msg: 'At least 1 special character' },
+    ];
+    const failedRule = pwRules.find(r => !r.ok);
+    if (failedRule) return setPassMsg(`Password requirements: ${failedRule.msg}`);
+
     setSaving(true);
     try {
       await api.put('/auth/change-password', { currentPassword: passForm.current, newPassword: passForm.newPass });
@@ -88,6 +101,10 @@ export function AccountSettingsPage() {
             <div>
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Phone</label>
               <PhoneInput value={profileForm.phone} onChange={v => setProfileForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Country *</label>
+              <CountryPicker value={profileForm.country} onChange={v => setProfileForm(f => ({ ...f, country: v }))} />
             </div>
             {profileMsg && (
               <p className={`text-xs font-semibold ${profileMsg.includes('!') ? 'text-green-600' : 'text-red-500'}`}>{profileMsg}</p>

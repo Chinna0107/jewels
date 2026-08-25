@@ -25,6 +25,7 @@ import { ShippingPolicyPage } from './pages/ShippingPolicyPage';
 import { ReturnsPolicyPage } from './pages/ReturnsPolicyPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
+import { CareTipsPage } from './pages/CareTipsPage';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
@@ -109,6 +110,7 @@ function App() {
                   <Route path="/returns-policy" element={<ReturnsPolicyPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                  <Route path="/care-tips" element={<CareTipsPage />} />
                 </Routes>
               </AppLayout>
             } />

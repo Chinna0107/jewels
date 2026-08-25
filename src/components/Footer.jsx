@@ -50,6 +50,7 @@ export function Footer() {
             <h3 className="text-lg font-bold mb-2" style={{ color: '#C6A184' }}>Quick Links</h3>
             <Link to="/" className="text-sm text-gray-100/80 transition-colors" style={{}} onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Home</Link>
             <Link to="/category/all" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Shop All</Link>
+            <Link to="/about" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>About</Link>
             <Link to="/profile" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>My Account</Link>
             <Link to="/my-orders" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Order Tracking</Link>
             <Link to="/contact" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Contact Us</Link>
@@ -62,6 +63,7 @@ export function Footer() {
             <Link to="/privacy-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Privacy Policy</Link>
             <Link to="/shipping-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Shipping Policy</Link>
             <Link to="/returns-policy" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Returns & Exchanges</Link>
+            <Link to="/care-tips" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Jewelry Care Tips</Link>
             <Link to="/contact#faq-section" className="text-sm text-gray-100/80 transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>FAQs</Link>
           </div>
 
@@ -86,7 +88,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-gray-100/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-100/50">
-            © {new Date().getFullYear()} Houra Jewels LLC. All rights reserved.
+            © {new Date().getFullYear()} Houra Jewels. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-xs text-gray-100/50">
             <Link to="/privacy-policy" className="transition-colors" onMouseEnter={e => e.currentTarget.style.color='#C6A184'} onMouseLeave={e => e.currentTarget.style.color=''}>Privacy Policy</Link>

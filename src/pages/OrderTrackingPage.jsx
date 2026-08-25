@@ -70,7 +70,7 @@ export function OrderTrackingPage() {
           className="text-center space-y-3 mb-10"
         >
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">Order Placed Successfully!</h1>
-          <p className="text-gray-500 text-sm md:text-base">Thank you for shopping with Houra Jewels. Your Fashion jewellery products are being prepared.</p>
+          <p className="text-gray-500 text-sm md:text-base">Thank you for placing your order with Houra Jewels. We're delighted to begin preparing your selection and will keep you updated throughout its journey to you.</p>
         </motion.div>
 
         <motion.div 
@@ -92,6 +92,27 @@ export function OrderTrackingPage() {
               }`}>
                 {order?.order_type === 'pickup' ? <Store className="w-3.5 h-3.5" /> : <Truck className="w-3.5 h-3.5" />}
                 {order?.order_type === 'pickup' ? 'Store Pickup' : 'Home Delivery'}
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 flex flex-wrap gap-x-8 gap-y-4 border border-gray-100">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Payment Type</p>
+                <p className="text-sm font-semibold text-gray-900 capitalize">{order?.stripe_payment_intent_id ? 'Card' : (order?.payment_method || 'Card')}</p>
+              </div>
+              {order?.stripe_payment_intent_id && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Transaction ID</p>
+                  <p className="text-sm font-mono text-gray-900">{order.stripe_payment_intent_id}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  {order?.payment_method === 'cod' && !order?.stripe_payment_intent_id ? 'Amount Pending' : 'Total Amount Received'}
+                </p>
+                <p className="text-sm font-bold text-brand-gold">
+                  ${parseFloat(order?.payment_method === 'cod' && !order?.stripe_payment_intent_id ? (order.total - (order.advance_paid || 0)) : (order?.total || 0)).toFixed(2)}
+                </p>
               </div>
             </div>
 

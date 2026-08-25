@@ -57,7 +57,7 @@ export function MyOrdersPage() {
       const matchedVariant = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
       const img = item.variant?.image || matchedVariant?.images?.[0] || item.product?.images?.[0] || item.product?.image_url || item.image_url || '';
       const absImg = img && img.startsWith('http') ? img : (img ? `${window.location.origin}${img.startsWith('/') ? '' : '/'}${img}` : '');
-      const code = item.variant?.sku || item.variant?.code || matchedVariant?.code || item.product?.product_code || item.product_code || item.sku || '';
+      const code = item.variant?.size_code || item.variant?.sku || item.variant?.code || matchedVariant?.code || item.product?.product_code || item.product_code || item.sku || '';
       return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#FFFAF9'}">
         <td style="padding:10px 12px;border-bottom:1px solid #F6EFEF;vertical-align:middle;text-align:center;font-size:9pt;color:#888;">${idx + 1}</td>
@@ -99,7 +99,13 @@ export function MyOrdersPage() {
 <table style="width:100%;border-collapse:collapse;border-bottom:3px solid #08183A;padding-bottom:16px;margin-bottom:20px;">
   <tr>
     <td style="vertical-align:middle;width:50%;">
-      <img src="${new URL(logoUrl, window.location.href).href}" style="height:64px;width:auto;object-fit:contain;" alt="Houra Jewels" />
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${new URL(logoUrl, window.location.href).href}" style="height:48px;width:auto;object-fit:contain;" alt="Houra Jewels Logo" />
+        <div style="display:flex;flex-direction:column;">
+          <span style="font-family:serif;font-weight:900;font-size:22px;color:#08183A;line-height:1;">Houra Jewels</span>
+          <span style="font-size:10px;font-weight:600;color:#D4AF37;letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;">By S & M</span>
+        </div>
+      </div>
     </td>
     <td style="vertical-align:top;text-align:right;">
       <div style="font-size:20pt;font-weight:900;color:#08183A;letter-spacing:-0.5px;">INVOICE</div>
@@ -136,10 +142,35 @@ export function MyOrdersPage() {
         ${escapeHtml(address.city || '')}, ${escapeHtml(address.state || '')} ${escapeHtml(address.pincode || '')}<br>
         ${address.mobile ? `<strong>Phone:</strong> ${escapeHtml(address.mobile)}` : ''}
       </div>
-    </td>` : ''}
+    </td>` : `
+    <td style="width:4px;"></td>
+    <td style="width:50%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#f8fafc;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Payment Details</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;">
+        <strong>Type:</strong> <span style="text-transform:capitalize;">${escapeHtml(order.payment_method || 'Card')}</span><br>
+        ${order.stripe_payment_intent_id ? `<strong>Transaction ID:</strong> <span style="font-family:monospace;">${escapeHtml(order.stripe_payment_intent_id)}</span><br>` : ''}
+        <strong>Amount Received:</strong> $${parseFloat(order.total || 0).toFixed(2)}
+      </div>
+    </td>
+    `}
   </tr>
 </table>
 
+${!isPickup ? `
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="width:100%;vertical-align:top;padding:12px;border:1px solid #e8d5b0;background:#f8fafc;border-radius:4px;">
+      <div style="font-size:9pt;font-weight:700;color:#08183A;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8d5b0;padding-bottom:5px;margin-bottom:8px;">Payment Details</div>
+      <div style="font-size:9.5pt;color:#555;line-height:1.6;display:flex;justify-content:space-between;">
+        <div><strong>Type:</strong> <span style="text-transform:capitalize;">${escapeHtml(order.payment_method || 'Card')}</span></div>
+        ${order.stripe_payment_intent_id ? `<div><strong>Transaction ID:</strong> <span style="font-family:monospace;">${escapeHtml(order.stripe_payment_intent_id)}</span></div>` : ''}
+        <div><strong>Amount Received:</strong> $${parseFloat(order.total || 0).toFixed(2)}</div>
+      </div>
+    </td>
+  </tr>
+</table>
+` : ''}
+ 
 <!-- ITEMS TABLE -->
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
   <thead>
@@ -166,6 +197,14 @@ export function MyOrdersPage() {
         ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
         ${taxAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Tax</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${taxAmt.toFixed(2)}</td></tr>` : ''}
         <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
+        ${parseFloat(order.refund_amount) > 0 ? `
+        <tr><td colspan="2" style="padding:12px;text-align:right;border-bottom:1px solid #F6EFEF;">
+          <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:4px;padding:8px;display:inline-block;text-align:right;min-width:200px;">
+            <div style="color:#DC2626;font-size:8.5pt;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Refund Processed</div>
+            <div style="color:#991B1B;font-size:12pt;font-weight:800;margin-bottom:4px;">-$${parseFloat(order.refund_amount).toFixed(2)}</div>
+            ${order.refund_id ? `<div style="color:#B91C1C;font-size:8pt;">Txn: ${escapeHtml(order.refund_id)}</div>` : ''}
+          </div>
+        </td></tr>` : ''}
       </table>
     </td>
   </tr>
@@ -255,9 +294,9 @@ export function MyOrdersPage() {
                     <span className={`text-xs font-bold px-4 py-1.5 rounded-full border capitalize shadow-sm ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                       {order.status}
                     </span>
-                    {order.payment_method === 'cod' && (
+                    {order.payment_method === 'cod' && !order.stripe_payment_intent_id && (
                       <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
-                        COD (${order.total - (order.advance_paid || 0)} pending)
+                        Balance (${order.total - (order.advance_paid || 0)} pending)
                       </span>
                     )}
                     <p className="text-lg font-bold text-[#D4AF37]">${Number(order.total).toLocaleString('en-IN')}</p>
@@ -327,12 +366,77 @@ export function MyOrdersPage() {
                   </div>
                 )}
 
+                {/* Refund Information */}
+                {(order.status === 'cancelled' || parseFloat(order.refund_amount) > 0) && (
+                  <div className="mx-6 mb-4 bg-red-50/50 rounded-xl p-4 border border-red-100">
+                    <h4 className="text-xs font-bold text-red-700 uppercase tracking-wider mb-3">Refund Details</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <p className="text-[10px] font-semibold text-red-500 uppercase">Refunded Amount</p>
+                        <p className="font-bold text-red-700 text-lg">${parseFloat(order.refund_amount || 0).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-red-500 uppercase">Transaction ID</p>
+                        <p className="font-semibold text-red-700 text-sm">{order.refund_id || 'N/A'}</p>
+                      </div>
+                      {(() => {
+                        let hist = [];
+                        try { hist = typeof order.refund_history === 'string' ? JSON.parse(order.refund_history) : (order.refund_history || []); } catch {}
+                        const refundEvent = hist.length > 0 ? hist[hist.length - 1] : null;
+                        const dateStr = refundEvent?.timestamp || order.updated_at || order.created_at;
+                        return (
+                          <div>
+                            <p className="text-[10px] font-semibold text-red-500 uppercase">Refund Date</p>
+                            <p className="font-semibold text-red-700 text-sm">{dateStr ? new Date(dateStr).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 {/* Items */}
                 <div className="px-6 py-4 bg-white">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Cancelled Items */}
+                    {(() => {
+                      let cancelledSnap = [];
+                      try { cancelledSnap = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch(e) {}
+                      if (cancelledSnap.length === 0 && order.status !== 'cancelled') return null;
+                      
+                      const cancelledList = order.status === 'cancelled' && cancelledSnap.length === 0 
+                        ? (typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])) 
+                        : cancelledSnap;
+                      
+                      if (cancelledList.length === 0) return null;
+
+                      return cancelledList.map((item, i) => {
+                        const variantImg = item.image || null;
+                        const productName = item.product?.name || item.name || 'Product';
+                        return (
+                          <div key={`c-${i}`} className="flex items-start gap-4 p-3 rounded-xl border border-red-50 bg-red-50/20 grayscale opacity-60">
+                            <div className="w-16 h-16 bg-[#FDF8F0] rounded-xl flex items-center justify-center shrink-0 border border-[#08183A]/10 overflow-hidden">
+                              {variantImg ? <img src={variantImg} alt={productName} className="w-full h-full object-cover" /> : <Package className="w-8 h-8 text-[#08183A]/40" />}
+                            </div>
+                            <div className="flex-1 min-w-0 pt-1">
+                              <p className="text-sm font-bold text-gray-500 line-clamp-1 line-through">{productName}{item.color || item.variant?.color ? ` — ${item.color || item.variant?.color}` : ''}</p>
+                              <p className="text-xs text-red-500 font-medium mt-1">
+                                {item.size || item.variantSize || 'Standard'} • Cancelled Qty: {item.cancelQty || item.qty}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1.5 line-through">
+                                <span className="text-xs font-bold text-gray-400">-${parseFloat(item.price || 0).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+
+                    {/* Active Items */}
                     {(() => {
                       let parsedItems = [];
                       try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+                      if (order.status === 'cancelled' && parsedItems.length > 0) return null; // If full cancel, active items are hidden
                       return parsedItems.map((item, i) => {
                         const variantColor = (item.variant?.color || '').toLowerCase().trim();
                         const matchedVariant = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
@@ -453,7 +557,7 @@ export function MyOrdersPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#08183A]/60">Payment Mode</span>
                       <span className="text-xs font-bold text-[#08183A] capitalize flex items-center gap-1.5">
-                        {order.payment_method === 'stripe' ? (
+                        {order.stripe_payment_intent_id || order.payment_method === 'stripe' ? (
                           <><CreditCard className="w-3.5 h-3.5 text-[#635BFF]" /> Online (Card)</>  
                         ) : order.payment_method === 'cod' ? (
                           <>💵 Cash on Delivery</>
@@ -472,7 +576,7 @@ export function MyOrdersPage() {
                         </span>
                       </div>
                     )}
-                    {order.payment_method === 'cod' && (
+                    {order.payment_method === 'cod' && !order.stripe_payment_intent_id && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#08183A]/60">Amount Pending</span>
                         <span className="text-xs font-bold text-amber-600">${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</span>

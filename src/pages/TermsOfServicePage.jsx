@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
+// import { Footer } from '../components/Footer';
 
 export function TermsOfServicePage() {
   return (
@@ -9,7 +9,7 @@ export function TermsOfServicePage() {
       <Header />
       <div className="max-w-4xl mx-auto px-6 py-12 md:py-20">
         <h1 className="text-3xl md:text-5xl font-serif font-bold text-[#08183A] mb-4">Terms & Conditions</h1>
-        <p className="text-gray-500 mb-1">Effective Date: August 11, 2026</p>
+        <p className="text-gray-500 mb-1">Effective Date: August 23, 2026</p>
         <p className="text-gray-500 mb-10">Last Updated: August 11, 2026</p>
 
         <div className="prose prose-sm md:prose-base prose-blue max-w-none text-gray-700 space-y-6">
@@ -307,11 +307,12 @@ export function TermsOfServicePage() {
             <li><strong>Houra Jewels</strong></li>
             <li>Email: <a href="mailto:support@hourajewels.com" className="text-brand-gold underline">support@hourajewels.com</a></li>
             <li>Website: <a href="https://hourajewels.com" target="_blank" rel="noopener noreferrer" className="text-brand-gold underline">https://hourajewels.com</a></li>
-            <li>Address: 2965 FM1385, Aubrey, TX 76227</li>
+            <li>Address: Dallas, Texas </li>
+            <li >Customer Support: <a href="tel:+19404656563" className="text-brand-gold underline">+1 940-465-6563</a></li>
           </ul>
         </div>
       </div>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

@@ -34,14 +34,17 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
   }
 
   let firstVariant = variants[0] || { color: "", images: [], sizes: [] };
+  let matched = null;
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    const matched = variants.find(v => v.code?.toLowerCase().includes(q) || v.color?.toLowerCase().includes(q));
+    matched = variants.find(v => v.code?.toLowerCase().includes(q) || v.color?.toLowerCase().includes(q));
     if (matched) {
       firstVariant = matched;
     }
   }
-  const firstImg = firstVariant.images && firstVariant.images.length > 0 ? firstVariant.images[0] : "";
+  const firstImg = (firstVariant.images && firstVariant.images.length > 0) 
+    ? firstVariant.images[0] 
+    : (product.images && product.images.length > 0 ? product.images[0] : product.image_url);
   const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0 
     ? { ...firstVariant.sizes[0], stock: firstVariant.sizes[0].stock ?? product.stock ?? 0 } 
     : { size: 'Standard', mrp: 0, our_price: 0, stock: product.stock ?? 0 };
@@ -100,7 +103,7 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
     e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) return;
-    await addToCart(product, { ...defaultSize, price: displayPrice, stock: defaultSize.stock }, 1, firstVariant.color);
+    await addToCart(product, { ...defaultSize, price: displayPrice, stock: defaultSize.stock, image: firstImg }, 1, firstVariant.color);
   };
 
   const handleCardClick = () => {
@@ -124,17 +127,24 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
           <img src={firstImg} alt={product.name} className="w-full h-full object-contain" />
         </div>
         <div className="flex flex-col justify-center flex-grow">
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start pr-24">
             <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1">{product.name}</h3>
           </div>
           
           <div className="flex items-center gap-1 mb-2">
             <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />
             <span className="text-[10px] font-medium text-gray-500">{avgRating} ({reviewCount})</span>
-            {variants.length > 1 && (
+            {variants.length > 1 ? (
               <>
                 <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
                 <span className="text-[10px] font-medium text-brand-dark-blue">{variants.length} Colors</span>
+              </>
+            ) : (firstVariant || defaultSize) && (
+              <>
+                <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
+                <span className="text-[10px] font-medium text-gray-500 line-clamp-1">
+                  {defaultSize?.code || firstVariant?.code || firstVariant?.color}
+                </span>
               </>
             )}
           </div>
@@ -157,7 +167,7 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
             )}
           </div>
         </div>
-        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+        <div className="absolute top-3 right-3 flex flex-row gap-2 z-10">
           <button 
             onClick={handleWishlist}
             className="p-1.5 bg-white/80 rounded-full shadow-sm text-gray-300 hover:scale-110 transition-transform"
@@ -233,10 +243,12 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
                <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
                <span className="text-[10px] font-medium text-brand-dark-blue">{variants.length} Colors</span>
              </>
-          ) : firstVariant.color && (
+          ) : (firstVariant || defaultSize) && (
             <>
               <span className="text-[10px] font-medium text-gray-300 px-1">•</span>
-              <span className="text-[10px] font-medium text-gray-500 line-clamp-1">{firstVariant.color}</span>
+              <span className="text-[10px] font-medium text-gray-500 line-clamp-1">
+                {defaultSize?.code || firstVariant?.code || firstVariant?.color}
+              </span>
             </>
           )}
         </div>

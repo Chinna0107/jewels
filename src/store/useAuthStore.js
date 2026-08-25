@@ -86,10 +86,10 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  googleLogin: async (idToken) => {
+  googleLogin: async (idToken, phone, country) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.post('/auth/google', { idToken });
+      const { data } = await api.post('/auth/google', { idToken, phone, country });
       localStorage.setItem('token', data.token);
       set({ token: data.token, user: data.user, loading: false });
       return { success: true, role: data.user.role };
@@ -122,11 +122,11 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  updateProfile: async (name, phone) => {
+  updateProfile: async (name, phone, country) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.put('/auth/profile', { name, phone });
-      set(state => ({ user: { ...state.user, ...data.user, name, phone }, loading: false }));
+      const { data } = await api.put('/auth/profile', { name, phone, country });
+      set(state => ({ user: { ...state.user, ...data.user, name, phone, country }, loading: false }));
       return { success: true };
     } catch (err) {
       const error = err.response?.data?.error || 'Update failed';

@@ -94,7 +94,11 @@ function DesktopSearchBar() {
     ? products.filter(p =>
         p.name?.toLowerCase().includes(trimmed) ||
         p.category?.toLowerCase().includes(trimmed) ||
-        (p.variants && p.variants.some(v => v.sizes?.some(s => s.code?.toLowerCase().includes(trimmed))))
+        String(p.code || '').toLowerCase().includes(trimmed) ||
+        (p.variants && p.variants.some(v => 
+          String(v.code || '').toLowerCase().includes(trimmed) || 
+          (v.sizes && v.sizes.some(s => String(s.code || '').toLowerCase().includes(trimmed)))
+        ))
       ).slice(0, 6)
     : [];
 
@@ -295,7 +299,12 @@ export function Header({ variant = 'default', title, showShare = false }) {
   const mobileSearchResults = mobileSearchTrimmed
     ? products.filter(p =>
         p.name?.toLowerCase().includes(mobileSearchTrimmed) ||
-        p.category?.toLowerCase().includes(mobileSearchTrimmed)
+        p.category?.toLowerCase().includes(mobileSearchTrimmed) ||
+        String(p.code || '').toLowerCase().includes(mobileSearchTrimmed) ||
+        (p.variants && p.variants.some(v => 
+          String(v.code || '').toLowerCase().includes(mobileSearchTrimmed) || 
+          (v.sizes && v.sizes.some(s => String(s.code || '').toLowerCase().includes(mobileSearchTrimmed)))
+        ))
       ).slice(0, 6)
     : [];
 

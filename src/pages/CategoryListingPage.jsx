@@ -16,7 +16,7 @@ export function CategoryListingPage() {
   const [layout, setLayout] = useState('grid');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [sortBy, setSortBy] = useState('featured'); // featured, price_asc, price_desc
-  const { products, categories, loading } = useStoreData();
+  const { products, categories, offers, loading } = useStoreData();
   
   const modelQuery = searchParams.get('model');
   const searchQuery = searchParams.get('search');
@@ -63,19 +63,40 @@ export function CategoryListingPage() {
     return matchCat && matchModel && matchSearch;
   });
 
-  // Sort products
+  const getProductFinalPrice = (product) => {
+    const variants = product.variants || [];
+    const firstVariant = variants[0] || {};
+    const defaultSize = product.sizes?.[0] || firstVariant?.sizes?.[0] || { price: product.price };
+    let originalPrice = Number(defaultSize.mrp) || Number(defaultSize.price) || 0;
+    let displayPrice = Number(defaultSize.our_price) || originalPrice;
+    let activeOffer = null;
+    if (defaultSize.offer_id) {
+      activeOffer = offers?.find(o => o.id == defaultSize.offer_id && o.is_active);
+    } else if (product.offer_id) {
+      activeOffer = offers?.find(o => o.id === product.offer_id && o.is_active);
+    }
+    if (activeOffer) {
+      displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
+    }
+    console.log("PRICE for", product.name, product.id, "is", displayPrice); return displayPrice;
+  };
+
+  let flattenedProducts = filteredProducts.flatMap(product => {
+    if (product.variants && product.variants.length > 1) {
+      return product.variants.map((variant, idx) => ({
+        ...product,
+        uniqueListId: `${product.id}-${variant.code || idx}`,
+        variants: [variant]
+      }));
+    }
+    return [{ ...product, uniqueListId: product.id }];
+  });
+
+  // Sort flattened products
   if (sortBy === 'price_asc') {
-    filteredProducts.sort((a, b) => {
-      const pA = a.sizes && a.sizes.length > 0 ? a.sizes[0].price : 0;
-      const pB = b.sizes && b.sizes.length > 0 ? b.sizes[0].price : 0;
-      return pA - pB;
-    });
+    flattenedProducts.sort((a, b) => getProductFinalPrice(a) - getProductFinalPrice(b));
   } else if (sortBy === 'price_desc') {
-    filteredProducts.sort((a, b) => {
-      const pA = a.sizes && a.sizes.length > 0 ? a.sizes[0].price : 0;
-      const pB = b.sizes && b.sizes.length > 0 ? b.sizes[0].price : 0;
-      return pB - pA;
-    });
+    flattenedProducts.sort((a, b) => getProductFinalPrice(b) - getProductFinalPrice(a));
   }
 
   const handleCategoryChange = (newCatId) => {
@@ -235,11 +256,11 @@ export function CategoryListingPage() {
           {/* Product Grid */}
           <div className="flex-1">
             <div className={layout === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6' : 'flex flex-col gap-4'}>
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} layout={layout} />
+              {flattenedProducts.map(product => (
+                <ProductCard key={product.uniqueListId} product={product} layout={layout} />
               ))}
               
-              {filteredProducts.length === 0 && (
+              {flattenedProducts.length === 0 && (
                 <div className="col-span-full py-20 text-center flex flex-col items-center bg-white rounded-2xl shadow-sm border border-[#D4AF37]/5">
                   <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400">
                     <Search className="w-6 h-6 text-[#D4AF37]/50" />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, ShoppingCart, Store, Pencil, X, Check } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -17,6 +17,26 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 import { COUNTRIES } from '../data/countries';
+import { getStatesForCountry } from '../data/states';
+
+function getLocalPhone(phoneStr) {
+  if (!phoneStr) return '';
+  const clean = phoneStr.startsWith('+') ? phoneStr : '+' + phoneStr;
+  const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  const country = sortedCountries.find(c => clean.startsWith(c.dial));
+  if (country) {
+    return clean.slice(country.dial.length).replace(/\D/g, '');
+  }
+  return phoneStr.replace(/\D/g, '');
+}
+
+function getDialCountryCode(phoneStr) {
+  if (!phoneStr) return 'US';
+  const clean = phoneStr.startsWith('+') ? phoneStr : '+' + phoneStr;
+  const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  const country = sortedCountries.find(c => clean.startsWith(c.dial));
+  return country ? country.code : 'US';
+}
 
 function flag(code) {
   return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
@@ -216,24 +236,18 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
             💡 No apartment/suite number provided. If applicable, please <button type="button" onClick={onEditAddress} className="underline font-bold">go back and add it</button> to ensure accurate delivery.
           </p>
         )}
-        <label className="flex items-start gap-2.5 cursor-pointer pt-1 border-t border-green-200">
-          <input type="checkbox" checked={addressConfirmed} onChange={e => setAddressConfirmed(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-green-700 shrink-0" />
-          <span className="text-[11px] text-green-800 font-medium leading-relaxed">
-            I confirm the above shipping address is correct and complete.
-          </span>
-        </label>
-      </div>
-
-      {/* Shipping T&C */}
-      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
-        <p className="text-xs font-bold text-blue-800">📦 Shipping Terms & Conditions</p>
-        <ul className="space-y-1.5 text-xs text-blue-700 leading-relaxed">
-          <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Shipping typically takes <strong>1–3 business days</strong> depending on your location.</span></li>
-          <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>If your package arrives damaged or has missing items, <strong>photo proof is required</strong> and must be reported within <strong>1–2 business days</strong> of delivery to support@hourajewels.com. No claims will be accepted without proof.</span></li>
-          <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>All sales are <strong>final — no returns or exchanges</strong>. Items are fashion jewellery and sold as-is.</span></li>
-          <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>To keep your jewellery looking its best: avoid contact with water, perfume, and harsh chemicals. Store in a dry place when not in use.</span></li>
-        </ul>
+        <div className="pt-3 border-t border-green-200 mt-2 space-y-3">
+          <p className="text-xs text-brand-dark-blue leading-relaxed">
+            To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/care-tips" className="underline font-bold text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.
+          </p>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input type="checkbox" checked={addressConfirmed} onChange={e => setAddressConfirmed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-green-700 shrink-0" />
+            <span className="text-[11px] text-green-800 font-medium leading-relaxed">
+              I confirm that my shipping address is accurate and complete, and I acknowledge that I have reviewed the Jewelry Care Tips.
+            </span>
+          </label>
+        </div>
       </div>
 
       <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
@@ -265,7 +279,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
           <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
             className="mt-0.5 w-4 h-4 accent-brand-dark-blue shrink-0" />
           <span className="text-[11px] text-gray-500 leading-relaxed">
-            I agree to the Houra Jewels <a href="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</a> and <a href="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</a>, understand that all sales are final—no returns or exchanges—as stated in the Shipping & Return Policy, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
+            I agree to the Houra Jewels <Link to="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</Link>, understand that all sales are final—no returns or exchanges—as stated in the <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Shipping Policy</Link> and <Link to="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Exchange & Return Policy</Link>, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
           </span>
         </label>
         <button
@@ -287,6 +301,63 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
 }
 
 
+function AddressValidationModal({ validationResult, onUseSuggested, onEdit, onProceedOriginal }) {
+  if (!validationResult) return null;
+  const { valid, message, suggested, hasCorrections } = validationResult;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-gray-900 text-lg">Address Validation</h3>
+          <button onClick={onEdit}><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+        
+        {!valid ? (
+          <div className="mb-6">
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-4">
+              <span className="font-bold block mb-1">Invalid Address</span>
+              {message}
+            </div>
+          </div>
+        ) : hasCorrections ? (
+          <div className="mb-6">
+            <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm mb-4">
+              <span className="font-bold block mb-1">Suggested Correction</span>
+              We verified your address and found a better match. Please review the suggested changes below to ensure accurate delivery.
+            </div>
+            
+            <div className="border border-brand-gold/30 rounded-xl overflow-hidden">
+              <div className="bg-brand-gold/5 p-3 border-b border-brand-gold/20">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Suggested Address</p>
+                <p className="text-sm font-medium text-gray-900">{suggested?.name}</p>
+                <p className="text-sm text-gray-700">{suggested?.street1}{suggested?.street2 ? `, ${suggested.street2}` : ''}</p>
+                <p className="text-sm text-gray-700">{suggested?.city}, {suggested?.state} {suggested?.zip}</p>
+                <p className="text-sm text-gray-700">{suggested?.country}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onEdit} className="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+            Edit Address
+          </button>
+          {valid && hasCorrections && (
+            <button onClick={() => onUseSuggested(suggested)} className="flex-1 py-3 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
+              Use Suggested
+            </button>
+          )}
+          {valid && !hasCorrections && (
+            <button onClick={onProceedOriginal} className="flex-1 py-3 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
+              Continue
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -300,8 +371,23 @@ export function CheckoutPage() {
   });
   
   const [orderType, setOrderType] = useState(location.state?.orderType || 'shipping');
-  const initialStep = token ? (location.state?.orderType === 'pickup' ? 3 : 2.5) : 1;
-  const [step, setStep] = useState(initialStep);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stepParam = searchParams.get('step');
+  const initialStep = token ? 2.5 : 1;
+  const [step, setLocalStep] = useState(stepParam ? parseFloat(stepParam) : initialStep);
+
+  const setStep = (newStep) => {
+    setLocalStep(newStep);
+    setSearchParams({ step: newStep });
+  };
+
+  useEffect(() => {
+    if (stepParam) {
+      setLocalStep(parseFloat(stepParam));
+    } else {
+      setSearchParams({ step: initialStep }, { replace: true });
+    }
+  }, [stepParam, initialStep, setSearchParams]);
   const [pickupContact, setPickupContact] = useState({ name: '', email: '', phone: '' });
   const [pickupDialCode, setPickupDialCode] = useState('US');
   const [pickupDialOpen, setPickupDialOpen] = useState(false);
@@ -311,11 +397,20 @@ export function CheckoutPage() {
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [pickupTermsAccepted, setPickupTermsAccepted] = useState(false);
   const [sessionSecondsLeft, setSessionSecondsLeft] = useState(null);
+  const [validationResult, setValidationResult] = useState(null);
   const sessionTimerRef = useRef(null);
 
   useEffect(() => {
     if (user) {
-      setPickupContact({ name: user.name || '', email: user.email || '', phone: user.phone || '' });
+      setPickupContact({ name: user.name || '', email: user.email || '', phone: getLocalPhone(user.phone) });
+      setPickupDialCode(getDialCountryCode(user.phone));
+      
+      setAddress(prev => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        mobile: prev.mobile || getLocalPhone(user.phone)
+      }));
+      setDialCountryCode(getDialCountryCode(user.phone));
     }
   }, [user]);
 
@@ -344,9 +439,9 @@ export function CheckoutPage() {
     state: '',
     pincode: '',
     country: 'United States',
-    mobile: user?.phone || ''
+    mobile: user?.phone ? getLocalPhone(user.phone) : ''
   });
-  const [dialCountryCode, setDialCountryCode] = useState('US');
+  const [dialCountryCode, setDialCountryCode] = useState(user?.phone ? getDialCountryCode(user.phone) : 'US');
   const dialCode = COUNTRIES.find(c => c.code === dialCountryCode)?.dial || '+1';
   const [dialSearch, setDialSearch] = useState('');
   const [dialOpen, setDialOpen] = useState(false);
@@ -444,11 +539,15 @@ export function CheckoutPage() {
 
   // Recompute shipping fee whenever config loads
   useEffect(() => {
+    if (orderType === 'pickup') {
+      setShippingFee(0);
+      return;
+    }
     if (!shippingConfig?.settings) return;
     const threshold = parseFloat(shippingConfig.settings.free_shipping_threshold) || 0;
     const flat = parseFloat(shippingConfig.settings.flat_rate) || 0;
     setShippingFee(threshold > 0 && (subtotal - discount) >= threshold ? 0 : flat);
-  }, [shippingConfig, subtotal, discount]);
+  }, [shippingConfig, subtotal, discount, orderType]);
 
   // Recompute tax whenever subtotal, discount, address pincode, or config changes
   useEffect(() => {
@@ -459,9 +558,10 @@ export function CheckoutPage() {
     if (tax_mode === 'pincode') {
       const pin = address.pincode?.trim();
       const rule = pin ? (shippingConfig.pincodes || []).find(p => p.pincode === pin) : null;
-      const pct = rule ? parseFloat(rule.percentage) : 0;
+      const defaultPct = parseFloat(tax_percentage) || 0;
+      const pct = rule ? parseFloat(rule.percentage) : defaultPct;
       setTaxAmount(taxable * (pct / 100));
-      setTaxLabel(rule ? `Tax (${pct}% — pincode ${pin})` : 'Tax (0% — pincode not matched)');
+      setTaxLabel(rule ? `Tax (${pct}% — pincode ${pin})` : `Tax (${pct}% — flat rate used)`);
     } else {
       const pct = parseFloat(tax_percentage) || 0;
       setTaxAmount(taxable * (pct / 100));
@@ -480,8 +580,8 @@ export function CheckoutPage() {
 
   // If user logs in mid-way
   useEffect(() => {
-    if (token && step === 1) setStep(location.state?.orderType === 'pickup' ? 3 : 2.5);
-  }, [token, step]);
+    if (token && step === 1) setStep(2.5);
+  }, [token, step, location.state]);
 
   // Auto-select saved address or show new form
   useEffect(() => {
@@ -530,8 +630,17 @@ export function CheckoutPage() {
       if (!address.name.trim()) errs.name = 'Full name is required';
       if (!address.line1.trim()) errs.line1 = 'Address is required';
       if (!address.city.trim()) errs.city = 'City is required';
+      if (getStatesForCountry(address.country) && (!address.state || !address.state.trim())) errs.state = 'State is required';
       if (!address.pincode.trim()) errs.pincode = 'ZIP code is required';
-      if (!address.country.trim()) errs.country = 'Country is required';
+      if (!address.country.trim()) {
+        errs.country = 'Country is required';
+      } else if (allowedCountries.length > 0 && !allowedCountries.includes(address.country)) {
+        errs.country = (
+          <span>
+            Shipping to the selected country is currently unavailable through the website. Please <Link to="/contact" target="_blank" className="underline font-bold text-red-600 hover:text-red-800">contact our support team</Link> to place your order.
+          </span>
+        );
+      }
       const mobileDigits = address.mobile.replace(/\D/g, '');
       if (!address.mobile.trim()) {
         errs.mobile = 'Phone number is required';
@@ -564,8 +673,8 @@ export function CheckoutPage() {
           })
         });
         const valData = await valRes.json();
-        if (!valData.valid) {
-          showToast(valData.message || 'Address could not be validated. Please check and try again.', 'error');
+        if (!valData.valid || valData.hasCorrections) {
+          setValidationResult(valData);
           return;
         }
       } catch (e) {
@@ -578,10 +687,17 @@ export function CheckoutPage() {
         return;
       }
     }
-    if (token && saveAddress && orderType === 'shipping') {
-      addAddress({ ...address, mobile: `${dialCode}${address.mobile}`, is_default: saveAsDefault }).catch(() => {});
+    finalizeProceedToPayment();
+  };
+
+  const finalizeProceedToPayment = (finalAddress = address) => {
+    if (orderType === 'shipping') {
+      setAddress(finalAddress);
+      if (token && saveAddress) {
+        addAddress({ ...finalAddress, mobile: `${dialCode}${finalAddress.mobile}`, is_default: saveAsDefault }).catch(() => {});
+      }
     }
-    // Start 5-minute session timer
+    setValidationResult(null);
     setSessionSecondsLeft(SESSION_MINUTES * 60);
     setStep(3);
   };
@@ -620,21 +736,6 @@ export function CheckoutPage() {
         return;
       }
 
-      if (orderType === 'pickup') {
-        const createOrderData = await createOrder('cod', null);
-        if (createOrderData.success) {
-          setIsPlacingOrder(false);
-          setOrderSuccess(true);
-          setTimeout(() => {
-            clearCart();
-            navigate(`/order-tracking/${createOrderData.order.order_number}`);
-          }, 3000);
-        } else {
-          showToast('Failed to place pickup order.', 'error');
-          setIsPlacingOrder(false);
-        }
-        return;
-      }
 
       if (!stripe || !elements) { setIsPlacingOrder(false); return; }
       const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
@@ -729,7 +830,7 @@ export function CheckoutPage() {
           >
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4 text-brand-gold" />
-              <span className="text-sm font-bold text-brand-dark-blue">Order Summary</span>
+              <span className="text-sm font-bold text-brand-dark-blue">Order Summary (USD)</span>
               <span className="text-xs bg-brand-gold/10 text-brand-gold font-bold px-2 py-0.5 rounded-full">{items.length} item{items.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -744,11 +845,14 @@ export function CheckoutPage() {
                 {items.map(item => (
                   <div key={`${item.product.id}-${item.variant?.size}`} className="flex gap-3">
                     <div className="w-14 h-14 bg-white rounded-xl border border-brand-gold/10 p-1 shrink-0">
-                      <img src={item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
+                      <img src={item.variant?.image || item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</p>
                       <p className="text-xs text-brand-dark-blue/60">Qty: {item.qty} | {item.variant?.size || 'Standard'}</p>
+                      {(item.variant?.size_code || item.variant?.code || item.product.product_code) && (
+                        <p className="text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded border border-[#D4AF37]/20 w-fit mt-1">#{(item.variant?.size_code || item.variant?.code || item.product.product_code)}</p>
+                      )}
                       <p className="text-sm font-bold text-brand-gold">${((item.variant?.price || item.product.price) * item.qty).toFixed(2)}</p>
                     </div>
                   </div>
@@ -785,7 +889,7 @@ export function CheckoutPage() {
           <div className="lg:col-span-8 space-y-6">
 
 
-            {step === 2.5 && (
+            {step === 2.5 && orderType !== 'pickup' && (
           <div className="space-y-4 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold text-brand-dark-blue flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center">
@@ -809,7 +913,7 @@ export function CheckoutPage() {
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {[['name','Full Name'],['line2','Line 2 (optional)'],['city','City'],['state','State'],['pincode','ZIP']].map(([key, label]) => (
+                          {[['name','Full Name'],['line2','Line 2 (optional)'],['city','City'],['pincode','ZIP']].map(([key, label]) => (
                             <div key={key} className={key === 'line2' ? 'sm:col-span-2' : ''}>
                               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">{label}</label>
                               <input
@@ -819,6 +923,22 @@ export function CheckoutPage() {
                               />
                             </div>
                           ))}
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">State</label>
+                            {(() => {
+                              const states = getStatesForCountry(editForm.country);
+                              return states ? (
+                                <select value={editForm.state || ''} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-gold transition-all">
+                                  <option value="">Select state</option>
+                                  {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                                </select>
+                              ) : (
+                                <input value={editForm.state || ''} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))} placeholder="State (optional)"
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-gold transition-all" />
+                              );
+                            })()}
+                          </div>
                           {/* Address Line 1 with autocomplete */}
                           <div className="sm:col-span-2 order-first">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Address Line 1</label>
@@ -865,7 +985,7 @@ export function CheckoutPage() {
                                     placeholder="Search country..." className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold" />
                                 </div>
                                 <ul className="max-h-48 overflow-y-auto">
-                                  {COUNTRIES.filter(c => c.name.toLowerCase().includes(editCountrySearch.toLowerCase())).map(c => (
+                                  {displayCountries.filter(c => c.name.toLowerCase().includes(editCountrySearch.toLowerCase())).map(c => (
                                     <li key={c.code}>
                                       <button type="button" onClick={() => {
                                         setEditForm(f => ({ ...f, country: c.name }));
@@ -882,6 +1002,9 @@ export function CheckoutPage() {
                                 </ul>
                               </div>
                             )}
+                            <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                              If your country is not listed above, shipping to your region is currently unavailable through the website. Please <Link to="/contact" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">contact our Support Team</Link> to place your order.
+                            </p>
                           </div>
                           {/* Phone with dial code picker */}
                           <div className="sm:col-span-2">
@@ -1063,10 +1186,21 @@ export function CheckoutPage() {
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">State <span className="text-gray-400 font-normal">*</span></label>
-                    <input value={address.state} onChange={e => setAddress({...address, state: e.target.value})}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
-                      placeholder="State" />
-                      
+                    {(() => {
+                      const states = getStatesForCountry(address.country);
+                      return states ? (
+                        <select value={address.state} onChange={e => { setAddress({...address, state: e.target.value}); setFieldErrors(f => ({...f, state: ''})); }}
+                          className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none transition-all ${fieldErrors.state ? 'border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-300' : 'border-gray-200 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30'}`}>
+                          <option value="">Select state</option>
+                          {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                        </select>
+                      ) : (
+                        <input value={address.state} onChange={e => setAddress({...address, state: e.target.value})}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
+                          placeholder="State (optional)" />
+                      );
+                    })()}
+                    {fieldErrors.state && <p className="text-[10px] text-red-500 mt-1 font-medium">{fieldErrors.state}</p>}
                   </div>
                 </div>
 
@@ -1164,6 +1298,9 @@ export function CheckoutPage() {
                     </div>
                   )}
                   {fieldErrors.country && <p className="text-[10px] text-red-500 mt-1 font-medium">{fieldErrors.country}</p>}
+                  <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                    If your country is not listed above, shipping to your region is currently unavailable through the website. Please <Link to="/contact" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">contact our Support Team</Link> to place your order.
+                  </p>
                 </div>
 
                 {/* Save address checkboxes */}
@@ -1214,7 +1351,7 @@ export function CheckoutPage() {
             )}
           </div>
         )}
-        {step === 3 && orderType === 'pickup' && (
+        {step === 2.5 && orderType === 'pickup' && (
           <div className="space-y-4 max-w-3xl mx-auto">
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-3">
               <div className="flex items-start gap-3">
@@ -1332,46 +1469,44 @@ export function CheckoutPage() {
               <p className="text-xs font-bold text-amber-800">⚠️ Pickup Terms & Conditions</p>
               <ul className="space-y-1.5 text-xs text-amber-700 leading-relaxed">
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Please inspect your item(s) carefully at the time of pickup before leaving the store.</span></li>
-                <li className="flex items-start gap-2"><span className="shrink-0">•</span><span><strong>Any damage must be reported within 1–2 business days</strong> of pickup. Claims after this window cannot be accepted.</span></li>
+                <li className="flex items-start gap-2"><span className="shrink-0">•</span><span><strong>Any damage must be reported within 1 business day</strong> of pickup. Claims after this window cannot be accepted.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Bring a valid photo ID and your order confirmation when picking up.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Orders not picked up within 7 days of the ready notification may be subject to restocking.</span></li>
+                <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/care-tips" className="font-bold underline text-brand-dark-blue hover:text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>All sales are <strong>final — no returns or exchanges</strong> on pickup orders.</span></li>
               </ul>
               <label className="flex items-start gap-2.5 cursor-pointer pt-1 border-t border-amber-200">
                 <input type="checkbox" checked={pickupTermsAccepted} onChange={e => setPickupTermsAccepted(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-amber-700 shrink-0" />
                 <span className="text-xs text-amber-800 font-medium leading-relaxed">
-                  I have read and agree to the above pickup terms & conditions.
+                  I acknowledge that I have read and agree to the Pickup Terms & Conditions above and have reviewed the Jewelry Care Tips.
                 </span>
               </label>
             </div>
           </div>
         )}
 
-        {step === 3 && orderType === 'pickup' && (
+        {step === 2.5 && orderType === 'pickup' && (
           <div className="max-w-3xl mx-auto mt-4">
             <button
               onClick={() => {
                 if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
                 if (pickupContact.phone.replace(/\D/g, '').length < 7) { showToast('Please enter a valid phone number.', 'error'); return; }
                 if (!pickupTermsAccepted) { showToast('Please accept the Pickup Terms & Conditions to proceed.', 'error'); return; }
-                handlePlaceOrder(null, null);
+                setStep(3);
               }}
-              disabled={isPlacingOrder || !pickupTermsAccepted}
+              disabled={!pickupTermsAccepted}
               className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
-                isPlacingOrder || !pickupTermsAccepted
+                !pickupTermsAccepted
                   ? 'opacity-50 cursor-not-allowed bg-gray-200 text-gray-400'
                   : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
               }`}
             >
-              {isPlacingOrder
-                ? <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Placing Order...</>
-                : '✓ Confirm Pickup Order'
-              }
+              <CreditCard className="w-4 h-4" /> Proceed to Payment
             </button>
           </div>
         )}
-        {step === 3 && orderType !== 'pickup' && (
+        {step === 3 && (
           <Elements stripe={stripePromise}>
             <StripePaymentForm
               isPlacingOrder={isPlacingOrder}
@@ -1391,19 +1526,19 @@ export function CheckoutPage() {
       </div>          {/* Right Column: Order Summary (Desktop) */}
           <div className="hidden lg:block lg:col-span-4 sticky top-24">
             <div className="bg-white/80 p-6 rounded-3xl shadow-sm border border-brand-gold/20">
-              <h3 className="font-serif font-bold text-brand-dark-blue mb-6 text-xl">Order Summary</h3>
+              <h3 className="font-serif font-bold text-brand-dark-blue mb-6 text-xl">Order Summary (USD)</h3>
               
               <div className="space-y-4 max-h-[40vh] overflow-y-auto hide-scrollbar pr-2 mb-6">
                 {items.map(item => (
                   <div key={`${item.product.id}-${item.variant?.size}`} className="flex gap-4">
                     <div className="w-16 h-16 bg-white rounded-xl border border-brand-gold/10 p-1 shrink-0">
-                      <img src={item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
+                      <img src={item.variant?.image || item.product.images?.[0] || item.product.image_url} alt="" className="w-full h-full object-contain" />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-brand-dark-blue line-clamp-1">{item.product.name}</h4>
                       <p className="text-xs text-brand-dark-blue/60 mt-1">Qty: {item.qty} | {item.variant?.size || 'Std'}</p>
-                      {item.product.product_code && (
-                        <span className="text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded border border-[#D4AF37]/20">#{item.product.product_code}</span>
+                      {(item.variant?.size_code || item.variant?.code || item.product.product_code) && (
+                        <span className="text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded border border-[#D4AF37]/20">#{(item.variant?.size_code || item.variant?.code || item.product.product_code)}</span>
                       )}
                       <p className="text-sm font-bold text-brand-gold mt-1">${((item.variant?.price || item.product.price) * item.qty).toFixed(2)}</p>
                     </div>
@@ -1516,6 +1651,14 @@ export function CheckoutPage() {
           </div>
         </div>
       )}
+      
+      {/* Address Validation Modal */}
+      <AddressValidationModal
+        validationResult={validationResult}
+        onEdit={() => setValidationResult(null)}
+        onProceedOriginal={() => finalizeProceedToPayment(address)}
+        onUseSuggested={(suggested) => finalizeProceedToPayment({ ...address, ...suggested })}
+      />
     </div>
   );
 }

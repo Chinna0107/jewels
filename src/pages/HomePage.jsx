@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, Star, Flame, Sparkles, Circle, Gift, Wind, Bell, Droplet, Flower2, Cloud, Grid, Package, MapPin, Globe, Users, Store } from 'lucide-react';
+import { Search, Heart, ShoppingCart, Star, Flame, Sparkles, Circle, Gift, Wind, Bell, Droplet, Flower2, Cloud, Grid, Package, MapPin, Globe, Users, Store, ShieldCheck, Gem } from 'lucide-react';
 import { Header } from '../components/Header';
 import { ProductCard } from '../components/ProductCard';
 import { useStoreData } from '../store/useStoreData';
@@ -147,6 +147,71 @@ function StatsBanner() {
   );
 }
 
+// ── Features Banner ──────────────────────────────────────────────────────────
+function FeaturesBanner() {
+  return (
+    <div className="animate-section px-4 md:px-8 mb-12">
+      <div className="w-full bg-[#f6f3eb] rounded-2xl py-12 px-6 md:px-12 flex flex-col items-center text-center relative overflow-hidden">
+        {/* Decorative subtle border or background elements could go here */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent"></div>
+        <Star className="text-[#D4AF37] w-4 h-4 absolute top-[-8px] left-1/2 -translate-x-1/2 fill-[#D4AF37]" />
+        
+        <h2 className="font-serif text-3xl md:text-5xl text-[#2a2a2a] mb-4 mt-2 font-medium">
+          Timeless Pieces,<br className="md:hidden" /> Made for You
+        </h2>
+        
+        <p className="text-gray-600 text-sm md:text-base max-w-xl mx-auto mb-10">
+          Explore our collection of fashion jewelry designed for everyday elegance.
+        </p>
+
+        <div className="flex flex-wrap justify-center items-center gap-y-8 md:gap-y-0 max-w-4xl mx-auto w-full mb-10">
+          {/* Feature 1 */}
+          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
+            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 8s-2 2.5-2 5a2 2 0 004 0c0-2.5-2-5-2-5z"/>
+              </svg>
+            </div>
+            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Waterproof</span>
+          </div>
+          
+          {/* Feature 2 */}
+          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
+            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
+              <ShieldCheck size={32} strokeWidth={1.5} />
+            </div>
+            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Anti-Tarnish</span>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
+            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8s-2 2.5-2 5a2 2 0 004 0c0-2.5-2-5-2-5z"/>
+              </svg>
+            </div>
+            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Hypoallergenic</span>
+          </div>
+
+          {/* Feature 4 */}
+          <div className="flex flex-col items-center w-1/2 md:w-1/4 px-4">
+            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
+              <Gem size={32} strokeWidth={1.5} />
+            </div>
+            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Premium Quality</span>
+          </div>
+        </div>
+
+        <Link to="/category/all" className="bg-[#1a1a1a] text-[#D4AF37] text-xs font-bold px-10 py-3.5 rounded-sm hover:bg-black transition-colors flex items-center gap-2 tracking-widest uppercase">
+          Shop Now <Sparkles size={14} className="fill-[#D4AF37] text-[#D4AF37]" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function HomePage() {
   const container = useRef(null);
   const { products, categories, loading } = useStoreData();
@@ -286,6 +351,8 @@ export function HomePage() {
           </div>
         )}
       </div>
+
+      <FeaturesBanner />
 
       <div className="md:max-w-full mx-auto w-full pb-20">
         {/* Categories Grid */}

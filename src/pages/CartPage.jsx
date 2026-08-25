@@ -113,6 +113,12 @@ export function CartPage() {
       }
     }
 
+    // If not logged in, force them to login first and return to cart
+    if (!user) {
+      navigate('/login?redirect=/cart');
+      return;
+    }
+
     // If pickup is disabled by admin, go directly to checkout with shipping
     if (!pickupEnabled) {
       navigate('/checkout', { state: { couponCode, orderType: 'shipping' } });
@@ -275,7 +281,7 @@ export function CartPage() {
 
           {/* Bill Details */}
           <div className="animate-cart-summary bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20">
-            <h3 className="font-serif font-bold text-brand-dark-blue mb-4 pb-4 border-b border-brand-gold/10 text-lg">Price Details</h3>
+            <h3 className="font-serif font-bold text-brand-dark-blue mb-4 pb-4 border-b border-brand-gold/10 text-lg">Price Details (USD)</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm text-brand-dark-blue/80">
                 <span>Item Total ({items.length} items)</span>
@@ -343,7 +349,7 @@ export function CartPage() {
                 </div>
                 <div>
                   <p className="font-bold text-brand-dark-blue">Store Pickup</p>
-                  <p className="text-xs text-brand-dark-blue/60 mt-0.5">Pick up at our store • No shipping fee</p>
+                  <p className="text-xs text-brand-dark-blue/60 mt-0.5">2965 FM1385, Aubrey, TX 76227 • No shipping fee</p>
                 </div>
               </button>
               <button onClick={() => handleDeliveryChoice('shipping')}

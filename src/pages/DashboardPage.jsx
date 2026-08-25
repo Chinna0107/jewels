@@ -7,13 +7,23 @@ import {
 import { useAuthStore } from '../store/useAuthStore';
 import { BottomNav } from '../components/BottomNav';
 import { Header } from '../components/Header';
+import { COUNTRIES } from '../data/countries';
+import { getStatesForCountry } from '../data/states';
 
-function AddressModal({ onClose, onSave }) {
-  const [form, setForm] = useState({ name: '', line1: '', line2: '', city: '', state: '', pincode: '', mobile: '', is_default: false });
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+
+function AddressModal({ onClose, onSave, shippingConfig }) {
+  const [form, setForm] = useState({ name: '', line1: '', line2: '', city: '', state: '', pincode: '', country: '', mobile: '', is_default: false });
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm({ ...form, [e.target.name]: val });
   };
+
+  const allowedCountries = shippingConfig?.settings?.allowed_countries || [];
+  const displayCountries = allowedCountries.length > 0 
+    ? COUNTRIES.filter(c => allowedCountries.includes(c.name))
+    : COUNTRIES;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
@@ -22,13 +32,43 @@ function AddressModal({ onClose, onSave }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
         </div>
         <div className="space-y-3">
-          {[['name','Full Name'],['line1','Address Line 1'],['line2','Address Line 2 (optional)'],['city','City'],['state','State'],['pincode','ZIP Code'],['mobile','Mobile']].map(([field, label]) => (
+          {[['name','Full Name'],['line1','Address Line 1'],['line2','Address Line 2 (optional)'],['city','City'],['pincode','ZIP Code'],['mobile','Mobile']].map(([field, label]) => (
             <div key={field}>
               <label className="text-xs font-semibold text-gray-600 block mb-1">{label}</label>
               <input name={field} value={form[field]} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400" />
             </div>
           ))}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">State</label>
+            {(() => {
+              const states = getStatesForCountry(form.country);
+              return states ? (
+                <select name="state" value={form.state} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                  <option value="">Select state</option>
+                  {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                </select>
+              ) : (
+                <input name="state" value={form.state} onChange={handleChange} placeholder="State (optional)"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400" />
+              );
+            })()}
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Country</label>
+            <select name="country" value={form.country} onChange={handleChange}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              <option value="">Select country</option>
+              {displayCountries.map(c => (
+                <option key={c.code} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+              If your country is not listed above, shipping to your region is currently unavailable through the website. Please <Link to="/contact" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">contact our Support Team</Link> to place your order.
+            </p>
+          </div>
           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input type="checkbox" name="is_default" checked={form.is_default} onChange={handleChange} className="accent-gray-500" />
             Set as default address
@@ -87,6 +127,14 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [shippingConfig, setShippingConfig] = useState(null);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/general/shipping`)
+      .then(r => r.json())
+      .then(d => setShippingConfig(d))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
@@ -269,7 +317,7 @@ export function DashboardPage() {
       </div>
       </div>
 
-      {showAddressModal && <AddressModal onClose={() => setShowAddressModal(false)} onSave={handleSaveAddress} />}
+      {showAddressModal && <AddressModal onClose={() => setShowAddressModal(false)} onSave={handleSaveAddress} shippingConfig={shippingConfig} />}
       {showEditModal && <EditProfileModal user={user} onClose={() => setShowEditModal(false)} onSave={handleSaveProfile} />}
       <BottomNav />
     </div>

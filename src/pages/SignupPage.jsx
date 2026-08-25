@@ -6,15 +6,121 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../store/useAuthStore';
 import logoImg from '../assets/image.png';
 import brandLogo from '../assets/logo.png'; // Updated logo for mobile
-import { PhoneInput, formatPhone, COUNTRIES } from '../components/PhoneInput';
+import { PhoneInput, formatPhone, COUNTRIES, parsePhone } from '../components/PhoneInput';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+
+
+function CountryPicker({ dark, allowedCountries, value, onChange }) {
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const countryDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) setCountryOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const isoFlag = (iso) => String.fromCodePoint(...[...iso].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+  const list = allowedCountries.length > 0 ? COUNTRIES.filter(c => allowedCountries.includes(c.name)) : COUNTRIES;
+  const filtered = list.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()));
+  const selected = COUNTRIES.find(c => c.name === value);
+
+  return (
+    <div ref={countryDropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
+        className={`w-full flex items-center gap-2 px-4 py-3.5 rounded-xl text-sm border transition-all focus:outline-none ${
+          dark
+            ? 'bg-transparent border-white/10 text-white focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50'
+            : 'bg-white border-brand-gold/20 text-brand-dark-blue focus:ring-2 focus:ring-brand-gold/40'
+        }`}
+      >
+        {selected ? (
+          <><span className="text-base leading-none shrink-0">{isoFlag(selected.iso)}</span><span className="flex-1 text-left truncate">{selected.name}</span></>
+        ) : (
+          <span className={`flex-1 text-left ${dark ? 'text-white/30' : 'text-brand-dark-blue/30'}`}>Select your country</span>
+        )}
+        <svg className={`w-4 h-4 shrink-0 transition-transform ${countryOpen ? 'rotate-180' : ''} ${dark ? 'text-white/40' : 'text-brand-dark-blue/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {countryOpen && (
+        <div className="absolute z-[200] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <input
+              autoFocus
+              value={countrySearch}
+              onChange={e => setCountrySearch(e.target.value)}
+              placeholder="Search country..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold"
+            />
+          </div>
+          <ul className="max-h-52 overflow-y-auto">
+            {filtered.map(c => (
+              <li key={c.iso}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(c.name); setCountryOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
+                    value === c.name ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-base shrink-0">{isoFlag(c.iso)}</span>
+                  <span className="flex-1 truncate">{c.name}</span>
+                </button>
+              </li>
+            ))}
+            {filtered.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No results</li>}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function OtpInput({ length = 6, value, onChange, className, inputClassName }) {
+  const refs = useRef([]);
+  
+  const handleChange = (val, idx) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...value];
+    next[idx] = val;
+    onChange(next);
+    if (val && idx < length - 1) {
+      refs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e, idx) => {
+    if (e.key === 'Backspace' && !value[idx] && idx > 0) {
+      refs.current[idx - 1]?.focus();
+    }
+  };
+
+  return (
+    <div className={className}>
+      {value.map((digit, idx) => (
+        <input 
+          key={idx} 
+          ref={el => refs.current[idx] = el}
+          type="text" inputMode="numeric" maxLength={1} value={digit}
+          onChange={e => handleChange(e.target.value, idx)}
+          onKeyDown={e => handleKeyDown(e, idx)}
+          className={inputClassName}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function SignupPage() {
   const navigate = useNavigate();
   const { signup, verifyPhoneOtp, verifyOtp, googleLogin, loading, error, clearError } = useAuthStore();
 
-  const [step, setStep] = useState('form'); // 'form' | 'phone_otp' | 'email_otp' | 'done'
+  const [step, setStep] = useState('form'); // 'form' | 'phone_otp' | 'email_otp' | 'done' | 'google_extra'
+  const [pendingGoogleToken, setPendingGoogleToken] = useState(null);
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', country: '' });
   const [consentAccepted, setConsentAccepted] = useState(false);
@@ -30,75 +136,9 @@ export function SignupPage() {
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [localError, setLocalError] = useState('');
   const [allowedCountries, setAllowedCountries] = useState([]);
-  const [countryOpen, setCountryOpen] = useState(false);
-  const [countrySearch, setCountrySearch] = useState('');
-  const countryDropdownRef = useRef(null);
-  const phoneOtpRefs = useRef([]);
-  const emailOtpRefs = useRef([]);
 
-  useEffect(() => {
-    const handler = (e) => { if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) setCountryOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const isoFlag = (iso) => String.fromCodePoint(...[...iso].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
-
-  function CountryPicker({ dark }) {
-    const list = allowedCountries.length > 0 ? COUNTRIES.filter(c => allowedCountries.includes(c.name)) : COUNTRIES;
-    const filtered = list.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()));
-    const selected = COUNTRIES.find(c => c.name === form.country);
-    return (
-      <div ref={countryDropdownRef} className="relative">
-        <button
-          type="button"
-          onClick={() => { setCountryOpen(o => !o); setCountrySearch(''); }}
-          className={`w-full flex items-center gap-2 px-4 py-3.5 rounded-xl text-sm border transition-all focus:outline-none ${
-            dark
-              ? 'bg-transparent border-white/10 text-white focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50'
-              : 'bg-white border-brand-gold/20 text-brand-dark-blue focus:ring-2 focus:ring-brand-gold/40'
-          }`}
-        >
-          {selected ? (
-            <><span className="text-base leading-none shrink-0">{isoFlag(selected.iso)}</span><span className="flex-1 text-left truncate">{selected.name}</span></>
-          ) : (
-            <span className={`flex-1 text-left ${dark ? 'text-white/30' : 'text-brand-dark-blue/30'}`}>Select your country</span>
-          )}
-          <svg className={`w-4 h-4 shrink-0 transition-transform ${countryOpen ? 'rotate-180' : ''} ${dark ? 'text-white/40' : 'text-brand-dark-blue/40'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-        </button>
-        {countryOpen && (
-          <div className="absolute z-[200] mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
-            <div className="p-2 border-b border-gray-100">
-              <input
-                autoFocus
-                value={countrySearch}
-                onChange={e => setCountrySearch(e.target.value)}
-                placeholder="Search country..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold"
-              />
-            </div>
-            <ul className="max-h-52 overflow-y-auto">
-              {filtered.map(c => (
-                <li key={c.iso}>
-                  <button
-                    type="button"
-                    onClick={() => { setForm(f => ({ ...f, country: c.name })); setCountryOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
-                      form.country === c.name ? 'bg-brand-gold/10 font-bold text-brand-dark-blue' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">{isoFlag(c.iso)}</span>
-                    <span className="flex-1 truncate">{c.name}</span>
-                  </button>
-                </li>
-              ))}
-              {filtered.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No results</li>}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/shipping`)
@@ -119,6 +159,11 @@ export function SignupPage() {
     setLocalError('');
     if (!consentAccepted) { setLocalError('Please accept the Privacy Policy and Terms of Service to continue.'); return; }
     if (!passwordValid) { setPasswordTouched(true); setLocalError('Password does not meet the requirements.'); return; }
+    const parsedPhone = parsePhone(form.phone);
+    if (parsedPhone.number.replace(/\D/g, '').length !== 10) {
+      setLocalError('Mobile number must be exactly 10 digits.');
+      return;
+    }
     const res = await signup(form.name, form.email, form.phone, form.password, form.country);
     if (res.success) setStep('email_otp');
     else setLocalError(res.error);
@@ -157,14 +202,33 @@ export function SignupPage() {
   const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLocalError('');
-      const res = await googleLogin(tokenResponse.access_token);
-      if (res.success) navigate(res.role === 'admin' ? '/admin' : '/');
-      else setLocalError(res.error);
+      setPendingGoogleToken(tokenResponse.access_token);
+      setStep('google_extra');
     },
     onError: () => {
       setLocalError('Google Signup Failed');
     },
   });
+
+  const handleGoogleSubmit = async (e) => {
+    e.preventDefault();
+    setLocalError('');
+    if (!consentAccepted) { setLocalError('Please accept the Privacy Policy and Terms of Service to continue.'); return; }
+    if (!form.country) { setLocalError('Country field is mandatory.'); return; }
+    const parsedPhone = parsePhone(form.phone);
+    if (parsedPhone.number.replace(/\D/g, '').length !== 10) {
+      setLocalError('Mobile number must be exactly 10 digits.');
+      return;
+    }
+    const res = await googleLogin(pendingGoogleToken, form.phone, form.country);
+    if (res.success) {
+      const authState = useAuthStore.getState();
+      await useAuthStore.getState().updateProfile(authState.user?.name, form.phone, form.country);
+      navigate(res.role === 'admin' ? '/admin' : '/');
+    } else {
+      setLocalError(res.error);
+    }
+  };
 
   const displayError = localError || error;
 
@@ -273,13 +337,13 @@ export function SignupPage() {
                   {/* Country - Desktop */}
                   <div>
                     <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country</label>
-                    <CountryPicker dark={false} />
+                    <CountryPicker dark={false} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
                   </div>
 
                   {/* Phone - Desktop */}
                   <div>
                     <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Phone Number</label>
-                    <PhoneInput allowedCountries={allowedCountries} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
+                    <PhoneInput allowedCountries={[]} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
                   </div>
 
                   {/* Password */}
@@ -362,16 +426,7 @@ export function SignupPage() {
                   </p>
                 </div>
                 <form onSubmit={handleVerifyPhone} className="space-y-6">
-                  <div className="flex justify-center gap-3">
-                    {phoneOtp.map((digit, idx) => (
-                      <input key={idx} ref={el => phoneOtpRefs.current[idx] = el}
-                        type="text" inputMode="numeric" maxLength={1} value={digit}
-                        onChange={e => handleOtpChange(e.target.value, idx, setPhoneOtp, phoneOtpRefs)}
-                        onKeyDown={e => handleOtpKeyDown(e, idx, phoneOtp, phoneOtpRefs)}
-                        className="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors"
-                      />
-                    ))}
-                  </div>
+                  <OtpInput value={phoneOtp} onChange={setPhoneOtp} className="flex justify-center gap-3" inputClassName="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors" />
                   {(localError || error) && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">{localError || error}</div>}
                   <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
                     type="submit" disabled={loading}
@@ -392,23 +447,65 @@ export function SignupPage() {
                   </p>
                 </div>
                 <form onSubmit={handleVerifyEmail} className="space-y-6">
-                  <div className="flex justify-center gap-3">
-                    {emailOtp.map((digit, idx) => (
-                      <input key={idx} ref={el => emailOtpRefs.current[idx] = el}
-                        type="text" inputMode="numeric" maxLength={1} value={digit}
-                        onChange={e => handleOtpChange(e.target.value, idx, setEmailOtp, emailOtpRefs)}
-                        onKeyDown={e => handleOtpKeyDown(e, idx, emailOtp, emailOtpRefs)}
-                        className="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors"
-                      />
-                    ))}
-                  </div>
+                  <OtpInput value={emailOtp} onChange={setEmailOtp} className="flex justify-center gap-3" inputClassName="w-12 h-14 text-center text-xl font-bold bg-white border-2 border-brand-gold/20 rounded-xl text-brand-dark-blue focus:outline-none focus:border-brand-gold transition-colors" />
                   {(localError || error) && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">{localError || error}</div>}
                   <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
                     type="submit" disabled={loading}
                     className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 shadow-lg">
-                    {loading ? 'Verifying...' : 'Verify Email & Create Account →'}
+                    {loading ? 'Verifying...' : 'Complete Sign Up →'}
                   </motion.button>
-                  <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors">← Back</button>
+                  <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors">← Back to mobile verification</button>
+                </form>
+              </>
+            ) : step === 'google_extra' ? (
+              <>
+                <div className="mb-8">
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold text-brand-dark-blue mb-2">Almost Done!</h2>
+                  <div className="w-14 h-1 bg-brand-gold rounded-full"></div>
+                  <p className="text-brand-dark-blue/60 text-sm mt-4">
+                    Please provide your phone number and country to complete your Google Sign Up.
+                  </p>
+                </div>
+                <form onSubmit={handleGoogleSubmit} className="space-y-5">
+                  {/* Country - Desktop */}
+                  <div>
+                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country</label>
+                    <CountryPicker dark={false} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
+                  </div>
+
+                  {/* Phone - Desktop */}
+                  <div>
+                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Phone Number</label>
+                    <PhoneInput allowedCountries={[]} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" />
+                  </div>
+
+                  {/* Consent */}
+                  <label className="flex items-start gap-2.5 cursor-pointer pt-2">
+                    <input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-brand-dark-blue rounded shrink-0" />
+                    <span className="text-xs text-brand-dark-blue/70 leading-relaxed">
+                      I confirm that I am at least 13 years old, agree to the Houra Jewels{' '}
+                      <Link to="/terms-of-service" target="_blank" className="font-bold text-brand-dark-blue underline">Terms & Conditions</Link>,
+                      and acknowledge the Houra Jewels{' '}
+                      <Link to="/privacy-policy" target="_blank" className="font-bold text-brand-dark-blue underline">Privacy Policy</Link>.
+                    </span>
+                  </label>
+
+                  {displayError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 text-center">
+                      {displayError}
+                    </div>
+                  )}
+
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit" disabled={loading}
+                    className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 mt-2 shadow-lg"
+                  >
+                    {loading ? 'Completing...' : 'Complete Sign Up →'}
+                  </motion.button>
+                  <button type="button" onClick={() => setStep('form')} className="w-full text-sm text-brand-dark-blue/50 hover:text-brand-dark-blue transition-colors mt-2">← Back</button>
                 </form>
               </>
             ) : (
@@ -442,13 +539,14 @@ export function SignupPage() {
             HOURA JEWELS
           </span>
           <span className="text-[#D4AF37] text-[10px] font-bold tracking-widest uppercase mt-6">
-            {step === 'form' ? 'Get Started' : step === 'phone_otp' ? 'Step 1 of 2' : step === 'email_otp' ? 'Step 2 of 2' : 'Welcome!'}
+            {step === 'form' ? 'Get Started' : step === 'phone_otp' ? 'Step 1 of 2' : step === 'email_otp' ? 'Step 2 of 2' : step === 'google_extra' ? 'Almost Done' : 'Welcome!'}
           </span>
           <p className="text-white/70 text-xs text-center leading-relaxed max-w-[260px] mt-4">
             {step === 'form'
               ? 'Premium Stainless Steel PVD Gold Plated Jewelry — Waterproof, Tarnish-Free, and made for Everyday Luxury.'
               : step === 'phone_otp' ? `OTP sent to ${form.phone}`
               : step === 'email_otp' ? `OTP sent to ${form.email}`
+              : step === 'google_extra' ? 'Please complete your details to finish signing up.'
               : 'Your account has been created successfully!'}
           </p>
         </div>
@@ -496,15 +594,23 @@ export function SignupPage() {
               </div>
 
               {/* Country - Mobile */}
-              <div>
+              <div className="mb-4">
                 <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country</label>
-                <CountryPicker dark={true} />
+                <CountryPicker dark={true} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
               </div>
 
               {/* Phone - Mobile */}
               <div>
                 <label className="text-xs font-medium text-white block mb-1.5 pl-1">Phone Number</label>
-                <PhoneInput allowedCountries={allowedCountries} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="Phone number" dark />
+                <PhoneInput 
+                  allowedCountries={[]} 
+                  value={form.phone} 
+                  onChange={v => setForm(f => ({ ...f, phone: v }))} 
+                  placeholder="Phone number" 
+                  dark 
+                  pattern="[0-9]{10,}" 
+                  title="Please enter a valid phone number with at least 10 digits"
+                />
               </div>
 
               <div>
@@ -580,16 +686,7 @@ export function SignupPage() {
               <div className="w-8 h-1 bg-[#D4AF37] mx-auto rounded-full mb-3"></div>
             </div>
             <form onSubmit={handleVerifyPhone} className="w-full max-w-sm space-y-6">
-              <div className="flex justify-center gap-2">
-                {phoneOtp.map((digit, idx) => (
-                  <input key={idx} ref={el => phoneOtpRefs.current[idx] = el}
-                    type="text" inputMode="numeric" maxLength={1} value={digit}
-                    onChange={e => handleOtpChange(e.target.value, idx, setPhoneOtp, phoneOtpRefs)}
-                    onKeyDown={e => handleOtpKeyDown(e, idx, phoneOtp, phoneOtpRefs)}
-                    className="w-10 h-12 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
-                  />
-                ))}
-              </div>
+              <OtpInput value={phoneOtp} onChange={setPhoneOtp} className="flex justify-center gap-2" inputClassName="w-10 h-12 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all" />
               {(localError || error) && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">{localError || error}</div>}
               <button type="submit" disabled={loading}
                 className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
@@ -604,23 +701,70 @@ export function SignupPage() {
               <h2 className="text-4xl font-serif font-bold text-white mb-2">Verify <span className="text-[#D4AF37]">Email</span></h2>
               <div className="w-8 h-1 bg-[#D4AF37] mx-auto rounded-full mb-3"></div>
             </div>
-            <form onSubmit={handleVerifyEmail} className="w-full max-w-sm space-y-6">
-              <div className="flex justify-center gap-2">
-                {emailOtp.map((digit, idx) => (
-                  <input key={idx} ref={el => emailOtpRefs.current[idx] = el}
-                    type="text" inputMode="numeric" maxLength={1} value={digit}
-                    onChange={e => handleOtpChange(e.target.value, idx, setEmailOtp, emailOtpRefs)}
-                    onKeyDown={e => handleOtpKeyDown(e, idx, emailOtp, emailOtpRefs)}
-                    className="w-10 h-12 text-center text-xl font-bold bg-transparent border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
-                  />
-                ))}
-              </div>
+            <form onSubmit={handleVerifyEmail} className="w-full max-w-sm space-y-4">
+              <OtpInput value={emailOtp} onChange={setEmailOtp} className="flex justify-center gap-2" inputClassName="w-11 h-12 text-center text-xl font-bold bg-transparent border-2 border-white/20 rounded-xl text-white focus:outline-none focus:border-[#D4AF37] transition-colors" />
               {(localError || error) && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">{localError || error}</div>}
               <button type="submit" disabled={loading}
-                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                {loading ? 'Verifying...' : 'Verify Email & Create Account →'}
+                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 mt-4 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                {loading ? 'Verifying...' : 'Complete Sign Up →'}
               </button>
-              <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-white/50 hover:text-white transition-colors">← Back</button>
+              <button type="button" onClick={() => setStep('phone_otp')} className="w-full text-sm text-white/50 mt-4">← Back to mobile verification</button>
+            </form>
+          </>
+        ) : step === 'google_extra' ? (
+          <>
+            <h2 className="text-2xl font-serif font-bold text-white mb-2">Almost Done!</h2>
+            <div className="w-12 h-1 bg-[#C6A184] rounded-full mb-6"></div>
+            <p className="text-white/70 text-sm mb-6">
+              Please provide your phone number and country.
+            </p>
+
+            <form onSubmit={handleGoogleSubmit} className="space-y-4">
+              {/* Country - Mobile */}
+              <div className="mb-4">
+                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country</label>
+                <CountryPicker dark={true} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
+              </div>
+
+              {/* Phone - Mobile */}
+              <div className="mb-4">
+                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Phone Number</label>
+                <PhoneInput 
+                  allowedCountries={[]} 
+                  value={form.phone} 
+                  onChange={v => setForm(f => ({ ...f, phone: v }))} 
+                  placeholder="Phone number" 
+                  dark 
+                  pattern="[0-9]{10,}" 
+                  title="Please enter a valid phone number with at least 10 digits"
+                />
+              </div>
+
+              {/* Consent - Mobile */}
+              <label className="flex items-start gap-2.5 cursor-pointer pt-2">
+                <input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[#D4AF37] rounded shrink-0" />
+                <span className="text-[11px] text-white/60 leading-relaxed">
+                  I confirm that I am at least 13 years old, agree to the Houra Jewels{' '}
+                  <Link to="/terms-of-service" target="_blank" className="text-[#D4AF37] font-bold underline">Terms & Conditions</Link>,
+                  and acknowledge the Houra Jewels{' '}
+                  <Link to="/privacy-policy" target="_blank" className="text-[#D4AF37] font-bold underline">Privacy Policy</Link>.
+                </span>
+              </label>
+
+              {displayError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400 text-center">
+                  {displayError}
+                </div>
+              )}
+
+              <button
+                type="submit" disabled={loading}
+                className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 mt-4 shadow-[0_0_15px_rgba(212,175,55,0.2)]"
+              >
+                {loading ? 'Completing...' : 'Complete Sign Up →'}
+              </button>
+              <button type="button" onClick={() => setStep('form')} className="w-full text-sm text-white/50 mt-4">← Back</button>
             </form>
           </>
         ) : (

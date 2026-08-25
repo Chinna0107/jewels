@@ -28,6 +28,9 @@ export function AdminProductsPage() {
   const [search, setSearch] = useState("");
   const [stockSort, setStockSort] = useState("none");
   const [offerFilter, setOfferFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     fetchData();
@@ -272,12 +275,19 @@ export function AdminProductsPage() {
     if (search && !nameMatch && !catMatch && !codeMatch && !colorMatch) return false;
     if (offerFilter === "has_offer" && !row.size.offer_id) return false;
     if (offerFilter === "no_offer" && row.size.offer_id) return false;
+    if (categoryFilter !== "all" && row.product.category !== categoryFilter) return false;
     return true;
   }).sort((a, b) => {
     if (stockSort === "asc") return (a.size.stock || 0) - (b.size.stock || 0);
     if (stockSort === "desc") return (b.size.stock || 0) - (a.size.stock || 0);
     return 0;
   });
+
+  const totalPages = Math.ceil(filteredSkus.length / itemsPerPage);
+  const paginatedSkus = filteredSkus.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [search, stockSort, offerFilter, categoryFilter]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -302,6 +312,12 @@ export function AdminProductsPage() {
             <option value="none">Stock: Default</option>
             <option value="asc">Stock: Low to High</option>
             <option value="desc">Stock: High to Low</option>
+          </select>
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="px-3 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none">
+            <option value="all">Category: All</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
           </select>
           <select value={offerFilter} onChange={e => setOfferFilter(e.target.value)} className="px-3 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none">
             <option value="all">Offers: All</option>
@@ -330,7 +346,7 @@ export function AdminProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#08183A]/5">
-              {filteredSkus.map(row => {
+              {paginatedSkus.map(row => {
                 const firstImg = row.variant.images?.[0] || row.product.image_url;
                 const offerObj = offers.find(o => o.id == row.size.offer_id);
                 return (
@@ -388,6 +404,28 @@ export function AdminProductsPage() {
             </tbody>
           </table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-[#08183A]/10 bg-white">
+            <span className="text-sm text-[#08183A]/60">Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredSkus.length)} of {filteredSkus.length} entries</span>
+            <div className="flex gap-2">
+              <button 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(p => p - 1)}
+                className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <button 
+                disabled={currentPage === totalPages} 
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {editProduct && (

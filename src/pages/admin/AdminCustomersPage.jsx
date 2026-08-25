@@ -57,7 +57,6 @@ export function AdminCustomersPage() {
   };
 
   const filtered = customers.filter(c =>
-    (c.email_verified || c.phone_verified) &&
     (!search ||
       (c.name && c.name.toLowerCase().includes(search.toLowerCase())) ||
       (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
@@ -89,12 +88,14 @@ export function AdminCustomersPage() {
 
       <div className="bg-white rounded-2xl border border-[#08183A]/10 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm font-sans min-w-[680px]">
+          <table className="w-full text-sm font-sans min-w-max">
             <thead>
               <tr className="bg-[#FDF8F0] text-[#08183A]/60 text-xs uppercase tracking-wider border-b border-[#08183A]/10">
                 <th className="text-left py-4 px-4 sm:px-6 font-semibold">Name</th>
                 <th className="text-left py-4 px-4 sm:px-6 font-semibold">Email</th>
                 <th className="text-left py-4 px-4 sm:px-6 font-semibold">Phone</th>
+                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Country</th>
+                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Signup Type</th>
                 <th className="text-left py-4 px-4 sm:px-6 font-semibold">Role</th>
                 <th className="text-left py-4 px-4 sm:px-6 font-semibold">Joined</th>
                 <th className="py-4 px-4 sm:px-6 font-semibold"></th>
@@ -139,6 +140,22 @@ export function AdminCustomersPage() {
                     )}
                   </td>
 
+                  {/* Country */}
+                  <td className="py-4 px-4 sm:px-6 text-xs text-[#08183A]/70">
+                    {customer.country || "—"}
+                  </td>
+
+                  {/* Signup Type */}
+                  <td className="py-4 px-4 sm:px-6">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
+                      (customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' 
+                        ? 'bg-red-50 text-red-600 border border-red-200' 
+                        : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    }`}>
+                      {(customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' ? 'Google' : 'Direct'}
+                    </span>
+                  </td>
+
                   {/* Role */}
                   <td className="py-4 px-4 sm:px-6">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -173,7 +190,7 @@ export function AdminCustomersPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-[#08183A]/50">
+                  <td colSpan={8} className="py-12 text-center text-[#08183A]/50">
                     No customers found
                   </td>
                 </tr>

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { MapPin, Plus, Trash2, Check, X, Home, Pencil } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { Header } from '../components/Header';
 import { PhoneInput } from '../components/PhoneInput';
 import { useLoadScript } from '@react-google-maps/api';
 import usePlacesAutocomplete, { getDetails } from 'use-places-autocomplete';
+import { COUNTRIES } from '../data/countries';
+import { getStatesForCountry } from '../data/states';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 function AddressAutocomplete({ value, onChange, onSelect, mapsLoaded }) {
@@ -128,11 +131,17 @@ function AddressAutocomplete({ value, onChange, onSelect, mapsLoaded }) {
 
 const EMPTY_FORM = { name: '', line1: '', line2: '', city: '', state: '', pincode: '', country: '', mobile: '', is_default: false };
 
-function AddressForm({ onClose, onSave, saving, mapsLoaded, initial }) {
+function AddressForm({ onClose, onSave, saving, mapsLoaded, initial, shippingConfig }) {
   const [form, setForm] = useState(initial || EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
-  const required = ['name', 'line1', 'city', 'state', 'pincode', 'country', 'mobile'];
+  const allowedCountries = shippingConfig?.settings?.allowed_countries || [];
+  const displayCountries = allowedCountries.length > 0 
+    ? COUNTRIES.filter(c => allowedCountries.includes(c.name))
+    : COUNTRIES;
+
+  const required = ['name', 'line1', 'city', 'pincode', 'country', 'mobile'];
+  if (getStatesForCountry(form.country)) required.push('state');
 
   const validate = () => {
     const e = {};
@@ -188,9 +197,45 @@ function AddressForm({ onClose, onSave, saving, mapsLoaded, initial }) {
           {field('line1', 'Address Line 1', { full: true, autocomplete: true })}
           {field('line2', 'Address Line 2', { full: true, placeholder: 'Apartment, suite, unit (optional)' })}
           {field('city', 'City')}
-          {field('state', 'State')}
+          <div className="col-span-1">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
+              State<span className="text-gray-400 font-normal">*</span>
+            </label>
+            {(() => {
+              const states = getStatesForCountry(form.country);
+              return states ? (
+                <select value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-gray-50 ${errors.state ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-gray-400'}`}>
+                  <option value="">Select state</option>
+                  {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                </select>
+              ) : (
+                <input value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} placeholder="State (optional)"
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-gray-50 ${errors.state ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-gray-400'}`} />
+              );
+            })()}
+            {errors.state && <p className="text-[10px] text-red-500 mt-0.5">State is required</p>}
+          </div>
           {field('pincode', 'ZIP Code')}
-          {field('country', 'Country')}
+          <div className="col-span-1">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
+              Country<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            <select
+              value={form.country}
+              onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 bg-gray-50 ${errors.country ? 'border-red-400 focus:ring-red-300' : 'border-gray-200 focus:ring-gray-400'}`}
+            >
+              <option value="">Select country</option>
+              {displayCountries.map(c => (
+                <option key={c.code} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            {errors.country && <p className="text-[10px] text-red-500 mt-0.5">Country is required</p>}
+            <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+              If your country is not listed above, shipping to your region is currently unavailable through the website. Please <Link to="/contact" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">contact our Support Team</Link> to place your order.
+            </p>
+          </div>
           <div className="col-span-2">
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
               Mobile Number<span className="text-red-500 ml-0.5">*</span>
@@ -227,6 +272,14 @@ export function MyAddressesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [shippingConfig, setShippingConfig] = useState(null);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/general/shipping`)
+      .then(r => r.json())
+      .then(d => setShippingConfig(d))
+      .catch(console.error);
+  }, []);
 
   const { isLoaded: mapsLoaded } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -326,6 +379,7 @@ export function MyAddressesPage() {
           saving={saving}
           mapsLoaded={mapsLoaded}
           initial={editingAddress}
+          shippingConfig={shippingConfig}
         />
       )}
     </div>
