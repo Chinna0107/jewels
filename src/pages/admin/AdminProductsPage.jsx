@@ -14,7 +14,7 @@ export function AdminProductsPage() {
   const initialFormData = { 
     name: "", description: "", product_code: "", instagram_reel_url: "", category: "", model: "", is_active: true, allow_reviews: true,
     variants: [
-      { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" }] }
+      { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "", notes: "" }] }
     ],
     details: [],
     reviews: []
@@ -176,7 +176,7 @@ export function AdminProductsPage() {
   };
 
   const addVariant = () => {
-    setFormData({ ...formData, variants: [...formData.variants, { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" }] }] });
+    setFormData({ ...formData, variants: [...formData.variants, { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "", notes: "" }] }] });
   };
   
   const removeVariant = (index) => {
@@ -219,7 +219,7 @@ export function AdminProductsPage() {
 
   const addSizeToVariant = (vIndex) => {
     const updated = [...formData.variants];
-    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "" });
+    updated[vIndex].sizes.push({ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "", notes: "" });
     setFormData({ ...formData, variants: updated });
   };
   
@@ -340,6 +340,7 @@ export function AdminProductsPage() {
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Code (SKU)</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Category</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Stock Availability</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Notes</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Offer</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Actions</th>
@@ -377,6 +378,15 @@ export function AdminProductsPage() {
                         {row.size.stock} in stock
                       </span>
                     </td>
+                    <td className="px-4 py-3 max-w-[160px]">
+                      {row.size.notes ? (
+                        <span className="text-xs text-gray-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md line-clamp-2 block" title={row.size.notes}>
+                          {row.size.notes}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       {offerObj ? (
                         <span className="text-[10px] font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">{offerObj.discount_percentage}% OFF</span>
@@ -398,7 +408,7 @@ export function AdminProductsPage() {
               })}
               {filteredSkus.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="px-4 py-12 text-center text-[#08183A]/50">No variants/SKUs found.</td>
+                  <td colSpan="8" className="px-4 py-12 text-center text-[#08183A]/50">No variants/SKUs found.</td>
                 </tr>
               )}
             </tbody>
@@ -577,6 +587,12 @@ export function AdminProductsPage() {
                               </select>
                               <input value={sizeObj.weight || ""} onChange={e => updateSizeField(vIndex, sIndex, 'weight', e.target.value)} placeholder="Weight (g)" className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm focus:outline-none" />
                               <button onClick={() => removeSizeFromVariant(vIndex, sIndex)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                              <input
+                                value={sizeObj.notes || ""}
+                                onChange={e => updateSizeField(vIndex, sIndex, 'notes', e.target.value)}
+                                placeholder="Notes (e.g. custom engraving, fragile)"
+                                className="w-full mt-1 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-sm focus:outline-none text-gray-700 placeholder-amber-300"
+                              />
                             </div>
                           ))}
                           {variant.sizes.length === 0 && <p className="text-[10px] text-gray-500">No sizes added.</p>}
