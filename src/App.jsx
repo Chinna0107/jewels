@@ -34,6 +34,7 @@ import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
 import { AdminBannersPage } from './pages/admin/AdminBannersPage';
 import { AdminCouponsPage } from './pages/admin/AdminCouponsPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
+import { AdminCreateOrderPage } from './pages/admin/AdminCreateOrderPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminOffersPage } from './pages/admin/AdminOffersPage';
@@ -68,6 +69,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<AdminDashboardPage />} />
                   <Route path="/orders" element={<AdminOrdersPage />} />
+                  <Route path="/orders/new" element={<AdminCreateOrderPage />} />
                   <Route path="customers" element={<AdminCustomersPage />} />
                   <Route path="products" element={<AdminProductsPage />} />
                   <Route path="categories" element={<AdminCategoriesPage />} />
@@ -110,7 +112,7 @@ function App() {
                   <Route path="/returns-policy" element={<ReturnsPolicyPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-                  <Route path="/care-tips" element={<CareTipsPage />} />
+                  <Route path="/jewelry-care" element={<CareTipsPage />} />
                 </Routes>
               </AppLayout>
             } />

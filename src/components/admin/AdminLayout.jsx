@@ -7,6 +7,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { href: "/admin/orders/new", label: "Create Order", icon: <ShoppingBag className="w-4 h-4" /> },
   { href: "/admin/orders", label: "Orders", icon: <ShoppingBag className="w-4 h-4" /> },
   { href: "/admin/pickup-orders", label: "Pickup Orders", icon: <Store className="w-4 h-4" /> },
   { href: "/admin/customers", label: "Customers", icon: <Users className="w-4 h-4" /> },
@@ -102,7 +103,7 @@ export function AdminLayout({ children }) {
           <p className="text-[#08183A]/40 text-[10px] font-sans truncate">{admin.email}</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {NAV.map((item) => (
             <Link key={item.href} to={item.href} onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-sans font-medium transition-colors ${

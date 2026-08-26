@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Download, TrendingUp, DollarSign, ShoppingBag, ArrowRight } from "lucide-react";
+import { Download, TrendingUp, DollarSign, ShoppingBag, Users, Tag, FileText, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
@@ -71,8 +71,8 @@ export function AdminReportsPage() {
       const res = await fetch(`${BACKEND_URL}${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       
-      const safeParse = (str) => { try { return JSON.parse(str) || {}; } catch { return {}; } };
-      const parseArray = (str) => { try { const a = JSON.parse(str); return Array.isArray(a) ? a : []; } catch { return []; } };
+      const safeParse = (str) => { try { return typeof str === 'string' ? JSON.parse(str) : (str || {}); } catch { return {}; } };
+      const parseArray = (str) => { try { return typeof str === 'string' ? JSON.parse(str) : (Array.isArray(str) ? str : []); } catch { return []; } };
 
       let arr = [];
       if (type === 'revenue' || type === 'orders') {
@@ -102,29 +102,32 @@ export function AdminReportsPage() {
         }
       } else if (type === 'products') {
         if (data.products) {
-          arr = data.products.map(p => {
-            const sizes = parseArray(p.sizes);
-            const variants = parseArray(p.variants);
-            let priceStr = '';
-            if (variants.length > 0 && variants[0].sizes && variants[0].sizes.length > 0) {
-              priceStr = variants[0].sizes[0].our_price || variants[0].sizes[0].price;
-            } else if (sizes.length > 0) {
-              priceStr = sizes[0].our_price || sizes[0].price;
+          arr = [];
+          data.products.forEach(p => {
+            let variants = parseArray(p.variants);
+            if (!variants || variants.length === 0) {
+              variants = [{ color: p.color || '', sizes: [{ size: "Default", our_price: p.price, stock: p.stock || 0, code: p.product_code || "" }] }];
             }
-            return {
-              'Product ID': p.id,
-              'Product Code': p.product_code || '',
-              'Name': p.name,
-              'Category': p.category || '',
-              'Model': p.model || '',
-              'Color': p.color || '',
-              'Price': priceStr || '',
-              'Stock': p.stock || 0,
-              'Active': p.is_active ? 'Yes' : 'No',
-              'Bestseller': p.is_bestseller ? 'Yes' : 'No',
-              'Trending': p.is_trending ? 'Yes' : 'No',
-              'Date Added': new Date(p.created_at).toLocaleDateString()
-            };
+            variants.forEach(v => {
+              const sizes = v.sizes && v.sizes.length > 0 ? v.sizes : [{ size: "Default", our_price: p.price, stock: p.stock || 0, code: p.product_code || "" }];
+              sizes.forEach(s => {
+                arr.push({
+                  'Product ID': p.id,
+                  'Product Code': s.code || p.product_code || '',
+                  'Name': p.name,
+                  'Category': p.category || '',
+                  'Model': p.model || '',
+                  'Color': v.color || p.color || '',
+                  'Size': s.size || '',
+                  'Price': s.our_price || s.mrp || s.price || p.price || '',
+                  'Stock': s.stock !== undefined && s.stock !== null ? s.stock : (p.stock || 0),
+                  'Active': p.is_active ? 'Yes' : 'No',
+                  'Bestseller': p.is_bestseller ? 'Yes' : 'No',
+                  'Trending': p.is_trending ? 'Yes' : 'No',
+                  'Date Added': new Date(p.created_at).toLocaleDateString()
+                });
+              });
+            });
           });
         }
       } else if (type === 'customers') {
@@ -169,70 +172,126 @@ export function AdminReportsPage() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-4 border-[#08183A]/20 border-t-[#08183A] rounded-full animate-spin" />
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        className="w-10 h-10 border-4 border-[#08183A]/20 border-t-[#08183A] rounded-full" 
+      />
     </div>
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#08183A]">Reports & Analytics</h1>
-        <p className="text-[#08183A]/40 text-xs font-sans mt-0.5">Download data and view store performance</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-2xl border border-[#08183A]/10 p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gold/10 text-amber-500 flex items-center justify-center">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-sans text-[#08183A]/50 uppercase tracking-wider font-semibold">Total Revenue</p>
-              <p className="text-xl font-serif font-bold text-[#08183A]">${stats?.totalRevenue || 0}</p>
-            </div>
-          </div>
-          <button onClick={() => downloadReport('revenue')} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#FDF8F0] text-[#08183A] py-2 rounded-xl text-sm font-semibold hover:bg-[#08183A]/10 transition-colors">
-            <Download className="w-4 h-4" /> Download Sales Report
-          </button>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-[#08183A]/10 p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-sans text-[#08183A]/50 uppercase tracking-wider font-semibold">Total Orders</p>
-              <p className="text-xl font-serif font-bold text-[#08183A]">{stats?.totalOrders || 0}</p>
-            </div>
-          </div>
-          <button onClick={() => downloadReport('orders')} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#FDF8F0] text-[#08183A] py-2 rounded-xl text-sm font-semibold hover:bg-[#08183A]/10 transition-colors">
-            <Download className="w-4 h-4" /> Download Orders Report
-          </button>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="w-full max-w-6xl mx-auto space-y-8 pb-12"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#08183A] tracking-tight">Reports & Analytics</h1>
+          <p className="text-[#08183A]/60 text-sm font-sans mt-2">Comprehensive overview of your store's performance and data exports.</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#08183A]/10 p-5 shadow-sm">
-        <h3 className="font-serif font-bold text-[#08183A] mb-4">Export Data Center</h3>
-        <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Revenue Card */}
+        <motion.div 
+          whileHover={{ y: -4 }}
+          className="relative overflow-hidden bg-gradient-to-br from-[#08183A] to-[#1a3673] rounded-3xl p-8 shadow-xl shadow-[#08183A]/10 text-white group"
+        >
+          <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none transform group-hover:scale-110 transition-transform duration-500">
+            <DollarSign className="w-32 h-32" />
+          </div>
+          <div className="relative z-10">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-6">
+              <DollarSign className="w-6 h-6 text-emerald-400" />
+            </div>
+            <p className="text-white/60 font-medium text-sm uppercase tracking-wider mb-2">Total Revenue</p>
+            <h2 className="text-4xl sm:text-5xl font-serif font-bold mb-8">${stats?.totalRevenue?.toLocaleString() || 0}</h2>
+            <button 
+              onClick={() => downloadReport('revenue')} 
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-2 bg-white text-[#08183A] py-3.5 rounded-xl font-bold hover:bg-gray-50 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-70"
+            >
+              {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />} 
+              {downloading ? 'Preparing...' : 'Download Sales Report'}
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Orders Card */}
+        <motion.div 
+          whileHover={{ y: -4 }}
+          className="relative overflow-hidden bg-white rounded-3xl p-8 shadow-xl shadow-[#08183A]/5 border border-[#08183A]/5 group"
+        >
+          <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none transform group-hover:scale-110 transition-transform duration-500">
+            <ShoppingBag className="w-32 h-32 text-[#08183A]" />
+          </div>
+          <div className="relative z-10">
+            <div className="w-12 h-12 rounded-2xl bg-[#FDF8F0] flex items-center justify-center mb-6">
+              <ShoppingBag className="w-6 h-6 text-[#08183A]" />
+            </div>
+            <p className="text-[#08183A]/50 font-medium text-sm uppercase tracking-wider mb-2">Total Orders</p>
+            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-[#08183A] mb-8">{stats?.totalOrders?.toLocaleString() || 0}</h2>
+            <button 
+              onClick={() => downloadReport('orders')} 
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-2 bg-[#08183A] text-white py-3.5 rounded-xl font-bold hover:bg-[#122A5C] transition-all hover:shadow-lg hover:shadow-[#08183A]/20 active:scale-[0.98] disabled:opacity-70"
+            >
+              {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />} 
+              {downloading ? 'Preparing...' : 'Download Orders Report'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Export Data Center */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-3xl border border-[#08183A]/10 p-8 shadow-xl shadow-[#08183A]/5"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className="font-serif text-2xl font-bold text-[#08183A]">Export Data Center</h3>
+            <p className="text-[#08183A]/50 text-sm mt-1">Download comprehensive CSV reports for offline analysis.</p>
+          </div>
+          <div className="hidden sm:flex w-12 h-12 rounded-full bg-[#FDF8F0] items-center justify-center">
+            <FileText className="w-6 h-6 text-[#08183A]" />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { title: "Products Inventory", desc: "Download full list of products, stock, and pricing", type: "products" },
-            { title: "Customer Database", desc: "Download registered users and their details", type: "customers" },
-            { title: "Coupon Usage", desc: "Download history of used discount codes", type: "coupons" }
+            { title: "Products Inventory", desc: "Full catalog with stock & pricing", type: "products", icon: <TrendingUp className="w-6 h-6" /> },
+            { title: "Customer Database", desc: "Registered users & profiles", type: "customers", icon: <Users className="w-6 h-6" /> },
+            { title: "Coupon Usage", desc: "History of discount codes", type: "coupons", icon: <Tag className="w-6 h-6" /> }
           ].map((report, i) => (
-            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[#FDF8F0] border border-[#08183A]/5">
-              <div>
-                <p className="font-sans font-bold text-[#08183A]">{report.title}</p>
-                <p className="text-xs text-[#08183A]/50">{report.desc}</p>
+            <motion.div 
+              key={i} 
+              whileHover={{ y: -4 }}
+              className="flex flex-col bg-[#FDF8F0] rounded-2xl p-6 border border-[#08183A]/5 hover:shadow-md hover:border-[#08183A]/20 transition-all group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#08183A] mb-4 shadow-sm">
+                {report.icon}
               </div>
-              <button onClick={() => downloadReport(report.type)} className="flex items-center justify-center gap-2 bg-white border border-[#08183A]/20 text-[#08183A] px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#08183A] hover:text-white transition-colors">
-                <Download className="w-4 h-4" /> Export CSV
+              <h4 className="font-sans font-bold text-[#08183A] mb-1">{report.title}</h4>
+              <p className="text-xs text-[#08183A]/60 mb-6 flex-grow">{report.desc}</p>
+              
+              <button 
+                onClick={() => downloadReport(report.type)} 
+                disabled={downloading}
+                className="w-full flex items-center justify-center gap-2 bg-white border border-[#08183A]/10 text-[#08183A] py-2.5 rounded-xl text-sm font-semibold hover:bg-[#08183A] hover:text-white transition-colors disabled:opacity-70"
+              >
+                {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 
+                Export CSV
               </button>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

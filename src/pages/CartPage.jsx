@@ -99,17 +99,29 @@ export function CartPage() {
     // Re-validate coupon conditions before proceeding
     if (appliedCoupon) {
       const cartQty = items.reduce((s, i) => s + i.qty, 0);
-      if (appliedCoupon.min_type === 'qty' && cartQty < (appliedCoupon.min_qty || 0)) {
-        removeCoupon();
-        setCouponCode('');
-        showToast(`Coupon removed: need at least ${appliedCoupon.min_qty} item(s)`, 'error');
-        return;
-      }
-      if (appliedCoupon.min_type !== 'qty' && subtotal < (appliedCoupon.min_order_value || 0)) {
-        removeCoupon();
-        setCouponCode('');
-        showToast(`Coupon removed: minimum order \u20b9${appliedCoupon.min_order_value} required`, 'error');
-        return;
+      try {
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
+        const valRes = await fetch(`${BACKEND_URL}/general/validate-coupon`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            code: appliedCoupon.code, 
+            cartValue: subtotal, 
+            cartQty: cartQty, 
+            user_id: user?.id, 
+            cartItems: items 
+          })
+        });
+        const valData = await valRes.json();
+        if (valData.error) {
+          removeCoupon();
+          setCouponCode('');
+          showToast(`Coupon removed: ${valData.error}`, 'error');
+          return;
+        }
+      } catch (err) {
+        // Validation request failed, allow to proceed but warn
+        console.warn("Coupon re-validation failed, proceeding anyway", err);
       }
     }
 

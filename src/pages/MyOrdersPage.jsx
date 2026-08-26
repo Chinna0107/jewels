@@ -531,6 +531,26 @@ ${!isPickup ? `
                               <span className="font-semibold">${shipping.toFixed(2)}</span>
                             </div>
                           )}
+                          {(() => {
+                            let addr = {};
+                            try { addr = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+                            return (
+                              <>
+                                {addr.signature_fee > 0 && (
+                                  <div className="flex justify-between text-xs text-[#08183A]/70">
+                                    <span>Signature Confirmation</span>
+                                    <span className="font-semibold">${parseFloat(addr.signature_fee).toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {addr.insurance_fee > 0 && (
+                                  <div className="flex justify-between text-xs text-[#08183A]/70">
+                                    <span>Shipping Insurance</span>
+                                    <span className="font-semibold">${parseFloat(addr.insurance_fee).toFixed(2)}</span>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                           {tax > 0 && (
                             <div className="flex justify-between text-xs text-[#08183A]/70">
                               <span>Tax{taxRate ? ` (${taxRate}%)` : ''}</span>

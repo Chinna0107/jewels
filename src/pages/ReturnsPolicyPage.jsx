@@ -104,16 +104,19 @@ export function ReturnsPolicyPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="bg-white border border-brand-gold/20 rounded-2xl p-6 shadow-sm"
+              className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row gap-4 shadow-sm"
             >
-              <h2 className="text-2xl font-serif font-bold text-brand-dark-blue mb-4">Customer Responsibility After Delivery</h2>
-              <div className="text-brand-dark-blue/70 text-sm leading-relaxed space-y-3">
-                <p>
-                  Once an order has been successfully delivered, Houra Jewels is not responsible for any damage, loss, or deterioration resulting from the customer’s use or handling of the product. As our products are fashion jewelry, customers are responsible for proper care, handling, and storage after delivery.
-                </p>
-                <p>
-                  We recommend following our <a href="/jewelry-care" className="text-brand-gold font-bold hover:underline">Jewelry Care Tips</a> to help maintain the product’s appearance and longevity.
-                </p>
+              <AlertTriangle className="w-7 h-7 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-amber-700 text-lg mb-2">Customer Responsibility After Delivery</h3>
+                <div className="text-amber-700/90 text-sm leading-relaxed space-y-3">
+                  <p>
+                    Once an order has been successfully delivered, Houra Jewels is not responsible for any damage, loss, or deterioration resulting from the customer’s use or handling of the product. As our products are fashion jewelry, customers are responsible for proper care, handling, and storage after delivery.
+                  </p>
+                  <p>
+                    We recommend following our <a href="/jewelry-care" className="font-bold underline hover:text-amber-900">Jewelry Care Tips</a> to help maintain the product’s appearance and longevity.
+                  </p>
+                </div>
               </div>
             </motion.div>
 
@@ -391,6 +394,7 @@ export function ReturnsPolicyPage() {
                 <li className="flex items-start gap-2"><span className="text-red-400 font-bold mt-0.5">✕</span> No exchanges accepted</li>
                 <li className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span> Shipping damage → replacement</li>
                 <li className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span> Missing item → refund / coupon / resend</li>
+                <li className="flex items-start gap-2"><span className="text-green-500 font-bold mt-0.5">✓</span> Manufacturing defect → replacement</li>
                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5">!</span> Unboxing video required</li>
                 <li className="flex items-start gap-2"><span className="text-amber-500 font-bold mt-0.5">!</span> Report within 7 days of delivery</li>
               </ul>

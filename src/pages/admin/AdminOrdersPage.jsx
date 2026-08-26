@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw, Pencil, Plus, Trash2, Search, Link2, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoUrl from '../../assets/logo.png';
+import { ShippoConfigModal } from '../../components/admin/ShippoConfigModal';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const FROM_ADDRESS = {
@@ -852,6 +853,7 @@ export function AdminOrdersPage() {
   const [refunding, setRefunding] = useState(false);
   const [refundResult, setRefundResult] = useState(null); // { success, refundId, amount }
   const [ratesModal, setRatesModal] = useState(null); // { orderId, rates }
+  const [shippoConfigModal, setShippoConfigModal] = useState(null); // order object
   const [editModal, setEditModal] = useState(null); // order object
   const [sendingInvoice, setSendingInvoice] = useState({}); // tracking email sending state
 
@@ -929,13 +931,14 @@ export function AdminOrdersPage() {
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? { ...o, ...updatedOrder } : o));
   };
 
-  const fetchShippoRates = async (orderId) => {
+  const fetchShippoRates = async (orderId, config) => {
     const token = localStorage.getItem("token");
     setShipping((p) => ({ ...p, [`shippo_${orderId}`]: true }));
     try {
       const res = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/shippo-rates`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(config)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch Shippo rates");
@@ -1174,6 +1177,8 @@ ${!isPickup ? `
         <tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Subtotal</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;width:110px;">$${subtotal.toFixed(2)}</td></tr>
         ${discountAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#059669;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Discount${order.coupon_code ? ' (' + order.coupon_code + ')' : ''}</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;color:#059669;">-$${discountAmt.toFixed(2)}</td></tr>` : ''}
         ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
+        ${parseFloat(address.signature_fee) > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Signature Confirmation</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${parseFloat(address.signature_fee).toFixed(2)}</td></tr>` : ''}
+        ${parseFloat(address.insurance_fee) > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping Insurance</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${parseFloat(address.insurance_fee).toFixed(2)}</td></tr>` : ''}
         ${taxAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Tax</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${taxAmt.toFixed(2)}</td></tr>` : ''}
         <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
         ${refundAmt > 0 ? `<tr style="background:#fef2f2;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:10pt;color:#dc2626;border-top:1px solid #fecaca;">REFUNDED</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:10pt;color:#dc2626;border-top:1px solid #fecaca;">-$${refundAmt.toFixed(2)}</td></tr>` : ''}
@@ -1454,7 +1459,7 @@ ${!isPickup ? `
                              </a>
                           )}
                           <div className="flex justify-between mt-2">
-                            <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
+                            <button onClick={() => setShippoConfigModal(order)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
                               className="text-[10px] font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline w-full text-center disabled:opacity-50 disabled:cursor-not-allowed">
                               {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "Re-create Label (Shippo)"}
                             </button>
@@ -1462,7 +1467,7 @@ ${!isPickup ? `
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
+                          <button onClick={() => setShippoConfigModal(order)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
                             className="w-full flex items-center justify-center gap-2 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#08183A] px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "📦 Select Shipping Rate (Shippo)"}
                           </button>
@@ -1576,6 +1581,18 @@ ${!isPickup ? `
                             <div className="flex items-start gap-2 sm:col-span-2">
                               <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Txn ID</span>
                               <span className="text-xs font-mono font-semibold text-[#08183A] break-all select-all">{order.stripe_payment_intent_id}</span>
+                            </div>
+                          )}
+                          {address.signature_required && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Extras</span>
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">✍️ Signature Reqd</span>
+                            </div>
+                          )}
+                          {address.insurance_requested && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Extras</span>
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">🛡️ Insured (${address.insurance_amount})</span>
                             </div>
                           )}
                         </div>
@@ -1807,6 +1824,18 @@ ${!isPickup ? `
           </div>
         )}
       </AnimatePresence>
+
+      {shippoConfigModal && (
+        <ShippoConfigModal
+          order={shippoConfigModal}
+          onClose={() => setShippoConfigModal(null)}
+          onSubmit={(config) => {
+            const oId = shippoConfigModal.id;
+            setShippoConfigModal(null);
+            fetchShippoRates(oId, config);
+          }}
+        />
+      )}
     </div>
   );
 }

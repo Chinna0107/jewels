@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Truck, CheckCircle, MapPin, CreditCard, ChevronLeft, ShoppingCart, Store, Pencil, X, Check } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
@@ -238,7 +238,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
         )}
         <div className="pt-3 border-t border-green-200 mt-2 space-y-3">
           <p className="text-xs text-brand-dark-blue leading-relaxed">
-            To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/care-tips" className="underline font-bold text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.
+            To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/jewelry-care" className="underline font-bold text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.
           </p>
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input type="checkbox" checked={addressConfirmed} onChange={e => setAddressConfirmed(e.target.checked)}
@@ -519,7 +519,21 @@ export function CheckoutPage() {
   const [shippingFee, setShippingFee] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [taxLabel, setTaxLabel] = useState('Tax (enter pincode)');
-  const finalTotal = subtotal - discount + shippingFee + taxAmount;
+
+  const [signatureRequired, setSignatureRequired] = useState(false);
+  const [insuranceRequested, setInsuranceRequested] = useState(false);
+  const [insuranceDeclaredValue, setInsuranceDeclaredValue] = useState("");
+
+  const signatureFee = signatureRequired ? 4.00 : 0;
+  const insuranceFee = useMemo(() => {
+    if (!insuranceRequested) return 0;
+    const amount = parseFloat(insuranceDeclaredValue) || 0;
+    const country = address.country || dialCountryCode || 'United States';
+    const rate = (country.toLowerCase() === 'united states' || country === 'US') ? 0.0125 : 0.0150;
+    return amount * rate;
+  }, [insuranceRequested, insuranceDeclaredValue, address.country, dialCountryCode]);
+
+  const finalTotal = subtotal - discount + shippingFee + taxAmount + signatureFee + insuranceFee;
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/general/shipping`)
@@ -616,11 +630,20 @@ export function CheckoutPage() {
     const endpoint = token ? `${BACKEND_URL}/auth/orders` : `${BACKEND_URL}/general/orders`;
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ items, address: orderType === 'pickup' ? { name: pickupContact.name, mobile: `${COUNTRIES.find(c=>c.code===pickupDialCode)?.dial||'+1'}${pickupContact.phone}`, email: pickupContact.email } : address, total: finalTotal, coupon_code: couponCode, payment_method: pMethod, order_type: orderType, stripe_payment_intent_id: stripePaymentIntentId, discount_amount: discount, shipping_fee: shippingFee, tax_amount: taxAmount })
-    });
+      let finalAddress = orderType === 'pickup' ? { name: pickupContact.name, mobile: `${COUNTRIES.find(c=>c.code===pickupDialCode)?.dial||'+1'}${pickupContact.phone}`, email: pickupContact.email } : { ...address };
+      if (orderType === 'shipping') {
+        finalAddress.signature_required = signatureRequired;
+        finalAddress.signature_fee = signatureFee;
+        finalAddress.insurance_requested = insuranceRequested;
+        finalAddress.insurance_amount = parseFloat(insuranceDeclaredValue) || 0;
+        finalAddress.insurance_fee = insuranceFee;
+      }
+      
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ items, address: finalAddress, total: finalTotal, coupon_code: couponCode, payment_method: pMethod, order_type: orderType, stripe_payment_intent_id: stripePaymentIntentId, discount_amount: discount, shipping_fee: shippingFee, tax_amount: taxAmount })
+      });
     return res.json();
   };
 
@@ -736,6 +759,27 @@ export function CheckoutPage() {
         return;
       }
 
+
+      if (appliedCoupon) {
+        const valRes = await fetch(`${BACKEND_URL}/general/validate-coupon`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            code: appliedCoupon.code, 
+            cartValue: subtotal, 
+            cartQty: items.reduce((s, i) => s + i.qty, 0), 
+            user_id: user?.id, 
+            cartItems: items 
+          })
+        });
+        const valData = await valRes.json();
+        if (valData.error) {
+          showToast(`Coupon removed: ${valData.error}`, 'error');
+          removeCoupon();
+          setIsPlacingOrder(false);
+          return;
+        }
+      }
 
       if (!stripe || !elements) { setIsPlacingOrder(false); return; }
       const intentRes = await fetch(`${BACKEND_URL}/general/stripe/create-payment-intent`, {
@@ -874,6 +918,16 @@ export function CheckoutPage() {
                 {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
                   <div className="flex justify-between text-sm text-brand-dark-blue/70">
                     <span>{taxLabel || 'Tax'}</span><span className="font-medium">${taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {signatureFee > 0 && (
+                  <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                    <span>Signature Confirmation</span><span className="font-medium">${signatureFee.toFixed(2)}</span>
+                  </div>
+                )}
+                {insuranceFee > 0 && (
+                  <div className="flex justify-between text-sm text-brand-dark-blue/70">
+                    <span>Shipping Insurance</span><span className="font-medium">${insuranceFee.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-brand-dark-blue text-base pt-2 border-t border-brand-gold/20">
@@ -1349,6 +1403,42 @@ export function CheckoutPage() {
                 </div>
               </div>
             )}
+
+            {/* Shipping Extra Options (always shown at bottom of step 2 for shipping) */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
+              <h3 className="text-sm font-bold text-[#08183A]">Extra Shipping Options</h3>
+              
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
+                <div>
+                  <span className="text-sm font-bold text-gray-800 group-hover:text-brand-dark-blue transition-colors">Signature Confirmation (+$4.00)</span>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Require a signature upon delivery for added security.</p>
+                </div>
+              </label>
+
+              <div className="pt-3 border-t border-gray-100">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input type="checkbox" checked={insuranceRequested} onChange={e => setInsuranceRequested(e.target.checked)} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
+                  <div>
+                    <span className="text-sm font-bold text-gray-800 group-hover:text-brand-dark-blue transition-colors">Additional Shipping Insurance</span>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Check our <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">Shipping Policy</Link> for more details about Shipping Insurance & Lost Package Claims.</p>
+                  </div>
+                </label>
+                
+                {insuranceRequested && (
+                  <div className="mt-3 ml-7 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Declared Item Value (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
+                      <input type="number" min="0" step="1" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder="0.00" className="w-full bg-white border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2 font-medium">
+                      Fee: 1.25% of declared value (US) or 1.50% (International). Added to total.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
         {step === 2.5 && orderType === 'pickup' && (
@@ -1472,7 +1562,7 @@ export function CheckoutPage() {
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span><strong>Any damage must be reported within 1 business day</strong> of pickup. Claims after this window cannot be accepted.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Bring a valid photo ID and your order confirmation when picking up.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>Orders not picked up within 7 days of the ready notification may be subject to restocking.</span></li>
-                <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/care-tips" className="font-bold underline text-brand-dark-blue hover:text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.</span></li>
+                <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/jewelry-care" className="font-bold underline text-brand-dark-blue hover:text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.</span></li>
                 <li className="flex items-start gap-2"><span className="shrink-0">•</span><span>All sales are <strong>final — no returns or exchanges</strong> on pickup orders.</span></li>
               </ul>
               <label className="flex items-start gap-2.5 cursor-pointer pt-1 border-t border-amber-200">
@@ -1565,6 +1655,18 @@ export function CheckoutPage() {
                   <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                     <span>{taxLabel || 'Tax'}</span>
                     <span className="font-medium text-brand-dark-blue">${taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {signatureFee > 0 && (
+                  <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
+                    <span>Signature Confirmation</span>
+                    <span className="font-medium text-brand-dark-blue">${signatureFee.toFixed(2)}</span>
+                  </div>
+                )}
+                {insuranceFee > 0 && (
+                  <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
+                    <span>Shipping Insurance</span>
+                    <span className="font-medium text-brand-dark-blue">${insuranceFee.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-brand-dark-blue text-xl pt-2 border-t border-brand-gold/20">
