@@ -548,24 +548,24 @@ export function Header({ variant = 'default', title, showShare = false }) {
         <header className={`fixed ${announcement && announcement.is_active && announcement.items?.some(i => i.text) ? 'top-[27px]' : 'top-0'} left-0 z-50 w-full bg-brand-dark-blue/95 backdrop-blur-md px-4 py-2 shadow-lg border-b border-white/5 h-[76px] transition-all`}>
           <div className="w-full h-full flex items-center justify-between relative">
             {/* Left: Menu & Logo */}
-            <div className="flex items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors z-10">
+            <div className="flex items-center gap-1 sm:gap-3 shrink min-w-0">
+              <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors z-10 shrink-0">
                 <Menu className="w-6 h-6 text-brand-gold" strokeWidth={1.5} />
               </button>
 
-              <Link to="/" className="flex items-center gap-2.5 z-20">
-                <div className="h-10 flex items-center justify-center shrink-0">
+              <Link to="/" className="flex items-center gap-1.5 sm:gap-2.5 z-20 min-w-0 shrink">
+                <div className="h-8 sm:h-10 flex items-center justify-center shrink-0">
                   <img src={logo} alt="Icon" className="h-full w-auto object-contain" />
                 </div>
-                <div className="flex flex-col text-left mt-0.5">
-                  <span className="font-serif font-bold text-[15px] sm:text-base leading-none tracking-[0.12em] text-brand-gold whitespace-nowrap">HOURA JEWELS</span>
-                  <span className="text-white text-[8px] sm:text-[9px] tracking-[0.2em] mt-1 uppercase font-medium">By S & M</span>
+                <div className="flex flex-col text-left mt-0.5 min-w-0 shrink overflow-hidden">
+                  <span className="font-serif font-bold text-[13px] sm:text-[15px] leading-none tracking-[0.1em] sm:tracking-[0.12em] text-brand-gold truncate">HOURA JEWELS</span>
+                  <span className="text-white text-[7px] sm:text-[8px] tracking-[0.15em] sm:tracking-[0.2em] mt-1 uppercase font-medium truncate">By S & M</span>
                 </div>
               </Link>
             </div>
 
             {/* Right: Icons */}
-            <div className="flex items-center gap-1 z-10">
+            <div className="flex items-center gap-0.5 sm:gap-1 z-10 shrink-0">
               <button onClick={openMobileSearch} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 <Search className="w-5 h-5 text-brand-gold" strokeWidth={1.5} />
               </button>

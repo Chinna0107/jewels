@@ -980,8 +980,8 @@ export function AdminPickupOrdersPage() {
       <div style="display:flex;align-items:center;gap:10px;">
         <img src="${new URL(logoUrl, window.location.href).href}" style="height:48px;width:auto;object-fit:contain;" alt="Houra Jewels Logo" />
         <div style="display:flex;flex-direction:column;">
-          <span style="font-family:serif;font-weight:900;font-size:22px;color:#08183A;line-height:1;">Houra Jewels</span>
-          <span style="font-size:10px;font-weight:600;color:#D4AF37;letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;">By S & M</span>
+          <span style="font-family:serif;font-weight:900;font-size:22px;color:#D4AF37;line-height:1;letter-spacing:0.12em;text-transform:uppercase;">HOURA JEWELS</span>
+          <span style="font-size:10px;font-weight:600;color:#08183A;letter-spacing:0.2em;text-transform:uppercase;margin-top:2px;">By S & M</span>
         </div>
       </div>
     </td>

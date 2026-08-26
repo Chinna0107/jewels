@@ -12,7 +12,9 @@ const newEmails = `async function sendRefundEmail({ order, refundId, refundAmoun
     const orderNum = order.order_number || order.id;
 
     const cancelledRows = (cancelledItems || []).map(i => {
-      const imageUrl = i.variant?.images?.[0] || i.product?.image_url || i.images?.[0] || '';
+      const rawImageUrl = i.variant?.images?.[0] || i.product?.image_url || i.images?.[0] || '';
+      const isBase64 = typeof rawImageUrl === 'string' && rawImageUrl.startsWith('data:image');
+      const imageUrl = isBase64 ? '' : rawImageUrl;
       return '<tr>' +
         '<td style="padding:12px;border-bottom:1px solid #f0e0c0;display:flex;align-items:center;">' +
           (imageUrl ? '<img src="' + imageUrl + '" alt="' + (i.name || 'Item') + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;margin-right:12px;" />' : '') +

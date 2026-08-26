@@ -132,6 +132,7 @@ export function SignupPage() {
     { label: 'At least 1 special character', ok: /[^A-Za-z0-9]/.test(form.password) },
   ];
   const passwordValid = pwRules.every(r => r.ok);
+  const isFormValid = form.name.trim() !== '' && form.email.trim() !== '' && form.country !== '' && parsePhone(form.phone).number.replace(/\D/g, '').length === 10 && passwordValid && consentAccepted;
   const [phoneOtp, setPhoneOtp] = useState(['', '', '', '', '', '']);
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [localError, setLocalError] = useState('');
@@ -159,6 +160,7 @@ export function SignupPage() {
     setLocalError('');
     if (!consentAccepted) { setLocalError('Please accept the Privacy Policy and Terms of Service to continue.'); return; }
     if (!passwordValid) { setPasswordTouched(true); setLocalError('Password does not meet the requirements.'); return; }
+    if (!form.country) { setLocalError('Country field is mandatory.'); return; }
     const parsedPhone = parsePhone(form.phone);
     if (parsedPhone.number.replace(/\D/g, '').length !== 10) {
       setLocalError('Mobile number must be exactly 10 digits.');
@@ -336,7 +338,7 @@ export function SignupPage() {
 
                   {/* Country - Desktop */}
                   <div>
-                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country</label>
+                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country <span className="text-red-500">*</span></label>
                     <CountryPicker dark={false} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
                   </div>
 
@@ -396,7 +398,7 @@ export function SignupPage() {
                   <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    type="submit" disabled={loading}
+                    type="submit" disabled={loading || !isFormValid}
                     className="w-full bg-brand-dark-blue text-brand-gold font-bold py-4 rounded-xl text-sm hover:bg-brand-dark-blue/90 transition-all disabled:opacity-60 mt-2 shadow-lg"
                   >
                     {loading ? 'Sending OTP...' : 'Send OTP & Continue →'}
@@ -469,7 +471,7 @@ export function SignupPage() {
                 <form onSubmit={handleGoogleSubmit} className="space-y-5">
                   {/* Country - Desktop */}
                   <div>
-                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country</label>
+                    <label className="text-sm font-semibold text-brand-dark-blue block mb-1.5">Country <span className="text-red-500">*</span></label>
                     <CountryPicker dark={false} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
                   </div>
 
@@ -595,7 +597,7 @@ export function SignupPage() {
 
               {/* Country - Mobile */}
               <div className="mb-4">
-                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country</label>
+                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country <span className="text-red-400">*</span></label>
                 <CountryPicker dark={true} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
               </div>
 
@@ -660,7 +662,7 @@ export function SignupPage() {
               )}
 
               <button
-                type="submit" disabled={loading}
+                type="submit" disabled={loading || !isFormValid}
                 className="w-full bg-gradient-to-r from-[#e3c162] to-[#b38827] text-black font-bold py-3.5 rounded-xl text-sm transition-all disabled:opacity-60 mt-4 shadow-[0_0_15px_rgba(212,175,55,0.2)]"
               >
                 {loading ? 'Sending OTP...' : 'Send OTP & Continue →'}
@@ -722,7 +724,7 @@ export function SignupPage() {
             <form onSubmit={handleGoogleSubmit} className="space-y-4">
               {/* Country - Mobile */}
               <div className="mb-4">
-                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country</label>
+                <label className="text-xs font-medium text-white block mb-1.5 pl-1">Country <span className="text-red-400">*</span></label>
                 <CountryPicker dark={true} allowedCountries={[]} value={form.country} onChange={(val) => setForm(f => ({ ...f, country: val }))} />
               </div>
 

@@ -151,62 +151,62 @@ function StatsBanner() {
 function FeaturesBanner() {
   return (
     <div className="animate-section px-4 md:px-8 mb-12">
-      <div className="w-full bg-[#f6f3eb] rounded-2xl py-12 px-6 md:px-12 flex flex-col items-center text-center relative overflow-hidden">
+      <div className="w-full bg-[#f6f3eb] rounded-2xl py-6 md:py-8 px-6 md:px-12 flex flex-col items-center text-center relative overflow-hidden">
         {/* Decorative subtle border or background elements could go here */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent"></div>
         <Star className="text-[#D4AF37] w-4 h-4 absolute top-[-8px] left-1/2 -translate-x-1/2 fill-[#D4AF37]" />
-        
+{/*         
         <h2 className="font-serif text-3xl md:text-5xl text-[#2a2a2a] mb-4 mt-2 font-medium">
           Timeless Pieces,<br className="md:hidden" /> Made for You
-        </h2>
+        </h2> */}
         
-        <p className="text-gray-600 text-sm md:text-base max-w-xl mx-auto mb-10">
+        {/* <p className="text-gray-600 text-sm md:text-base max-w-xl mx-auto mb-10">
           Explore our collection of fashion jewelry designed for everyday elegance.
-        </p>
+        </p> */}
 
-        <div className="flex flex-wrap justify-center items-center gap-y-8 md:gap-y-0 max-w-4xl mx-auto w-full mb-10">
+        <div className="flex justify-center items-start max-w-4xl mx-auto w-full">
           {/* Feature 1 */}
-          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
-            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="flex flex-col items-center w-1/4 border-r border-gray-300 px-1 md:px-4">
+            <div className="flex items-center justify-center mb-2 md:mb-3 text-gray-800">
+              <svg className="w-6 h-6 md:w-8 md:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 <path d="M12 8s-2 2.5-2 5a2 2 0 004 0c0-2.5-2-5-2-5z"/>
               </svg>
             </div>
-            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Waterproof</span>
+            <span className="text-[7px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase text-center break-words w-full">Waterproof</span>
           </div>
           
           {/* Feature 2 */}
-          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
-            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
-              <ShieldCheck size={32} strokeWidth={1.5} />
+          <div className="flex flex-col items-center w-1/4 border-r border-gray-300 px-1 md:px-4">
+            <div className="flex items-center justify-center mb-2 md:mb-3 text-gray-800">
+              <ShieldCheck className="w-6 h-6 md:w-8 md:h-8" strokeWidth={1.5} />
             </div>
-            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Anti-Tarnish</span>
+            <span className="text-[7px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase text-center break-words w-full">Anti-Tarnish</span>
           </div>
 
           {/* Feature 3 */}
-          <div className="flex flex-col items-center w-1/2 md:w-1/4 md:border-r border-gray-300 px-4">
-            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="flex flex-col items-center w-1/4 border-r border-gray-300 px-1 md:px-4">
+            <div className="flex items-center justify-center mb-2 md:mb-3 text-gray-800">
+              <svg className="w-6 h-6 md:w-8 md:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8s-2 2.5-2 5a2 2 0 004 0c0-2.5-2-5-2-5z"/>
               </svg>
             </div>
-            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Hypoallergenic</span>
+            <span className="text-[7px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase text-center break-words w-full">Hypoallergenic</span>
           </div>
 
           {/* Feature 4 */}
-          <div className="flex flex-col items-center w-1/2 md:w-1/4 px-4">
-            <div className="w-12 h-12 flex items-center justify-center mb-3 text-gray-800">
-              <Gem size={32} strokeWidth={1.5} />
+          <div className="flex flex-col items-center w-1/4 px-1 md:px-4">
+            <div className="flex items-center justify-center mb-2 md:mb-3 text-gray-800">
+              <Gem className="w-6 h-6 md:w-8 md:h-8" strokeWidth={1.5} />
             </div>
-            <span className="text-[10px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase">Premium Quality</span>
+            <span className="text-[7px] md:text-[11px] font-semibold tracking-wider text-gray-800 uppercase text-center break-words w-full">Premium Quality</span>
           </div>
         </div>
 
-        <Link to="/category/all" className="bg-[#1a1a1a] text-[#D4AF37] text-xs font-bold px-10 py-3.5 rounded-sm hover:bg-black transition-colors flex items-center gap-2 tracking-widest uppercase">
+        {/* <Link to="/category/all" className="bg-[#1a1a1a] text-[#D4AF37] text-xs font-bold px-10 py-3.5 rounded-sm hover:bg-black transition-colors flex items-center gap-2 tracking-widest uppercase">
           Shop Now <Sparkles size={14} className="fill-[#D4AF37] text-[#D4AF37]" />
-        </Link>
+        </Link> */}
       </div>
     </div>
   );
@@ -337,11 +337,11 @@ export function HomePage() {
               {/* Content */}
               <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-12 z-10 w-[70%]">
                 <h2 className="text-[#08183A] text-2xl md:text-4xl lg:text-[40px] font-bold mb-3 md:mb-4 leading-[1.2] font-serif tracking-wide drop-shadow-sm">
-                  Timeless Elegance,<br />
+                  Timeless Pieces,<br />
                   <span className="text-[#08183A]/80 font-light">Made for You</span>
                 </h2>
                 <p className="text-gray-600 text-xs md:text-sm lg:text-[15px] mb-6 md:mb-8 max-w-[280px] md:max-w-sm leading-relaxed">
-                  Discover our exquisite collection crafted to perfection.
+                 Explore our collection of fashion jewelry designed for everyday elegance.
                 </p>
                 <Link to="/category/all" className="bg-[#08183A] text-white text-[11px] md:text-xs font-bold px-6 py-3 md:px-8 md:py-3.5 rounded-xl w-fit shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all hover:bg-[#D4AF37] tracking-wider uppercase">
                   SHOP NOW

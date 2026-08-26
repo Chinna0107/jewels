@@ -155,7 +155,12 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
               {(activeOffer || originalPrice > displayPrice) && (
                 <span className="text-[10px] text-gray-400 line-through">${originalPrice}</span>
               )}
-              <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1 py-0.5 rounded">{defaultSize.size}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1 py-0.5 rounded">{defaultSize.size}</span>
+                {firstVariant.sizes?.length > 1 && (
+                  <span className="text-[9px] text-gray-500 font-medium whitespace-nowrap">+{firstVariant.sizes.length - 1} more sizes</span>
+                )}
+              </div>
             </div>
             {isOutOfStock ? (
               <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-md">Out of Stock</span>
@@ -256,7 +261,12 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
           {isOutOfStock ? (
             <div className="mt-auto mb-1 flex items-center justify-between">
               <div className="flex flex-col gap-1">
-                <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                  {firstVariant.sizes?.length > 1 && (
+                    <span className="text-[9px] text-gray-500 font-medium whitespace-nowrap">+{firstVariant.sizes.length - 1} more sizes</span>
+                  )}
+                </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-gray-400 leading-none line-through">${displayPrice}</span>
                 </div>
@@ -266,7 +276,12 @@ export function ProductCard({ product, layout = 'grid', searchQuery = '' }) {
           ) : (
             <div className="flex items-end justify-between mt-auto mb-1">
               <div className="flex flex-col gap-1">
-                <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] text-[#08183A] font-bold bg-[#08183A]/10 px-1.5 py-0.5 rounded w-fit">{defaultSize.size}</span>
+                  {firstVariant.sizes?.length > 1 && (
+                    <span className="text-[9px] text-gray-500 font-medium whitespace-nowrap">+{firstVariant.sizes.length - 1} more sizes</span>
+                  )}
+                </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-base font-bold text-gray-900 leading-none">${displayPrice}</span>
                   {(activeOffer || originalPrice > displayPrice) && (
