@@ -340,6 +340,7 @@ export function AdminProductsPage() {
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Code (SKU)</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Category</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Stock Availability</th>
+                <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Price</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Notes</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Offer</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#08183A]/60 uppercase tracking-wider">Status</th>
@@ -378,6 +379,9 @@ export function AdminProductsPage() {
                         {row.size.stock} in stock
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm font-bold text-[#08183A]">
+                      ${parseFloat(row.size.our_price || row.size.price || row.size.mrp || row.product.price || 0).toFixed(2)}
+                    </td>
                     <td className="px-4 py-3 max-w-[160px]">
                       {row.size.notes ? (
                         <span className="text-xs text-gray-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md line-clamp-2 block" title={row.size.notes}>
@@ -408,7 +412,7 @@ export function AdminProductsPage() {
               })}
               {filteredSkus.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="px-4 py-12 text-center text-[#08183A]/50">No variants/SKUs found.</td>
+                  <td colSpan="9" className="px-4 py-12 text-center text-[#08183A]/50">No variants/SKUs found.</td>
                 </tr>
               )}
             </tbody>

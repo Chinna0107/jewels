@@ -88,26 +88,24 @@ export function AdminCustomersPage() {
 
       <div className="bg-white rounded-2xl border border-[#08183A]/10 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm font-sans min-w-max">
+          <table className="w-full text-sm font-sans min-w-[800px]">
             <thead>
               <tr className="bg-[#FDF8F0] text-[#08183A]/60 text-xs uppercase tracking-wider border-b border-[#08183A]/10">
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Name</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Email</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Phone</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Country</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Signup Type</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Role</th>
-                <th className="text-left py-4 px-4 sm:px-6 font-semibold">Joined</th>
-                <th className="py-4 px-4 sm:px-6 font-semibold"></th>
+                <th className="text-left py-4 px-4 font-semibold">Name</th>
+                <th className="text-left py-4 px-4 font-semibold">Contact</th>
+                <th className="text-left py-4 px-4 font-semibold">Country</th>
+                <th className="text-left py-4 px-4 font-semibold">Joined / Type</th>
+                <th className="text-left py-4 px-4 font-semibold">Role</th>
+                <th className="py-4 px-4 font-semibold sticky right-0 bg-[#FDF8F0] z-10 shadow-[-4px_0_12px_rgba(0,0,0,0.03)]">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#08183A]/5">
+            <tbody className="divide-y divide-[#08183A]/5 relative">
               {filtered.map((customer, i) => (
                 <motion.tr key={customer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.02 }} className="hover:bg-[#FDF8F0]/50 transition-colors">
 
                   {/* Name */}
-                  <td className="py-4 px-4 sm:px-6">
+                  <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#08183A]/10 flex items-center justify-center text-[#08183A] font-bold shrink-0">
                         {(customer.name || "U")[0].toUpperCase()}
@@ -116,65 +114,59 @@ export function AdminCustomersPage() {
                     </div>
                   </td>
 
-                  {/* Email */}
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex items-center gap-1.5 text-xs text-[#08183A]/70 mb-1">
-                      <Mail className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate max-w-[160px]">{customer.email}</span>
-                    </div>
-                    <VerifiedBadge verified={customer.email_verified} label="Email" />
-                  </td>
-
-                  {/* Phone */}
-                  <td className="py-4 px-4 sm:px-6">
-                    {customer.phone ? (
-                      <>
-                        <div className="flex items-center gap-1.5 text-xs text-[#08183A]/70 mb-1">
+                  {/* Contact (Email + Phone) */}
+                  <td className="py-4 px-4">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-xs text-[#08183A]/70">
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate max-w-[160px]">{customer.email}</span>
+                        <VerifiedBadge verified={customer.email_verified} label="" />
+                      </div>
+                      {customer.phone && (
+                        <div className="flex items-center gap-1.5 text-xs text-[#08183A]/70">
                           <Phone className="w-3.5 h-3.5 shrink-0" />
                           <span>{customer.phone}</span>
+                          <VerifiedBadge verified={customer.phone_verified} label="" />
                         </div>
-                        <VerifiedBadge verified={customer.phone_verified} label="Phone" />
-                      </>
-                    ) : (
-                      <span className="text-xs text-[#08183A]/30">—</span>
-                    )}
+                      )}
+                    </div>
                   </td>
 
                   {/* Country */}
-                  <td className="py-4 px-4 sm:px-6 text-xs text-[#08183A]/70">
+                  <td className="py-4 px-4 text-xs text-[#08183A]/70">
                     {customer.country || "—"}
                   </td>
 
-                  {/* Signup Type */}
-                  <td className="py-4 px-4 sm:px-6">
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
-                      (customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' 
-                        ? 'bg-red-50 text-red-600 border border-red-200' 
-                        : 'bg-blue-50 text-blue-600 border border-blue-200'
-                    }`}>
-                      {(customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' ? 'Google' : 'Direct'}
-                    </span>
+                  {/* Joined / Type */}
+                  <td className="py-4 px-4">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-xs text-[#08183A]/60">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(customer.created_at).toLocaleDateString("en-IN")}
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          (customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' 
+                            ? 'bg-red-50 text-red-600 border border-red-100' 
+                            : 'bg-blue-50 text-blue-600 border border-blue-100'
+                        }`}>
+                          {(customer.is_verified && !customer.email_verified && !customer.phone_verified) || (customer.avatar_url && customer.avatar_url.includes('google')) || customer.google_id || customer.auth_provider === 'google' || customer.provider === 'google' ? 'Google' : 'Direct'}
+                        </span>
+                      </div>
+                    </div>
                   </td>
 
                   {/* Role */}
-                  <td className="py-4 px-4 sm:px-6">
+                  <td className="py-4 px-4">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      customer.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                      customer.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"
                     }`}>
                       {customer.role || "user"}
                     </span>
                   </td>
 
-                  {/* Joined */}
-                  <td className="py-4 px-4 sm:px-6 text-xs text-[#08183A]/60">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(customer.created_at).toLocaleDateString("en-IN")}
-                    </div>
-                  </td>
-
                   {/* Clear action */}
-                  <td className="py-4 px-4 sm:px-6">
+                  <td className="py-4 px-4 text-center sticky right-0 bg-white z-10 shadow-[-4px_0_12px_rgba(0,0,0,0.03)] group-hover:bg-[#FDF8F0]/50">
                     {customer.role !== "admin" && (
                       <button
                         onClick={() => handleClearUser(customer)}

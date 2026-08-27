@@ -15,6 +15,7 @@ export function AdminShippingPage() {
   const [flatShippingRate, setFlatShippingRate] = useState(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
   const [allowedCountries, setAllowedCountries] = useState([]);
+  const [countryFees, setCountryFees] = useState({});
   const [savingShipping, setSavingShipping] = useState(false);
 
   // Tax
@@ -46,6 +47,7 @@ export function AdminShippingPage() {
       setFlatShippingRate(s.flat_rate ?? 0);
       setFreeShippingThreshold(s.free_shipping_threshold ?? '');
       setAllowedCountries(s.allowed_countries || []);
+      setCountryFees(s.country_fees || {});
       setTaxMode(s.tax_mode || 'flat');
       setFlatTaxPercentage(s.tax_percentage ?? 0);
       setPickupEnabled(s.pickup_enabled ?? false);
@@ -71,7 +73,12 @@ export function AdminShippingPage() {
   const handleSaveShipping = async () => {
     setSavingShipping(true); setError(null);
     try {
-      await saveSettings({ flat_rate: Number(flatShippingRate), free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold), allowed_countries: allowedCountries });
+      await saveSettings({ 
+        flat_rate: Number(flatShippingRate), 
+        free_shipping_threshold: freeShippingThreshold === '' ? null : Number(freeShippingThreshold), 
+        allowed_countries: allowedCountries,
+        country_fees: countryFees
+      });
       showSuccess('Shipping settings saved');
     } catch (err) { setError(err.message); }
     finally { setSavingShipping(false); }
@@ -218,6 +225,36 @@ export function AdminShippingPage() {
               </label>
             ))}
           </div>
+
+          {allowedCountries.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900 mb-3">Country-Specific Shipping Fees</h3>
+              <p className="text-xs text-gray-500 mb-4">Set a specific shipping fee and free shipping threshold for each allowed country. Leave blank to use the flat rate.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                {allowedCountries.map(country => (
+                  <div key={country} className="flex flex-col gap-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="font-bold text-sm text-brand-dark-blue">{country}</div>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Shipping Fee ($)</label>
+                        <input type="number" min="0" placeholder="e.g. 20" 
+                          value={countryFees[country]?.fee ?? ''} 
+                          onChange={e => setCountryFees({ ...countryFees, [country]: { ...countryFees[country], fee: e.target.value }})}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-brand-dark-blue outline-none bg-white" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Free Above ($)</label>
+                        <input type="number" min="0" placeholder="e.g. 150"
+                          value={countryFees[country]?.threshold ?? ''}
+                          onChange={e => setCountryFees({ ...countryFees, [country]: { ...countryFees[country], threshold: e.target.value }})}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-brand-dark-blue outline-none bg-white" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

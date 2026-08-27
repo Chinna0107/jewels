@@ -492,7 +492,7 @@ export function HomePage() {
         {reviews.filter(r => r.image_url).length > 0 && (
           <section className="mb-4 overflow-hidden">
             <div className="px-4 md:px-24 mb-6">
-              <h3 className="font-serif font-bold text-2xl text-brand-dark-blue">What Our Clients Say</h3>
+              <h3 className="font-serif font-bold text-2xl text-brand-dark-blue">What Our Customers Say</h3>
             </div>
 
             <div className="overflow-hidden w-full">

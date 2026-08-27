@@ -4,6 +4,8 @@ import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTr
 import { Link } from "react-router-dom";
 import logoUrl from '../../assets/logo.png';
 import { ShippoConfigModal } from '../../components/admin/ShippoConfigModal';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
+import { useLoadScript } from '@react-google-maps/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const FROM_ADDRESS = {
@@ -129,9 +131,8 @@ function BalanceDuePanel({ order, onUpdate }) {
           <div className="flex flex-wrap gap-2">
             {['cash', 'upi', 'bank_transfer', 'stripe', 'other'].map(m => (
               <button key={m} onClick={() => setMarkMethod(m)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors capitalize ${
-                  markMethod === m ? 'bg-[#08183A] text-white border-[#08183A]' : 'bg-white text-[#08183A]/60 border-[#08183A]/20 hover:border-[#08183A]/40'
-                }`}>{m.replace('_', ' ')}</button>
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors capitalize ${markMethod === m ? 'bg-[#08183A] text-white border-[#08183A]' : 'bg-white text-[#08183A]/60 border-[#08183A]/20 hover:border-[#08183A]/40'
+                  }`}>{m.replace('_', ' ')}</button>
             ))}
           </div>
           <button onClick={handleMarkPaid} disabled={busy}
@@ -152,22 +153,22 @@ function EditOrderModal({ order, onClose, onSaved }) {
 
   const [items, setItems] = useState(() => parseJ(order.items));
   const [address, setAddress] = useState(() => parseO(order.address));
-  
+
   // Extract country code and phone number
   const initialMobile = parseO(order.address).mobile || order.user_phone || '';
   const initialCountryCode = initialMobile.startsWith('+') ? (initialMobile.match(/^\+\d{1,3}/) || ['+1'])[0] : '+1';
   const initialPhone = initialMobile.startsWith('+') ? initialMobile.replace(/^\+\d{1,3}\s*/, '') : initialMobile;
-  
+
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [customerPhone, setCustomerPhone] = useState(initialPhone);
-  
+
   const [trackingId, setTrackingId] = useState(order.tracking_id || '');
   const [trackingLink, setTrackingLink] = useState(order.tracking_link || '');
-  
+
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
-  
+
   const [applyProratedTax, setApplyProratedTax] = useState(true);
   const [applyProratedDiscount, setApplyProratedDiscount] = useState(true);
   const [emailingLink, setEmailingLink] = useState(false);
@@ -179,35 +180,64 @@ function EditOrderModal({ order, onClose, onSaved }) {
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/admin/products`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
-      .then(r => r.json()).then(d => setAllProducts(d.products || [])).catch(() => {});
+      .then(r => r.json()).then(d => setAllProducts(d.products || [])).catch(() => { });
   }, []);
 
   const originalTax = parseFloat(order.tax_amount) || 0;
   const originalDiscount = parseFloat(order.discount_amount) || 0;
   const originalItemsTotal = parseJ(order.items).reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
-  
+
   const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
-  
+
   const ratio = originalItemsTotal > 0 ? (itemsTotal / originalItemsTotal) : 1;
   const currentTax = applyProratedTax ? (originalTax * ratio) : originalTax;
   const currentDiscount = applyProratedDiscount ? (originalDiscount * ratio) : originalDiscount;
-  
+
   const shipping = parseFloat(order.shipping_fee) || 0;
-  const newTotal = Math.max(0, itemsTotal + shipping + currentTax - currentDiscount);
+  const addr = parseO(order.address);
+  const signatureFee = parseFloat(addr.signature_fee) || 0;
+  const insuranceFee = parseFloat(addr.insurance_fee) || 0;
+  const newTotal = Math.max(0, itemsTotal + shipping + signatureFee + insuranceFee + currentTax - currentDiscount);
   const oldTotal = parseFloat(order.total) || 0;
   const diff = parseFloat((newTotal - oldTotal).toFixed(2));
 
   const filteredProducts = productSearch.trim()
-    ? allProducts.filter(p => p.name?.toLowerCase().includes(productSearch.toLowerCase())).slice(0, 8)
+    ? allProducts.flatMap(p => {
+      const s = productSearch.toLowerCase();
+      let variants = [];
+      try { variants = typeof p.variants === 'string' ? JSON.parse(p.variants) : (p.variants || []); } catch { }
+
+      const nameMatch = p.name?.toLowerCase().includes(s) || p.product_code?.toLowerCase().includes(s);
+      let matches = [];
+
+      if (variants.length > 0) {
+        variants.forEach(v => {
+          const vMatch = v.color?.toLowerCase().includes(s);
+          (v.sizes || []).forEach(size => {
+            if (nameMatch || vMatch || size.code?.toLowerCase().includes(s)) {
+              matches.push({ product: p, variant: v, size: size });
+            }
+          });
+        });
+      } else {
+        const sizes = parseJ(p.sizes);
+        if (sizes.length > 0) {
+          sizes.forEach(size => {
+            if (nameMatch || size.code?.toLowerCase().includes(s)) {
+              matches.push({ product: p, variant: null, size: size });
+            }
+          });
+        } else if (nameMatch) {
+          matches.push({ product: p, variant: null, size: null });
+        }
+      }
+      return matches;
+    }).slice(0, 15)
     : [];
 
-  // Resolve price from either variants[].sizes[].our_price or legacy sizes[].price
-  const resolvePrice = (product) => {
-    const variants = parseJ(product.variants);
-    const sizes = parseJ(product.sizes);
-    const fromVariant = variants?.[0]?.sizes?.[0];
-    if (fromVariant) return Number(fromVariant.our_price) || Number(fromVariant.price) || 0;
-    return Number(sizes?.[0]?.our_price) || Number(sizes?.[0]?.price) || 0;
+  const resolvePrice = (itemData) => {
+    const { size } = itemData;
+    return size ? (Number(size.our_price) || Number(size.price) || 0) : 0;
   };
 
   const selectReplacement = (product) => {
@@ -267,15 +297,15 @@ function EditOrderModal({ order, onClose, onSaved }) {
       const res = await fetch(`${BACKEND_URL}/admin/orders/${order.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ 
-          items, 
-          address: { ...address, mobile: fullPhone }, 
-          customer_phone: fullPhone, 
+        body: JSON.stringify({
+          items,
+          address: { ...address, mobile: fullPhone },
+          customer_phone: fullPhone,
           tracking_id: trackingId,
           tracking_link: trackingLink,
           tax_amount: currentTax,
           discount_amount: currentDiscount,
-          note 
+          note
         }),
       });
       const data = await res.json();
@@ -454,15 +484,18 @@ function EditOrderModal({ order, onClose, onSaved }) {
                   </div>
                   {filteredProducts.length > 0 && (
                     <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
-                      {filteredProducts.map(p => {
-                        const img = (parseJ(p.images))[0] || p.image_url;
+                      {filteredProducts.map((itemData, idx) => {
+                        const { product, variant, size } = itemData;
+                        const p = product;
+                        const img = variant?.images?.[0] || (parseJ(p.images))[0] || p.image_url;
+                        const displayName = `${p.name}${variant?.color ? ` — ${variant.color}` : ''}${size?.size ? ` (${size.size})` : ''}`;
                         return (
-                          <button key={p.id} onClick={() => selectReplacement(p)}
+                          <button key={`${p.id}-${idx}`} onClick={() => selectReplacement(itemData)}
                             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left">
                             {img && <img src={img} alt="" className="w-8 h-8 object-contain rounded border border-gray-100 shrink-0" />}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-[#08183A] truncate">{p.name}</p>
-                              <p className="text-xs text-gray-500">${resolvePrice(p).toFixed(2)}</p>
+                              <p className="text-sm font-semibold text-[#08183A] truncate">{displayName}</p>
+                              <p className="text-xs text-gray-500">${resolvePrice(itemData).toFixed(2)}</p>
                             </div>
                           </button>
                         );
@@ -480,11 +513,19 @@ function EditOrderModal({ order, onClose, onSaved }) {
             <div>
               <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider mb-3">Shipping Address</p>
               <div className="grid grid-cols-2 gap-2">
-                {[['name','Full Name'],['line1','Address Line 1'],['line2','Line 2 (optional)'],['city','City'],['state','State'],['pincode','ZIP']].map(([field, label]) => (
+                {[['name', 'Full Name'], ['line1', 'Address Line 1'], ['line2', 'Line 2 (optional)'], ['city', 'City'], ['state', 'State'], ['pincode', 'ZIP']].map(([field, label]) => (
                   <div key={field} className={field === 'line1' ? 'col-span-2' : ''}>
                     <label className="text-[10px] font-bold text-[#08183A]/50 uppercase tracking-wider block mb-1">{label}</label>
-                    <input value={address[field] || ''} onChange={e => setAddress(a => ({ ...a, [field]: e.target.value }))}
-                      className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+                    {field === 'line1' ? (
+                      <AddressAutocomplete
+                        value={address[field] || ''}
+                        onChange={val => setAddress(a => ({ ...a, [field]: val }))}
+                        onSelect={place => setAddress(a => ({ ...a, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country || 'United States' }))}
+                      />
+                    ) : (
+                      <input value={address[field] || ''} onChange={e => setAddress(a => ({ ...a, [field]: e.target.value }))}
+                        className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -550,15 +591,14 @@ function EditOrderModal({ order, onClose, onSaved }) {
             )}
 
             {/* Price diff summary */}
-            <div className={`rounded-xl px-4 py-3 border flex items-center justify-between ${
-              diff > 0 ? 'bg-amber-50 border-amber-200' : diff < 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-            }`}>
+            <div className={`rounded-xl px-4 py-3 border flex items-center justify-between ${diff > 0 ? 'bg-amber-50 border-amber-200' : diff < 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+              }`}>
               <div>
                 <p className="text-xs font-bold text-[#08183A]">New Total: ${newTotal.toFixed(2)}</p>
                 <p className="text-[10px] text-gray-500 mt-0.5">Was: ${oldTotal.toFixed(2)}</p>
               </div>
               {diff !== 0 && (
-                <span className={`text-sm font-bold ${ diff > 0 ? 'text-amber-700' : 'text-green-700' }`}>
+                <span className={`text-sm font-bold ${diff > 0 ? 'text-amber-700' : 'text-green-700'}`}>
                   {diff > 0 ? `+$${diff.toFixed(2)} balance due` : `-$${Math.abs(diff).toFixed(2)} refund`}
                 </span>
               )}
@@ -580,24 +620,62 @@ function EditOrderModal({ order, onClose, onSaved }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
-  const items = (() => { try { return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) { return []; } })();
-  const orderTotal = parseFloat(order.total) || 0;
-  const shipping = Math.max(0, parseFloat(order.shipping_fee) || 0);
-  const tax = Math.max(0, parseFloat(order.tax_amount) || 0);
-  const discountAmount = Math.max(0, parseFloat(order.discount_amount) || 0);
-  const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * i.qty, 0);
-  const derivedExtra = Math.max(0, orderTotal - itemsTotal + discountAmount);
-  const shippingDisplay = shipping || (tax ? derivedExtra - tax : derivedExtra);
-  const taxDisplay = tax;
-
-  const [cancelType, setCancelType] = useState('refund'); // 'refund' | 'no_refund' | 'coupon_cancel'
-  const [selectedQty, setSelectedQty] = useState(() => Object.fromEntries(items.map((it, i) => [i, it.qty])));
+  const items = (() => { try { return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { return []; } })();
   
+  let address = {};
+  try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+  
+  const getPrice = (i) => parseFloat(i.size?.our_price || i.size?.mrp || i.size?.price || i.variant?.price || i.product?.price || 0);
+  const currentItemsTotal = items.reduce((s, i) => s + getPrice(i) * i.qty, 0);
+
+  let rHist = [];
+  try { rHist = typeof order.refund_history === 'string' ? JSON.parse(order.refund_history) : (order.refund_history || []); } catch(e) {}
+  
+  let alreadyRefundedShipping = 0;
+  let alreadyRefundedTax = 0;
+  let alreadyRefundedSignature = 0;
+  let alreadyRefundedInsurance = 0;
+  let alreadyDeductedDiscount = 0;
+  
+  for (const entry of rHist) {
+    if (entry.breakdown) {
+      alreadyRefundedShipping += parseFloat(entry.breakdown.shipping || 0);
+      alreadyRefundedTax += parseFloat(entry.breakdown.tax || 0);
+      alreadyRefundedSignature += parseFloat(entry.breakdown.signature || 0);
+      alreadyRefundedInsurance += parseFloat(entry.breakdown.insurance || 0);
+      alreadyDeductedDiscount += parseFloat(entry.breakdown.discount_deduction || 0);
+    }
+  }
+
+  const orderTotal = parseFloat(order.total) || 0;
+  const originalShipping = Math.max(0, parseFloat(order.shipping_fee) || 0);
+  const originalTax = Math.max(0, parseFloat(order.tax_amount) || 0);
+  const originalDiscount = Math.max(0, parseFloat(order.discount_amount) || 0);
+  const originalSignature = parseFloat(address.signature_fee) || 0;
+  const originalInsurance = parseFloat(address.insurance_fee) || 0;
+
+  const remainingShipping = Math.max(0, originalShipping - alreadyRefundedShipping);
+  const remainingTax = Math.max(0, originalTax - alreadyRefundedTax);
+  const remainingSignature = Math.max(0, originalSignature - alreadyRefundedSignature);
+  const remainingInsurance = Math.max(0, originalInsurance - alreadyRefundedInsurance);
+  const remainingDiscount = Math.max(0, originalDiscount - alreadyDeductedDiscount);
+
+  let snapshotCancelled = [];
+  try { snapshotCancelled = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch(e) {}
+  const alreadyCancelledTotal = snapshotCancelled.reduce((s, i) => s + getPrice(i) * (i.cancelQty || i.qty), 0);
+  
+  const originalItemsTotal = currentItemsTotal + alreadyCancelledTotal;
+
+  const [cancelType, setCancelType] = useState('refund');
+  const [selectedQty, setSelectedQty] = useState(() => Object.fromEntries(items.map((it, i) => [i, it.qty])));
+
   const [refundShipping, setRefundShipping] = useState(true);
   const [refundTax, setRefundTax] = useState(true);
+  const [refundSignature, setRefundSignature] = useState(true);
+  const [refundInsurance, setRefundInsurance] = useState(true);
   const [refundDiscount, setRefundDiscount] = useState(true);
-  
-  const [chargeType, setChargeType] = useState('flat'); // 'flat' | 'percent'
+
+  const [chargeType, setChargeType] = useState('flat');
   const [chargeValue, setChargeValue] = useState(0);
 
   const updateQty = (idx, qty) => {
@@ -605,27 +683,30 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
     setSelectedQty(p => ({ ...p, [idx]: q }));
   };
 
-  const selectedItemsTotal = items.reduce((s, item, idx) =>
-    s + (item.variant?.price || item.product?.price || 0) * (selectedQty[idx] || 0), 0);
-
+  const selectedItemsTotal = items.reduce((s, item, idx) => s + getPrice(item) * (selectedQty[idx] || 0), 0);
   const allSelected = items.every((item, i) => selectedQty[i] === item.qty);
   const anySelected = items.some((item, i) => selectedQty[i] > 0);
   const isFullCancel = allSelected;
 
-  const proratedTax = itemsTotal > 0 ? taxDisplay * (selectedItemsTotal / itemsTotal) : taxDisplay;
-  const proratedDiscount = itemsTotal > 0 ? discountAmount * (selectedItemsTotal / itemsTotal) : discountAmount;
-  
-  const actualShippingRefund = refundShipping ? shippingDisplay : 0;
-  const actualTaxRefund = refundTax ? (isFullCancel ? taxDisplay : proratedTax) : 0;
-  const actualDiscountDeduction = refundDiscount ? (isFullCancel ? discountAmount : proratedDiscount) : 0;
+  const proratedTax = originalItemsTotal > 0 ? originalTax * (selectedItemsTotal / originalItemsTotal) : remainingTax;
+  const proratedDiscount = originalItemsTotal > 0 ? originalDiscount * (selectedItemsTotal / originalItemsTotal) : remainingDiscount;
 
-  const subtotalRefund = selectedItemsTotal + actualShippingRefund + actualTaxRefund - actualDiscountDeduction;
+  const actualShippingRefund = refundShipping ? remainingShipping : 0;
+  const actualTaxRefund = refundTax ? Math.min(remainingTax, isFullCancel ? remainingTax : proratedTax) : 0;
+  const actualSignatureRefund = refundSignature ? remainingSignature : 0;
+  const actualInsuranceRefund = refundInsurance ? remainingInsurance : 0;
+  const actualDiscountDeduction = refundDiscount ? Math.min(remainingDiscount, isFullCancel ? remainingDiscount : proratedDiscount) : 0;
 
-  const transactionCharge = chargeType === 'flat' 
-    ? parseFloat(chargeValue || 0) 
+  const subtotalRefund = selectedItemsTotal + actualShippingRefund + actualTaxRefund + actualSignatureRefund + actualInsuranceRefund - actualDiscountDeduction;
+
+  const transactionCharge = chargeType === 'flat'
+    ? parseFloat(chargeValue || 0)
     : Math.max(0, subtotalRefund) * (parseFloat(chargeValue || 0) / 100);
 
-  const refundTotal = cancelType === 'refund' ? Math.max(0, subtotalRefund - transactionCharge) : 0;
+  // Hard cap on refund to prevent refunding more than the total order amount
+  const maxRefundable = Math.max(0, (parseFloat(order.total) || 0) - (parseFloat(order.refund_amount) || 0));
+  const calcRefundTotal = cancelType === 'refund' ? Math.max(0, subtotalRefund - transactionCharge) : 0;
+  const refundTotal = Math.min(calcRefundTotal, maxRefundable);
 
   const handleConfirm = () => {
     const cancelledItems = items
@@ -633,9 +714,9 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
       .map((item, idx) => ({
         productId: item.product?.id,
         variantSize: item.variant?.size || '',
-        qty: selectedQty[idx], // original field fallback
-        cancelQty: selectedQty[idx], // explicitly pass quantity to cancel
-        price: (item.variant?.price || item.product?.price || 0) * selectedQty[idx],
+        qty: selectedQty[idx],
+        cancelQty: selectedQty[idx],
+        price: getPrice(item) * selectedQty[idx],
         name: item.product?.name,
         color: item.variant?.color,
         size: item.variant?.size,
@@ -646,6 +727,9 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
         items: selectedItemsTotal,
         shipping: actualShippingRefund,
         tax: actualTaxRefund,
+        signature: actualSignatureRefund,
+        insurance: actualInsuranceRefund,
+        discount_deduction: actualDiscountDeduction,
         transaction_charge: cancelType === 'refund' ? transactionCharge : 0,
         total: refundTotal,
       },
@@ -707,7 +791,6 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
           <div className="p-6 space-y-5 overflow-y-auto">
             <p className="text-sm text-gray-500">Order <strong>#{order.order_number || order.id}</strong></p>
 
-            {/* Cancel Type */}
             <div>
               <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider mb-2">Cancellation Type</p>
               <select value={cancelType} onChange={e => setCancelType(e.target.value)}
@@ -718,20 +801,17 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
               </select>
             </div>
 
-            {/* Items */}
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider">Select Items to Cancel</p>
               {items.map((item, idx) => {
-                const price = (item.variant?.price || item.product?.price || 0) * (selectedQty[idx] || 0);
+                const price = getPrice(item) * (selectedQty[idx] || 0);
                 const variantColor = (item.variant?.color || '').toLowerCase().trim();
                 const matchedV = item.product?.variants?.find(v => (v.color || '').toLowerCase().trim() === variantColor);
                 const img = item.variant?.image || matchedV?.images?.[0] || item.product?.images?.[0] || item.product?.image_url;
                 const itemCode = item.variant?.size_code || item.variant?.code || matchedV?.sizes?.find(s => s.size === item.variant?.size)?.code;
                 const isSelected = selectedQty[idx] > 0;
                 return (
-                  <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    isSelected ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
-                  }`}>
+                  <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isSelected ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                     {img && <img src={img} alt="" className="w-10 h-10 object-contain rounded-lg border border-gray-100 shrink-0" />}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-[#08183A] truncate">{item.product?.name || 'Product'}{item.variant?.color ? ` — ${item.variant.color}` : ''}</p>
@@ -741,7 +821,7 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
                       <span className="font-bold text-[#08183A] text-sm">${price.toFixed(2)}</span>
                       <div className="flex items-center gap-1 bg-white border border-gray-200 rounded px-1">
                         <span className="text-[10px] text-gray-400">Cancel Qty:</span>
-                        <input type="number" min="0" max={item.qty} value={selectedQty[idx]} 
+                        <input type="number" min="0" max={item.qty} value={selectedQty[idx]}
                           onChange={(e) => updateQty(idx, e.target.value)}
                           className="w-10 text-xs text-center focus:outline-none" />
                         <span className="text-[10px] text-gray-400">/ {item.qty}</span>
@@ -752,40 +832,56 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
               })}
             </div>
 
-            {/* Refund Options */}
             {cancelType === 'refund' && anySelected && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  {shippingDisplay > 0 && (
+                  {remainingShipping > 0 && (
                     <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={refundShipping} onChange={e => setRefundShipping(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
                         <span className="text-sm font-bold text-[#08183A]">Refund Shipping Fee</span>
                       </div>
-                      <span className="font-bold text-[#08183A]">${shippingDisplay.toFixed(2)}</span>
+                      <span className="font-bold text-[#08183A]">${remainingShipping.toFixed(2)}</span>
                     </label>
                   )}
-                  {taxDisplay > 0 && (
+                  {remainingTax > 0 && (
                     <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={refundTax} onChange={e => setRefundTax(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
                         <span className="text-sm font-bold text-[#08183A]">Refund Tax {isFullCancel ? '' : '(Prorated)'}</span>
                       </div>
-                      <span className="font-bold text-[#08183A]">${(isFullCancel ? taxDisplay : proratedTax).toFixed(2)}</span>
+                      <span className="font-bold text-[#08183A]">${actualTaxRefund.toFixed(2)}</span>
                     </label>
                   )}
-                  {discountAmount > 0 && (
+                  {remainingSignature > 0 && (
+                    <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={refundSignature} onChange={e => setRefundSignature(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                        <span className="text-sm font-bold text-[#08183A]">Refund Signature Fee</span>
+                      </div>
+                      <span className="font-bold text-[#08183A]">${actualSignatureRefund.toFixed(2)}</span>
+                    </label>
+                  )}
+                  {remainingInsurance > 0 && (
+                    <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={refundInsurance} onChange={e => setRefundInsurance(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
+                        <span className="text-sm font-bold text-[#08183A]">Refund Insurance Fee</span>
+                      </div>
+                      <span className="font-bold text-[#08183A]">${actualInsuranceRefund.toFixed(2)}</span>
+                    </label>
+                  )}
+                  {remainingDiscount > 0 && (
                     <label className="flex items-center justify-between p-3 bg-[#FDF8F0] rounded-xl border border-[#08183A]/10 cursor-pointer opacity-80">
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={refundDiscount} onChange={e => setRefundDiscount(e.target.checked)} className="w-4 h-4 accent-[#08183A]" />
                         <span className="text-sm font-bold text-[#08183A]">Deduct Applied Discount {isFullCancel ? '' : '(Prorated)'}</span>
                       </div>
-                      <span className="font-bold text-red-600">-${(isFullCancel ? discountAmount : proratedDiscount).toFixed(2)}</span>
+                      <span className="font-bold text-red-600">-${actualDiscountDeduction.toFixed(2)}</span>
                     </label>
                   )}
                 </div>
 
-                {/* Transaction/Cancellation Charge */}
                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
                   <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider">Deduct Cancellation Charge</p>
                   <div className="flex gap-2">
@@ -805,7 +901,6 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
               </div>
             )}
 
-            {/* Total */}
             <div className={`flex justify-between items-center border rounded-xl px-4 py-3 ${cancelType === 'refund' ? 'bg-red-50 border-red-100' : 'bg-gray-100 border-gray-200'}`}>
               <div>
                 <span className={`font-bold ${cancelType === 'refund' ? 'text-red-700' : 'text-gray-700'}`}>
@@ -823,9 +918,7 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-gray-100 text-[#08183A] rounded-xl font-semibold hover:bg-gray-200 transition-colors">Abort</button>
               <button onClick={handleConfirm} disabled={refunding || !anySelected || (cancelType === 'refund' && refundTotal <= 0 && selectedItemsTotal > 0)}
-                className={`flex-1 px-4 py-2.5 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  cancelType === 'refund' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-                }`}>
+                className={`flex-1 px-4 py-2.5 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${cancelType === 'refund' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
                 {refunding
                   ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
                   : (!isFullCancel ? 'Cancel Selected' : 'Cancel Full Order')
@@ -840,6 +933,11 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
 }
 
 export function AdminOrdersPage() {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
+  });
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
@@ -873,7 +971,7 @@ export function AdminOrdersPage() {
           setTracking(t);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -942,7 +1040,7 @@ export function AdminOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch Shippo rates");
-      
+
       setRatesModal({ orderId, rates: data.rates });
     } catch (err) {
       alert(`Shippo Error: ${err.message}`);
@@ -962,15 +1060,15 @@ export function AdminOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create Shippo label");
-      
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { 
-        ...o, 
-        tracking_number: data.tracking_number, 
-        tracking_url: data.tracking_url, 
+
+      setOrders((prev) => prev.map((o) => o.id === orderId ? {
+        ...o,
+        tracking_number: data.tracking_number,
+        tracking_url: data.tracking_url,
         shipping_label_url: data.label_url,
         tracking_id: data.tracking_number,
         tracking_link: data.tracking_url,
-        status: "shipped" 
+        status: "shipped"
       } : o));
       setTracking((p) => ({ ...p, [orderId]: { id: data.tracking_number, link: data.tracking_url } }));
       setRatesModal(null);
@@ -984,8 +1082,8 @@ export function AdminOrdersPage() {
 
   const notifyWhatsApp = (order) => {
     let address = {};
-    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
-    
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
+
     let phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
     if (phone.length === 10) phone = '1' + phone;
 
@@ -1005,21 +1103,21 @@ export function AdminOrdersPage() {
 
   const invoiceHtml = (order) => {
     let items = [];
-    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
-    
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { }
+
     let cancelledSnap = [];
-    try { cancelledSnap = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch(e) {}
-    
-    const cancelledList = order.status === 'cancelled' && cancelledSnap.length === 0 
-      ? (typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])) 
+    try { cancelledSnap = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch (e) { }
+
+    const cancelledList = order.status === 'cancelled' && cancelledSnap.length === 0
+      ? (typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []))
       : cancelledSnap;
-    
+
     if (order.status === 'cancelled' && cancelledSnap.length === 0) {
       items = [];
     }
 
     let address = {};
-    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
 
     const isPickup = order.order_type === 'pickup';
     const subtotal = items.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || 0) * item.qty), 0);
@@ -1210,11 +1308,11 @@ ${!isPickup ? `
 
   const sendInvoiceWhatsApp = (order) => {
     let items = [];
-    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
-    
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { }
+
     let address = {};
-    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
-    
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
+
     let phone = (order.user_phone || address.mobile || "0000000000").replace(/\D/g, "");
     if (phone.length === 10) phone = '1' + phone;
 
@@ -1251,9 +1349,9 @@ ${!isPickup ? `
 
   const printLabel = (order) => {
     let items = [];
-    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+    try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { }
     let address = {};
-    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+    try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
 
     const itemRows = items.map((item) => {
       const unitStr = item.variant?.size ? ` (${escapeHtml(item.variant?.size)})` : '';
@@ -1333,18 +1431,18 @@ ${!isPickup ? `
   const filtered = orders.filter(o => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
     if (o.order_type === 'pickup') return false;
-    
+
     if (search) {
       const q = search.toLowerCase();
       const matchId = String(o.order_number || o.id).toLowerCase().includes(q);
       const matchEmail = (o.user_email || '').toLowerCase().includes(q);
-      
+
       let matchAddressEmail = false;
       try {
         const addr = typeof o.address === 'string' ? JSON.parse(o.address) : (o.address || {});
         matchAddressEmail = (addr.email || '').toLowerCase().includes(q);
-      } catch(e) {}
-      
+      } catch (e) { }
+
       if (!matchId && !matchEmail && !matchAddressEmail) return false;
     }
     return true;
@@ -1363,9 +1461,9 @@ ${!isPickup ? `
         </div>
         <div className="relative w-full xs:w-64">
           <Search className="w-4 h-4 text-[#08183A]/40 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by Order # or Email"
             className="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-[#08183A]/10 text-sm focus:outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 transition-all"
           />
@@ -1377,15 +1475,15 @@ ${!isPickup ? `
         {["all", ...SHIPPING_STATUSES].map((s) => {
           const shippingOrders = orders.filter(o => o.order_type !== 'pickup');
           return (
-          <button key={s} onClick={() => setStatusFilter(s)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold font-sans capitalize transition-colors ${
-              statusFilter === s
-                ? "bg-[#08183A] text-white shadow-sm"
-                : "bg-white border border-[#08183A]/20 text-[#08183A]/60 hover:border-[#08183A]/40"
-            }`}>
-            {s === "all" ? `All (${shippingOrders.length})` : `${s} (${shippingOrders.filter(o => o.status === s).length})`}
-          </button>
-        )})}
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold font-sans capitalize transition-colors ${statusFilter === s
+                  ? "bg-[#08183A] text-white shadow-sm"
+                  : "bg-white border border-[#08183A]/20 text-[#08183A]/60 hover:border-[#08183A]/40"
+                }`}>
+              {s === "all" ? `All (${shippingOrders.length})` : `${s} (${shippingOrders.filter(o => o.status === s).length})`}
+            </button>
+          )
+        })}
       </div>
 
       {filtered.length === 0 ? (
@@ -1454,9 +1552,9 @@ ${!isPickup ? `
                             )}
                           </div>
                           {order.shipping_label_url && (
-                             <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" className="mt-2 w-full flex items-center justify-center gap-2 bg-[#08183A] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90">
-                               📄 Download Label
-                             </a>
+                            <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" className="mt-2 w-full flex items-center justify-center gap-2 bg-[#08183A] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90">
+                              📄 Download Label
+                            </a>
                           )}
                           <div className="flex justify-between mt-2">
                             <button onClick={() => setShippoConfigModal(order)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
@@ -1496,7 +1594,7 @@ ${!isPickup ? `
                         </div>
                         {(() => {
                           let hist = [];
-                          try { hist = typeof order.refund_history === 'string' ? JSON.parse(order.refund_history) : (order.refund_history || []); } catch {}
+                          try { hist = typeof order.refund_history === 'string' ? JSON.parse(order.refund_history) : (order.refund_history || []); } catch { }
                           const refundEvent = hist.length > 0 ? hist[hist.length - 1] : null;
                           const dateStr = refundEvent?.timestamp || order.updated_at || order.created_at;
                           return (
@@ -1513,7 +1611,7 @@ ${!isPickup ? `
                   {/* Edit History */}
                   {(() => {
                     let hist = [];
-                    try { hist = typeof order.edit_history === 'string' ? JSON.parse(order.edit_history) : (order.edit_history || []); } catch {}
+                    try { hist = typeof order.edit_history === 'string' ? JSON.parse(order.edit_history) : (order.edit_history || []); } catch { }
                     if (!hist.length) return null;
                     return (
                       <div className="pt-4 border-t border-[#08183A]/5">
@@ -1542,7 +1640,7 @@ ${!isPickup ? `
                     <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-3">Customer Details</p>
                     {(() => {
                       let address = {};
-                      try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+                      try { address = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
                       const name = order.user_name || address.name || 'Guest';
                       const email = order.user_email || '—';
                       const phone = order.user_phone || address.mobile || '—';
@@ -1569,7 +1667,7 @@ ${!isPickup ? `
                           )}
                           <div className="flex items-start gap-2">
                             <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Type</span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ order.order_type === 'pickup' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }`}>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.order_type === 'pickup' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                               {order.order_type === 'pickup' ? '🏪 Pickup' : '🚚 Shipping'}
                             </span>
                           </div>
@@ -1607,14 +1705,14 @@ ${!isPickup ? `
                       {/* Cancelled Items */}
                       {(() => {
                         let cancelledSnap = [];
-                        try { cancelledSnap = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch(e) {}
+                        try { cancelledSnap = typeof order.cancelled_items_snapshot === 'string' ? JSON.parse(order.cancelled_items_snapshot) : (order.cancelled_items_snapshot || []); } catch (e) { }
                         if (cancelledSnap.length === 0 && order.status !== 'cancelled') return null;
-                        
+
                         // If fully cancelled, items are the cancelled items
-                        const cancelledList = order.status === 'cancelled' && cancelledSnap.length === 0 
-                          ? (typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])) 
+                        const cancelledList = order.status === 'cancelled' && cancelledSnap.length === 0
+                          ? (typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []))
                           : cancelledSnap;
-                        
+
                         if (cancelledList.length === 0) return null;
 
                         return (
@@ -1649,13 +1747,13 @@ ${!isPickup ? `
                           </div>
                         );
                       })()}
-                      
+
                       {/* Active Items */}
                       {(() => {
                         let activeItems = [];
-                        try { activeItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+                        try { activeItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { }
                         if (order.status === 'cancelled' && activeItems.length > 0) return null; // If full cancel, they are already shown above (or we just hide active section)
-                        
+
                         return (
                           <div>
                             {order.cancelled_items_snapshot && activeItems.length > 0 && (
@@ -1668,35 +1766,96 @@ ${!isPickup ? `
                                 const variantImg = item.variant?.image || matchedVariant?.images?.[0] || item.product?.images?.[0] || item.product?.image_url;
                                 const itemCode = item.variant?.size_code || item.variant?.code || matchedVariant?.sizes?.find(s => s.size === item.variant?.size)?.code || matchedVariant?.code;
                                 return (
-                                <div key={idx} className="flex gap-3 items-center">
-                                  <div className="w-12 h-12 rounded bg-gray-50 border border-gray-100 flex items-center justify-center p-1 shrink-0">
-                                    <img src={variantImg} alt="" className="max-w-full max-h-full object-contain" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    {item.product?.id ? (
-                                      <Link to={`/product/${item.product.id}${itemCode ? `?variantCode=${itemCode}` : ''}`} target="_blank"
-                                        className="text-sm font-semibold text-[#08183A] truncate hover:text-[#D4AF37] hover:underline transition-colors flex items-center gap-1">
-                                        {item.product?.name || 'Unknown Product'}{item.variant?.color ? ` — ${item.variant.color}` : ''}
-                                        <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
-                                      </Link>
-                                    ) : (
-                                      <p className="text-sm font-semibold text-[#08183A] truncate">{item.product?.name || 'Unknown Product'}{item.variant?.color ? ` — ${item.variant.color}` : ''}</p>
-                                    )}
-                                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                      <p className="text-xs text-gray-500">
-                                        {item.variant?.size ? `Size: ${item.variant.size}` : 'Standard'} • Qty: {item.qty}
-                                      </p>
-                                      {itemCode && (
-                                        <span className="text-[10px] font-mono font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded">#{itemCode}</span>
+                                  <div key={idx} className="flex gap-3 items-center">
+                                    <div className="w-12 h-12 rounded bg-gray-50 border border-gray-100 flex items-center justify-center p-1 shrink-0">
+                                      <img src={variantImg} alt="" className="max-w-full max-h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      {item.product?.id ? (
+                                        <Link to={`/product/${item.product.id}${itemCode ? `?variantCode=${itemCode}` : ''}`} target="_blank"
+                                          className="text-sm font-semibold text-[#08183A] truncate hover:text-[#D4AF37] hover:underline transition-colors flex items-center gap-1">
+                                          {item.product?.name || 'Unknown Product'}{item.variant?.color ? ` — ${item.variant.color}` : ''}
+                                          <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
+                                        </Link>
+                                      ) : (
+                                        <p className="text-sm font-semibold text-[#08183A] truncate">{item.product?.name || 'Unknown Product'}{item.variant?.color ? ` — ${item.variant.color}` : ''}</p>
                                       )}
+                                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                        <p className="text-xs text-gray-500">
+                                          {item.variant?.size ? `Size: ${item.variant.size}` : 'Standard'} • Qty: {item.qty}
+                                        </p>
+                                        {itemCode && (
+                                          <span className="text-[10px] font-mono font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.5 rounded">#{itemCode}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm font-bold text-[#D4AF37]">
+                                      ${((item.variant?.price || item.product?.price || 0) * item.qty).toFixed(2)}
                                     </div>
                                   </div>
-                                  <div className="text-sm font-bold text-[#D4AF37]">
-                                    ${((item.variant?.price || item.product?.price || 0) * item.qty).toFixed(2)}
-                                  </div>
-                                </div>
                                 );
                               })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Price Summary */}
+                      {(() => {
+                        let activeItems = [];
+                        try { activeItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) { }
+
+                        const subtotal = activeItems.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || item.price || 0) * item.qty), 0);
+                        const discount = parseFloat(order.discount_amount) || 0;
+                        const shipping = parseFloat(order.shipping_fee) || 0;
+                        const tax = parseFloat(order.tax_amount) || 0;
+                        const taxRate = subtotal > 0 && tax > 0 ? ((tax / (subtotal - discount)) * 100).toFixed(2) : null;
+
+                        let addr = {};
+                        try { addr = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch (e) { }
+
+                        return (
+                          <div className="mt-4 pt-4 border-t border-dashed border-[#08183A]/10">
+                            <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Price Summary</p>
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-xs text-[#08183A]/70">
+                                <span>Item Total</span>
+                                <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                              </div>
+                              {discount > 0 && (
+                                <div className="flex justify-between text-xs text-green-600">
+                                  <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                                  <span className="font-semibold">-${discount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {shipping > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Shipping Fee</span>
+                                  <span className="font-semibold">${shipping.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {(parseFloat(order.signature_fee) || parseFloat(addr.signature_fee) || 0) > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Signature Confirmation</span>
+                                  <span className="font-semibold">${(parseFloat(order.signature_fee) || parseFloat(addr.signature_fee) || 0).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {(parseFloat(order.insurance_fee) || parseFloat(addr.insurance_fee) || 0) > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Shipping Insurance</span>
+                                  <span className="font-semibold">${(parseFloat(order.insurance_fee) || parseFloat(addr.insurance_fee) || 0).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {tax > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Tax{taxRate ? ` (${taxRate}%)` : ''}</span>
+                                  <span className="font-semibold">${tax.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm font-bold text-[#08183A] border-t border-[#08183A]/10 pt-2 mt-2">
+                                <span>Grand Total</span>
+                                <span className="text-[#D4AF37]">${Number(order.total).toFixed(2)}</span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1736,20 +1895,20 @@ ${!isPickup ? `
               )}
             </motion.div>
           ))}
-          
+
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-sm text-[#08183A]/60">Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} orders</span>
               <div className="flex gap-2">
-                <button 
-                  disabled={currentPage === 1} 
+                <button
+                  disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => p - 1)}
                   className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] bg-white hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
                 </button>
-                <button 
-                  disabled={currentPage === totalPages} 
+                <button
+                  disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(p => p + 1)}
                   className="px-3 py-1.5 border border-[#08183A]/20 rounded-lg text-sm font-semibold text-[#08183A] bg-white hover:bg-[#FDF8F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >

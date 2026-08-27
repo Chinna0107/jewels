@@ -111,6 +111,10 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true });
     try {
       const { data } = await api.get('/auth/profile');
+      if (data.user?.email?.startsWith('deleted_') || data.user?.is_deleted) {
+        get().logout();
+        return;
+      }
       set({ user: data.user, addresses: data.addresses, orders: data.orders, loading: false });
     } catch (err) {
       set({ loading: false });

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { 
   ShoppingBag, Search, User, UserPlus, Package, MapPin, 
-  CreditCard, Truck, CheckCircle2, ChevronRight, Store, Loader2, X
+  CreditCard, Truck, CheckCircle2, ChevronRight, Store, Loader2, X, Link as LinkIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import AddressAutocomplete from "../../components/AddressAutocomplete";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
@@ -12,6 +13,7 @@ export function AdminCreateOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [successData, setSuccessData] = useState(null); // stores { payment_link_url, order_id }
 
   // Data sources
   const [allProducts, setAllProducts] = useState([]);
@@ -21,10 +23,17 @@ export function AdminCreateOrderPage() {
   const [orderType, setOrderType] = useState("shipping"); // 'shipping' | 'pickup'
   const [paymentMethod, setPaymentMethod] = useState("offline"); // 'offline' | 'payment_link'
   
+  // Shipping Options
+  const [signatureRequired, setSignatureRequired] = useState(false);
+  const [shippingInsurance, setShippingInsurance] = useState(false);
+
   // Customer State
   const [customerMode, setCustomerMode] = useState("search"); // 'search' | 'manual'
   const [searchCustomerQuery, setSearchCustomerQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  
+  // Address State
+  const [useDefaultAddress, setUseDefaultAddress] = useState(true);
   const [manualCustomer, setManualCustomer] = useState({
     name: "", email: "", mobile: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "United States"
   });
@@ -38,10 +47,11 @@ export function AdminCreateOrderPage() {
 
   // Pricing State
   const [manualTax, setManualTax] = useState(false);
-  const [taxAmount, setTaxAmount] = useState(0);
+  const [taxAmount, setTaxAmount] = useState(8.25); // Default tax 8.25% or amount depending on logic
   const [manualShipping, setManualShipping] = useState(false);
-  const [shippingFee, setShippingFee] = useState(0);
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [shippingFee, setShippingFee] = useState(6.00); // Default shipping $6
+  const [discountType, setDiscountType] = useState('amount'); // 'amount' | 'percentage'
+  const [discountValue, setDiscountValue] = useState(0);
   const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
@@ -116,13 +126,18 @@ export function AdminCreateOrderPage() {
   // Calculations
   const subtotal = cart.reduce((sum, item) => sum + (item.size.our_price || item.size.mrp || item.size.price || item.product.price || 0) * item.qty, 0);
   
-  // Auto tax (simplified standard 7% if not manual)
-  const calculatedTax = manualTax ? Number(taxAmount) : subtotal * 0.07;
+  const discountAmt = discountType === 'percentage' ? subtotal * (Number(discountValue) / 100) : Number(discountValue);
   
-  // Auto shipping (simplified $10 if not manual)
-  const calculatedShipping = orderType === 'pickup' ? 0 : (manualShipping ? Number(shippingFee) : (subtotal > 200 ? 0 : 10));
+  // Auto tax uses taxAmount state as percentage if not manual
+  const calculatedTax = manualTax ? Number(taxAmount) : (subtotal - discountAmt) * (Number(taxAmount) / 100);
+  
+  // Auto shipping incorporates signature and insurance
+  const signatureFee = signatureRequired ? 6 : 0;
+  const insuranceFee = shippingInsurance ? (subtotal * 0.015) : 0;
+  const baseShipping = manualShipping ? Number(shippingFee) : (subtotal > 200 ? 0 : 6);
+  const calculatedShipping = orderType === 'pickup' ? 0 : (baseShipping + signatureFee + insuranceFee);
 
-  const total = Math.max(0, subtotal + calculatedTax + calculatedShipping - Number(discountAmount));
+  const total = Math.max(0, subtotal + calculatedTax + calculatedShipping - discountAmt);
 
   const handleSubmit = async () => {
     setError("");
@@ -134,15 +149,36 @@ export function AdminCreateOrderPage() {
       if (!manualCustomer.name || !manualCustomer.email || !manualCustomer.mobile || (orderType === 'shipping' && !manualCustomer.line1)) {
         return setError("Please fill all required manual customer details");
       }
-      addressPayload = { ...manualCustomer };
+      addressPayload = { 
+        ...manualCustomer,
+        signature_required: signatureRequired,
+        signature_fee: signatureRequired ? 6.00 : 0,
+        insurance_requested: shippingInsurance,
+        insurance_amount: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0,
+        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
+      };
     } else {
-      // Assuming selected customer has a default address or we just pass the ID
-      // If we don't have their address, the backend might need it, but let's pass what we can
+      if (orderType === 'shipping' && !useDefaultAddress && !manualCustomer.line1) {
+        return setError("Please provide a shipping address for the existing customer");
+      }
       addressPayload = {
         name: selectedCustomer.name,
         email: selectedCustomer.email,
         mobile: selectedCustomer.phone || '',
-        user_id: selectedCustomer.id
+        user_id: selectedCustomer.id,
+        ...(orderType === 'shipping' && !useDefaultAddress ? {
+          line1: manualCustomer.line1,
+          line2: manualCustomer.line2,
+          city: manualCustomer.city,
+          state: manualCustomer.state,
+          pincode: manualCustomer.pincode,
+          country: manualCustomer.country
+        } : {}),
+        signature_required: signatureRequired,
+        signature_fee: signatureRequired ? 6.00 : 0,
+        insurance_requested: shippingInsurance,
+        insurance_amount: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0,
+        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
       };
     }
 
@@ -164,15 +200,18 @@ export function AdminCreateOrderPage() {
           qty: item.qty
         })),
         address: addressPayload,
-        total,
-        subtotal,
+        total: total,
+        subtotal: subtotal,
         tax_amount: calculatedTax,
         shipping_fee: calculatedShipping,
-        discount_amount: Number(discountAmount),
+        discount_amount: discountAmt,
         coupon_code: couponCode,
         order_type: orderType,
         payment_method: paymentMethod, // 'offline' or 'payment_link'
-        is_admin_created: true
+        is_admin_created: true,
+        balance_due: paymentMethod === 'payment_link' ? total : 0,
+        signature_fee: signatureRequired ? 6.00 : 0,
+        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
       };
 
       const endpoint = `${BACKEND_URL}/admin/orders`;
@@ -189,6 +228,41 @@ export function AdminCreateOrderPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to create order");
+      }
+      
+      const successData = await res.json();
+      const orderId = successData.order?.id || successData.order_id;
+      let pLink = successData.order?.payment_link_url || successData.payment_link_url;
+
+      // If payment link is requested but not returned, try to generate it
+      if (paymentMethod === 'payment_link' && orderId && !pLink) {
+        try {
+          const linkRes = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/resend-payment-link`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          const linkData = await linkRes.json();
+          if (linkData.success && linkData.payment_link_url) {
+            pLink = linkData.payment_link_url;
+          }
+        } catch (err) {
+          console.error("Failed to generate payment link", err);
+        }
+      }
+
+      setSuccessData({
+        order_id: orderId,
+        payment_link_url: pLink,
+        balance_due: total
+      });
+
+      // If payment link is requested, trigger the email automatically
+      if (paymentMethod === 'payment_link' && orderId && pLink) {
+        fetch(`${BACKEND_URL}/admin/orders/${orderId}/email-payment-link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ payment_link_url: pLink, balance_due: total })
+        }).catch(err => console.error("Failed to trigger email", err));
       }
 
       setSuccess(true);
@@ -209,17 +283,65 @@ export function AdminCreateOrderPage() {
     );
   }
 
+  const sendPaymentLinkWhatsApp = (link, balance) => {
+    const msg = encodeURIComponent(`Hi, your order has been created. A balance of $${balance.toFixed(2)} is due. Please pay here: ${link}`);
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  const handleMarkAsPaid = async (orderId) => {
+    if (!window.confirm("Mark this order as paid?")) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/orders/${orderId}/mark-balance-paid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ method: 'cash' })
+      });
+      if (res.ok) {
+        alert("Order marked as paid!");
+        setSuccessData(prev => ({ ...prev, balance_due: 0 }));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to mark as paid");
+    }
+  };
+
   if (success) {
     return (
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto mt-12 bg-white rounded-3xl shadow-xl p-12 text-center border border-[#08183A]/10">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto mt-12 bg-white rounded-3xl shadow-xl p-8 sm:p-12 text-center border border-[#08183A]/10">
         <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 className="w-10 h-10" />
         </div>
         <h2 className="text-3xl font-serif font-bold text-[#08183A] mb-4">Order Created Successfully!</h2>
         <p className="text-gray-500 mb-8">The manual order has been successfully placed in the system.</p>
-        <div className="flex justify-center gap-4">
+        
+        {successData?.payment_link_url && successData?.balance_due > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6 text-left mb-8 space-y-4">
+            <h3 className="font-bold text-amber-900 text-lg border-b border-amber-200/50 pb-3">Payment Details</h3>
+            <p className="text-sm font-semibold text-amber-800">Balance Due: ${successData.balance_due.toFixed(2)}</p>
+            <div className="bg-white p-3 rounded-lg border border-amber-100 break-all">
+              <a href={successData.payment_link_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 font-semibold underline flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 shrink-0" />
+                {successData.payment_link_url}
+              </a>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <button onClick={() => sendPaymentLinkWhatsApp(successData.payment_link_url, successData.balance_due)} className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 rounded-xl text-xs font-bold transition-colors">
+                WhatsApp
+              </button>
+              <button onClick={() => navigator.clipboard.writeText(successData.payment_link_url)} className="flex items-center justify-center gap-2 bg-[#08183A] hover:bg-[#122A5C] text-white py-2 rounded-xl text-xs font-bold transition-colors">
+                Copy Link
+              </button>
+              <button onClick={() => handleMarkAsPaid(successData.order_id)} className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold transition-colors">
+                Mark as Paid
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
           <button onClick={() => window.location.href = '/admin/orders'} className="px-6 py-3 bg-[#08183A] text-white rounded-xl font-semibold hover:bg-[#122A5C] transition-all">View All Orders</button>
-          <button onClick={() => { setSuccess(false); setCart([]); setSelectedCustomer(null); }} className="px-6 py-3 bg-gray-100 text-[#08183A] rounded-xl font-semibold hover:bg-gray-200 transition-all">Create Another</button>
+          <button onClick={() => { setSuccess(false); setCart([]); setSelectedCustomer(null); setSuccessData(null); }} className="px-6 py-3 bg-gray-100 text-[#08183A] rounded-xl font-semibold hover:bg-gray-200 transition-all">Create Another</button>
         </div>
       </motion.div>
     );
@@ -267,12 +389,50 @@ export function AdminCreateOrderPage() {
             {customerMode === 'search' ? (
               <div className="relative">
                 {selectedCustomer ? (
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-emerald-900">{selectedCustomer.name}</p>
-                      <p className="text-sm text-emerald-700">{selectedCustomer.email} • {selectedCustomer.phone || 'No phone'}</p>
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-emerald-900">{selectedCustomer.name}</p>
+                        <p className="text-sm text-emerald-700">{selectedCustomer.email} • {selectedCustomer.phone || 'No phone'}</p>
+                      </div>
+                      <button onClick={() => setSelectedCustomer(null)} className="text-emerald-700 hover:text-emerald-900 text-sm font-semibold underline">Change</button>
                     </div>
-                    <button onClick={() => setSelectedCustomer(null)} className="text-emerald-700 hover:text-emerald-900 text-sm font-semibold underline">Change</button>
+
+                    {orderType === 'shipping' && (
+                      <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-4 mt-4">
+                        <p className="text-sm font-bold text-[#08183A]">Shipping Address</p>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" checked={useDefaultAddress} onChange={() => setUseDefaultAddress(true)} className="accent-[#08183A]" />
+                            Use Customer's Default Address
+                          </label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" checked={!useDefaultAddress} onChange={() => setUseDefaultAddress(false)} className="accent-[#08183A]" />
+                            Provide New Address
+                          </label>
+                        </div>
+                        
+                        {!useDefaultAddress && (
+                          <div className="mt-4 border-t border-gray-200 pt-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                              <div className="sm:col-span-2">
+                                <AddressAutocomplete 
+                                  value={manualCustomer.line1} 
+                                  onChange={(val) => setManualCustomer({...manualCustomer, line1: val})}
+                                  onSelect={(place) => {
+                                    setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country });
+                                  }}
+                                />
+                              </div>
+                              <input type="text" value={manualCustomer.city} onChange={e => setManualCustomer({...manualCustomer, city: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="City" />
+                              <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                              <input type="text" value={manualCustomer.pincode} onChange={e => setManualCustomer({...manualCustomer, pincode: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Zip / Postal Code" />
+                              <input type="text" value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Country" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -317,21 +477,28 @@ export function AdminCreateOrderPage() {
                 </div>
                 <div className="sm:col-span-2 mt-2">
                   <p className="text-sm font-bold text-[#08183A] mb-3">Shipping Address {orderType === 'pickup' && '(Optional for Pickup)'}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                     <div className="sm:col-span-2">
-                      <input type="text" value={manualCustomer.line1} onChange={e => setManualCustomer({...manualCustomer, line1: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Street Address" />
+                      <AddressAutocomplete 
+                        value={manualCustomer.line1} 
+                        onChange={(val) => setManualCustomer({...manualCustomer, line1: val})}
+                        onSelect={(place) => {
+                          setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country });
+                        }}
+                      />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.city} onChange={e => setManualCustomer({...manualCustomer, city: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="City" />
+                      <input type="text" value={manualCustomer.city} onChange={e => setManualCustomer({...manualCustomer, city: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="City" />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                      <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.pincode} onChange={e => setManualCustomer({...manualCustomer, pincode: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Zip / Postal Code" />
+                      <input type="text" value={manualCustomer.pincode} onChange={e => setManualCustomer({...manualCustomer, pincode: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Zip / Postal Code" />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Country" />
+                      <input type="text" value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Country" />
                     </div>
                   </div>
                 </div>
@@ -487,17 +654,32 @@ export function AdminCreateOrderPage() {
               
               {/* Discount Override */}
               <div className="border-t border-gray-200/50 pt-4">
-                <label className="text-xs font-bold text-[#08183A] mb-2 block">Discount Amount ($)</label>
+                <label className="text-xs font-bold text-[#08183A] mb-2 block">Discount Amount</label>
                 <div className="flex gap-2">
-                  <input type="number" min="0" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#08183A]" />
+                  <select value={discountType} onChange={e => setDiscountType(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#08183A] font-bold text-[#08183A]">
+                    <option value="amount">$</option>
+                    <option value="percentage">%</option>
+                  </select>
+                  <input type="number" min="0" value={discountValue} onChange={e => setDiscountValue(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#08183A]" />
                 </div>
                 <input type="text" placeholder="Coupon Code (Optional)" value={couponCode} onChange={e => setCouponCode(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#08183A] mt-2" />
               </div>
 
-              {/* Shipping Override */}
+              {/* Shipping Options & Override */}
               {orderType === 'shipping' && (
-                <div className="border-t border-gray-200/50 pt-4">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="border-t border-gray-200/50 pt-4 space-y-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="accent-[#08183A]" />
+                      Signature Confirmation (+$6.00)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={shippingInsurance} onChange={e => setShippingInsurance(e.target.checked)} className="accent-[#08183A]" />
+                      Shipping Insurance (+1.5%)
+                    </label>
+                  </div>
+                  
+                  <div className="border-t border-gray-100 pt-2 flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-[#08183A] flex items-center gap-1.5">
                       <input type="checkbox" checked={manualShipping} onChange={e => setManualShipping(e.target.checked)} className="accent-[#08183A]" />
                       Override Shipping Fee
@@ -515,12 +697,20 @@ export function AdminCreateOrderPage() {
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-[#08183A] flex items-center gap-1.5">
                     <input type="checkbox" checked={manualTax} onChange={e => setManualTax(e.target.checked)} className="accent-[#08183A]" />
-                    Override Tax Amount
+                    Override Tax Amount (Flat $)
                   </label>
-                  {!manualTax && <span className="text-xs font-bold text-gray-500">${calculatedTax.toFixed(2)} (Auto 7%)</span>}
+                  {!manualTax && <span className="text-xs font-bold text-gray-500">${calculatedTax.toFixed(2)} (Auto {taxAmount}%)</span>}
                 </div>
-                {manualTax && (
+                {manualTax ? (
                   <input type="number" min="0" value={taxAmount} onChange={e => setTaxAmount(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#08183A]" placeholder="0.00" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Auto Tax Rate:</span>
+                    <div className="flex items-center bg-white border border-gray-200 rounded-lg px-2 text-sm focus-within:border-[#08183A]">
+                      <input type="number" min="0" value={taxAmount} onChange={e => setTaxAmount(e.target.value)} className="w-16 py-1.5 focus:outline-none text-right" />
+                      <span className="text-gray-500 ml-1">%</span>
+                    </div>
+                  </div>
                 )}
               </div>
 

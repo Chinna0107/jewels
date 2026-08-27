@@ -13,22 +13,19 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   const items = parseJ(order.items);
   const address = parseO(order.address);
 
-  // Calculate default product weight
-  let totalProductWeightOz = 0;
-  for (const item of items) {
-    const w = parseFloat(item.variant?.weight || item.size?.weight || 0);
-    totalProductWeightOz += (w > 0 ? w : 16) * (item.qty || 1);
-  }
-  if (totalProductWeightOz === 0) totalProductWeightOz = 16;
+  // Determine default box size and weight in grams based on total quantity
+  const totalQty = items.reduce((sum, item) => sum + (item.qty || 1), 0);
   
-  // Default box weight based on open question default = 4 oz
-  const defaultBoxWeightOz = 4;
+  const initialBoxPreset = totalQty > 4 ? "8x8x1" : "6x4x1";
+  const initialLength = totalQty > 4 ? "8" : "6";
+  const initialWidth = totalQty > 4 ? "8" : "4";
+  const initialWeight = totalQty > 4 ? "125" : "75";
   
-  const [boxPreset, setBoxPreset] = useState("6x4x1");
-  const [length, setLength] = useState("6");
-  const [width, setWidth] = useState("4");
+  const [boxPreset, setBoxPreset] = useState(initialBoxPreset);
+  const [length, setLength] = useState(initialLength);
+  const [width, setWidth] = useState(initialWidth);
   const [height, setHeight] = useState("1");
-  const [weight, setWeight] = useState(String(totalProductWeightOz + defaultBoxWeightOz));
+  const [weight, setWeight] = useState(initialWeight);
 
   const [signatureRequired, setSignatureRequired] = useState(!!address.signature_required);
   const [insuranceRequested, setInsuranceRequested] = useState(!!address.insurance_requested);
@@ -38,8 +35,8 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   const isInternational = address.country && address.country.toLowerCase() !== "united states" && address.country.toLowerCase() !== "us";
   
   const [customsDescription, setCustomsDescription] = useState("Fashion Jewelry");
-  const [customsQuantity, setCustomsQuantity] = useState(String(items.reduce((sum, it) => sum + (it.qty || 1), 0)));
-  const [customsUnitWeight, setCustomsUnitWeight] = useState(String(totalProductWeightOz));
+  const [customsQuantity, setCustomsQuantity] = useState(String(totalQty));
+  const [customsUnitWeight, setCustomsUnitWeight] = useState(String((parseFloat(initialWeight) / (totalQty || 1)).toFixed(1)));
   const [customsUnitValue, setCustomsUnitValue] = useState("");
   const [customsOrigin, setCustomsOrigin] = useState("United States of America");
   const [customsHarmonizationCode, setCustomsHarmonizationCode] = useState("711719");
@@ -47,8 +44,8 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   const handleBoxChange = (e) => {
     const val = e.target.value;
     setBoxPreset(val);
-    if (val === "6x4x1") { setLength("6"); setWidth("4"); setHeight("1"); }
-    else if (val === "8x8x1") { setLength("8"); setWidth("8"); setHeight("1"); }
+    if (val === "6x4x1") { setLength("6"); setWidth("4"); setHeight("1"); setWeight("75"); }
+    else if (val === "8x8x1") { setLength("8"); setWidth("8"); setHeight("1"); setWeight("125"); }
   };
 
   const handleSubmit = (e) => {
@@ -112,9 +109,8 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Total Weight (oz)</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Total Weight (g)</label>
                   <input type="number" step="0.1" value={weight} onChange={e => setWeight(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#D4AF37]" required />
-                  <p className="text-[10px] text-gray-400 mt-1">Products ({totalProductWeightOz} oz) + Box ({defaultBoxWeightOz} oz)</p>
                 </div>
               </div>
 

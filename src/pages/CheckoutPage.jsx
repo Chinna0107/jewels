@@ -194,10 +194,13 @@ const CARD_ELEMENT_OPTIONS = {
   },
 };
 
-function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, setTermsAccepted, addressConfirmed, setAddressConfirmed, address, sessionSecondsLeft, onEditAddress, paymentError, onRetry }) {
+function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, setTermsAccepted, addressConfirmed, setAddressConfirmed, address, sessionSecondsLeft, onEditAddress, paymentError, onRetry, orderType, pickupContact }) {
   const stripe = useStripe();
   const elements = useElements();
   const isExpiringSoon = sessionSecondsLeft !== null && sessionSecondsLeft <= 60;
+  const isPickup = orderType === 'pickup';
+  // For pickup: only require termsAccepted. For shipping: also require addressConfirmed.
+  const canPay = isPickup ? (termsAccepted && !isPlacingOrder && !!stripe) : (termsAccepted && addressConfirmed && !isPlacingOrder && !!stripe);
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-2">
@@ -217,38 +220,53 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
         )}
       </div>
 
-      {/* Shipping address confirmation */}
-      <div className="bg-green-50 border border-green-200 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-green-800 flex items-center gap-1.5">📍 Shipping To</p>
-          <button type="button" onClick={onEditAddress}
-            className="text-[11px] font-bold text-brand-dark-blue underline hover:text-brand-gold transition-colors">← Edit Address</button>
+      {/* Pickup: show contact summary. Shipping: show address confirmation block. */}
+      {isPickup ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Store className="w-4 h-4 text-blue-600" />
+            <p className="text-xs font-bold text-blue-800">Store Pickup — Contact Details</p>
+          </div>
+          <div className="text-xs text-blue-900 leading-relaxed">
+            <p className="font-bold">{pickupContact?.name}</p>
+            {pickupContact?.phone && <p>📞 {pickupContact.phone}</p>}
+            {pickupContact?.email && <p>✉️ {pickupContact.email}</p>}
+          </div>
+          <p className="text-[10px] text-blue-700">We'll notify you on WhatsApp/Text when your order is ready for pickup.</p>
         </div>
-        <div className="text-xs text-green-900 leading-relaxed">
-          <p className="font-bold">{address.name}</p>
-          <p>{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p>
-          <p>{address.city}{address.state ? `, ${address.state}` : ''} {address.pincode}</p>
-          <p>{address.country}</p>
-          <p className="text-green-700 mt-0.5">📞 {address.mobile}</p>
+      ) : (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-green-800 flex items-center gap-1.5">📍 Shipping To</p>
+            <button type="button" onClick={onEditAddress}
+              className="text-[11px] font-bold text-brand-dark-blue underline hover:text-brand-gold transition-colors">← Edit Address</button>
+          </div>
+          <div className="text-xs text-green-900 leading-relaxed">
+            <p className="font-bold">{address.name}</p>
+            <p>{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p>
+            <p>{address.city}{address.state ? `, ${address.state}` : ''} {address.pincode}</p>
+            <p>{address.country}</p>
+            <p className="text-green-700 mt-0.5">📞 {address.mobile}</p>
+          </div>
+          {address.line2 ? null : (
+            <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              💡 No apartment/suite number provided. If applicable, please <button type="button" onClick={onEditAddress} className="underline font-bold">go back and add it</button> to ensure accurate delivery.
+            </p>
+          )}
+          <div className="pt-3 border-t border-green-200 mt-2 space-y-3">
+            <p className="text-xs text-brand-dark-blue leading-relaxed">
+              To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/jewelry-care" className="underline font-bold text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.
+            </p>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={addressConfirmed} onChange={e => setAddressConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-green-700 shrink-0" />
+              <span className="text-[11px] text-green-800 font-medium leading-relaxed">
+                I confirm that my shipping address is accurate and complete, and I acknowledge that I have reviewed the Jewelry Care Tips.
+              </span>
+            </label>
+          </div>
         </div>
-        {address.line2 ? null : (
-          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            💡 No apartment/suite number provided. If applicable, please <button type="button" onClick={onEditAddress} className="underline font-bold">go back and add it</button> to ensure accurate delivery.
-          </p>
-        )}
-        <div className="pt-3 border-t border-green-200 mt-2 space-y-3">
-          <p className="text-xs text-brand-dark-blue leading-relaxed">
-            To extend the life of your jewelry, avoid contact with perfume, pool water & harsh chemicals. Store in a dry place inside a sealed zip-lock cover when not in use. See our <Link to="/jewelry-care" className="underline font-bold text-brand-gold" target="_blank">Jewelry Care Tips</Link> for more details.
-          </p>
-          <label className="flex items-start gap-2.5 cursor-pointer">
-            <input type="checkbox" checked={addressConfirmed} onChange={e => setAddressConfirmed(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-green-700 shrink-0" />
-            <span className="text-[11px] text-green-800 font-medium leading-relaxed">
-              I confirm that my shipping address is accurate and complete, and I acknowledge that I have reviewed the Jewelry Care Tips.
-            </span>
-          </label>
-        </div>
-      </div>
+      )}
 
       <div className="bg-white/80 p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
         <p className="text-xs text-brand-dark-blue/60 font-medium">Enter your card details to complete the payment</p>
@@ -284,9 +302,9 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
         </label>
         <button
           onClick={() => handlePlaceOrder(stripe, elements)}
-          disabled={isPlacingOrder || !stripe || !termsAccepted || !addressConfirmed}
+          disabled={!canPay}
           className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
-            isPlacingOrder || !stripe || !termsAccepted || !addressConfirmed
+            !canPay
               ? 'opacity-50 cursor-not-allowed bg-gray-200 text-gray-400'
               : 'bg-brand-dark-blue text-brand-gold shadow-lg shadow-brand-dark-blue/20 hover:shadow-xl hover:-translate-y-0.5'
           }`}
@@ -338,17 +356,22 @@ function AddressValidationModal({ validationResult, onUseSuggested, onEdit, onPr
           </div>
         ) : null}
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={onEdit} className="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
-            Edit Address
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+          <button onClick={onEdit} className="flex-1 py-3 px-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+            Edit address
           </button>
-          {valid && hasCorrections && (
-            <button onClick={() => onUseSuggested(suggested)} className="flex-1 py-3 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
-              Use Suggested
+          {hasCorrections && (
+            <button onClick={() => onUseSuggested(suggested)} className="flex-1 py-3 px-2 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
+              Use suggested address & update
+            </button>
+          )}
+          {(!valid || hasCorrections) && (
+            <button onClick={onProceedOriginal} className="flex-1 py-3 px-2 text-sm font-bold text-brand-dark-blue bg-brand-gold/20 rounded-xl hover:bg-brand-gold/30 transition-colors">
+              Proceed with original address
             </button>
           )}
           {valid && !hasCorrections && (
-            <button onClick={onProceedOriginal} className="flex-1 py-3 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
+            <button onClick={onProceedOriginal} className="flex-1 py-3 px-2 text-sm font-bold text-white bg-brand-gold rounded-xl hover:bg-brand-gold/90 transition-colors">
               Continue
             </button>
           )}
@@ -403,7 +426,8 @@ export function CheckoutPage() {
   useEffect(() => {
     if (user) {
       setPickupContact({ name: user.name || '', email: user.email || '', phone: getLocalPhone(user.phone) });
-      setPickupDialCode(getDialCountryCode(user.phone));
+      // Force US as default for pickup dial code (store is US-based; +1 matches both US and CA)
+      setPickupDialCode('US');
       
       setAddress(prev => ({
         ...prev,
@@ -524,7 +548,12 @@ export function CheckoutPage() {
   const [insuranceRequested, setInsuranceRequested] = useState(false);
   const [insuranceDeclaredValue, setInsuranceDeclaredValue] = useState("");
 
-  const signatureFee = signatureRequired ? 4.00 : 0;
+  const signatureFee = useMemo(() => {
+    if (!signatureRequired) return 0;
+    const country = address.country || dialCountryCode || 'United States';
+    const isUS = (country.toLowerCase() === 'united states' || country === 'US');
+    return isUS ? 4.00 : 0;
+  }, [signatureRequired, address.country, dialCountryCode]);
   const insuranceFee = useMemo(() => {
     if (!insuranceRequested) return 0;
     const amount = parseFloat(insuranceDeclaredValue) || 0;
@@ -551,17 +580,27 @@ export function CheckoutPage() {
       .catch(console.error);
   }, []);
 
-  // Recompute shipping fee whenever config loads
+  // Recompute shipping fee whenever config loads or address changes
   useEffect(() => {
     if (orderType === 'pickup') {
       setShippingFee(0);
       return;
     }
     if (!shippingConfig?.settings) return;
-    const threshold = parseFloat(shippingConfig.settings.free_shipping_threshold) || 0;
-    const flat = parseFloat(shippingConfig.settings.flat_rate) || 0;
+    
+    let threshold = parseFloat(shippingConfig.settings.free_shipping_threshold) || 0;
+    let flat = parseFloat(shippingConfig.settings.flat_rate) || 0;
+    
+    if (address.country && shippingConfig.settings.country_fees) {
+      const countryConfig = shippingConfig.settings.country_fees[address.country];
+      if (countryConfig) {
+        flat = countryConfig.fee !== '' && countryConfig.fee != null && !isNaN(countryConfig.fee) ? parseFloat(countryConfig.fee) : flat;
+        threshold = countryConfig.threshold !== '' && countryConfig.threshold != null && !isNaN(countryConfig.threshold) ? parseFloat(countryConfig.threshold) : threshold;
+      }
+    }
+    
     setShippingFee(threshold > 0 && (subtotal - discount) >= threshold ? 0 : flat);
-  }, [shippingConfig, subtotal, discount, orderType]);
+  }, [shippingConfig, subtotal, discount, orderType, address.country]);
 
   // Recompute tax whenever subtotal, discount, address pincode, or config changes
   useEffect(() => {
@@ -632,6 +671,11 @@ export function CheckoutPage() {
     if (token) headers['Authorization'] = `Bearer ${token}`;
       let finalAddress = orderType === 'pickup' ? { name: pickupContact.name, mobile: `${COUNTRIES.find(c=>c.code===pickupDialCode)?.dial||'+1'}${pickupContact.phone}`, email: pickupContact.email } : { ...address };
       if (orderType === 'shipping') {
+        const c = COUNTRIES.find(c => c.name === finalAddress.country);
+        const dialCode = c?.dial || '+1';
+        const rawMobile = finalAddress.mobile || '';
+        finalAddress.mobile = rawMobile.startsWith('+') ? rawMobile : `${dialCode}${rawMobile}`;
+        
         finalAddress.signature_required = signatureRequired;
         finalAddress.signature_fee = signatureFee;
         finalAddress.insurance_requested = insuranceRequested;
@@ -705,19 +749,31 @@ export function CheckoutPage() {
       }
     } else if (orderType === 'pickup') {
       if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
-      if (!pickupContact.phone.trim() || pickupContact.phone.replace(/\D/g, '').length < 10) {
+      if (pickupContact.phone.replace(/\D/g, '').length < 10) {
         showToast('Please enter a valid 10-digit phone number for pickup notification.', 'error');
+        return;
+      }
+      if (!pickupTermsAccepted) {
+        showToast('Please accept the Pickup Terms & Conditions to proceed.', 'error');
         return;
       }
     }
     finalizeProceedToPayment();
   };
 
-  const finalizeProceedToPayment = (finalAddress = address) => {
+  const finalizeProceedToPayment = (finalAddress = address, shouldUpdateSaved = false) => {
     if (orderType === 'shipping') {
       setAddress(finalAddress);
-      if (token && saveAddress) {
-        addAddress({ ...finalAddress, mobile: `${dialCode}${finalAddress.mobile}`, is_default: saveAsDefault }).catch(() => {});
+      
+      const c = COUNTRIES.find(c => c.name === finalAddress.country);
+      const dialCode = c?.dial || '+1';
+      const rawMobile = finalAddress.mobile || '';
+      const fullMobile = rawMobile.startsWith('+') ? rawMobile : `${dialCode}${rawMobile}`;
+
+      if (token && showNewAddressForm && saveAddress) {
+        addAddress({ ...finalAddress, mobile: fullMobile, is_default: saveAsDefault }).catch(() => {});
+      } else if (token && !showNewAddressForm && selectedSavedAddress && shouldUpdateSaved) {
+        updateAddress(selectedSavedAddress, { ...finalAddress, mobile: fullMobile }).catch(() => {});
       }
     }
     setValidationResult(null);
@@ -911,10 +967,12 @@ export function CheckoutPage() {
                     <span>Coupon ({appliedCoupon.code})</span><span>- ${discount.toFixed(2)}</span>
                   </div>
                 )}
+{orderType !== 'pickup' && (
                 <div className="flex justify-between text-sm text-brand-dark-blue/70">
                   <span>Shipping</span>
                   <span className="font-medium">{shippingFee === 0 && (parseFloat(shippingConfig?.settings?.free_shipping_threshold) || 0) > 0 ? <span className="text-green-600 font-bold">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
                 </div>
+                )}
                 {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
                   <div className="flex justify-between text-sm text-brand-dark-blue/70">
                     <span>{taxLabel || 'Tax'}</span><span className="font-medium">${taxAmount.toFixed(2)}</span>
@@ -1375,23 +1433,64 @@ export function CheckoutPage() {
                   </div>
                 )}
               </div>
-
-              {/* Proceed button inside card on mobile */}
-              <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-                <button onClick={handleProceedToPayment}
-                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                  <CreditCard className="w-4 h-4" /> Proceed to Payment
-                </button>
-                <div className="flex items-center justify-center gap-1.5 mt-3">
-                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[11px] text-gray-400">100% Secure Transaction</span>
-                </div>
-              </div>
             </div>
             )}
 
-            {/* Proceed button when using saved address */}
-            {!showNewAddressForm && addresses.length > 0 && (
+            {/* Shipping Extra Options — shown BEFORE proceed buttons so user can configure before advancing */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
+              <h3 className="text-sm font-bold text-[#08183A]">Extra Shipping Options</h3>
+              
+              {(() => {
+                const country = address.country || dialCountryCode || 'United States';
+                const isUS = (country.toLowerCase() === 'united states' || country === 'US');
+                return (
+                  <label className={`flex items-start gap-3 group ${isUS ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                    <input type="checkbox" checked={isUS && signatureRequired} onChange={e => {
+                      setSignatureRequired(e.target.checked);
+                      if (!e.target.checked) setInsuranceRequested(false);
+                    }} disabled={!isUS} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
+                    <div>
+                      <span className={`text-sm font-bold text-gray-800 ${isUS ? 'group-hover:text-brand-dark-blue transition-colors' : ''}`}>Signature Confirmation {isUS ? '(+$4.00)' : '(US Only)'}</span>
+                      {isUS && <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Require a signature upon delivery for added security.</p>}
+                    </div>
+                  </label>
+                );
+              })()}
+
+              <div className="pt-3 border-t border-gray-100">
+                <label className={`flex items-start gap-3 group ${signatureRequired ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                  <input type="checkbox" checked={signatureRequired && insuranceRequested} onChange={e => {
+                    setInsuranceRequested(e.target.checked);
+                    if (e.target.checked) {
+                      setInsuranceDeclaredValue((subtotal - discount + taxAmount).toFixed(2));
+                    }
+                  }} disabled={!signatureRequired} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
+                  <div>
+                    <span className={`text-sm font-bold text-gray-800 ${signatureRequired ? 'group-hover:text-brand-dark-blue transition-colors' : ''}`}>Additional Shipping Insurance {!signatureRequired && '(Requires Signature)'}</span>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Check our <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">Shipping Policy</Link> for more details about Shipping Insurance & Lost Package Claims.</p>
+                  </div>
+                </label>
+                
+                {insuranceRequested && (
+                  <div className="mt-3 ml-7 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="block mb-1.5 flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-700">Order insurance coverage (USD)</span>
+                      <span className="text-[10px] text-gray-500 font-medium italic">*Choose insurance coverage for your order</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
+                      <input type="number" min="0" step="1" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder="0.00" className="w-full bg-white border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2 font-medium">
+                      Fee: 1.25% of declared value (US) or 1.50% (International). Added to total.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Proceed button — new address form path */}
+            {showNewAddressForm && (
               <div className="space-y-3">
                 <button onClick={handleProceedToPayment}
                   className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
@@ -1404,41 +1503,19 @@ export function CheckoutPage() {
               </div>
             )}
 
-            {/* Shipping Extra Options (always shown at bottom of step 2 for shipping) */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-brand-gold/20 space-y-4">
-              <h3 className="text-sm font-bold text-[#08183A]">Extra Shipping Options</h3>
-              
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
-                <div>
-                  <span className="text-sm font-bold text-gray-800 group-hover:text-brand-dark-blue transition-colors">Signature Confirmation (+$4.00)</span>
-                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Require a signature upon delivery for added security.</p>
+            {/* Proceed button — saved address path */}
+            {!showNewAddressForm && addresses.length > 0 && (
+              <div className="space-y-3">
+                <button onClick={handleProceedToPayment}
+                  className="w-full bg-brand-dark-blue text-brand-gold font-bold text-sm rounded-xl py-4 shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Proceed to Payment
+                </button>
+                <div className="flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] text-gray-400">100% Secure Transaction</span>
                 </div>
-              </label>
-
-              <div className="pt-3 border-t border-gray-100">
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input type="checkbox" checked={insuranceRequested} onChange={e => setInsuranceRequested(e.target.checked)} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
-                  <div>
-                    <span className="text-sm font-bold text-gray-800 group-hover:text-brand-dark-blue transition-colors">Additional Shipping Insurance</span>
-                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Check our <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">Shipping Policy</Link> for more details about Shipping Insurance & Lost Package Claims.</p>
-                  </div>
-                </label>
-                
-                {insuranceRequested && (
-                  <div className="mt-3 ml-7 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Declared Item Value (USD)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                      <input type="number" min="0" step="1" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder="0.00" className="w-full bg-white border border-gray-200 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all" />
-                    </div>
-                    <p className="text-[10px] text-gray-500 mt-2 font-medium">
-                      Fee: 1.25% of declared value (US) or 1.50% (International). Added to total.
-                    </p>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
           </div>
         )}
         {step === 2.5 && orderType === 'pickup' && (
@@ -1610,10 +1687,13 @@ export function CheckoutPage() {
               onEditAddress={() => { setStep(2.5); setSessionSecondsLeft(null); clearInterval(sessionTimerRef.current); setAddressConfirmed(false); setTermsAccepted(false); }}
               paymentError={paymentError}
               onRetry={() => setPaymentError(null)}
+              orderType={orderType}
+              pickupContact={pickupContact}
             />
           </Elements>
         )}
-      </div>          {/* Right Column: Order Summary (Desktop) */}
+      </div>
+          {/* Right Column: Order Summary (Desktop) */}
           <div className="hidden lg:block lg:col-span-4 sticky top-24">
             <div className="bg-white/80 p-6 rounded-3xl shadow-sm border border-brand-gold/20">
               <h3 className="font-serif font-bold text-brand-dark-blue mb-6 text-xl">Order Summary (USD)</h3>
@@ -1647,10 +1727,12 @@ export function CheckoutPage() {
                     <span className="font-medium">- ${discount.toFixed(2)}</span>
                   </div>
                 )}
+{orderType !== 'pickup' && (
                 <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                   <span>Shipping Fee</span>
                   <span className="font-medium text-brand-dark-blue">{shippingFee === 0 && (parseFloat(shippingConfig?.settings?.free_shipping_threshold) || 0) > 0 ? <span className="text-green-600 font-bold">FREE</span> : `$${shippingFee.toFixed(2)}`}</span>
                 </div>
+                )}
                 {(taxAmount > 0 || shippingConfig?.settings?.tax_mode === 'pincode') && (
                   <div className="flex justify-between text-sm text-brand-dark-blue/80 mb-2">
                     <span>{taxLabel || 'Tax'}</span>
@@ -1675,7 +1757,7 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              {(step === 2 || step === 2.5) ? (
+              {(step === 2 || (step === 2.5 && orderType !== 'pickup')) ? (
                 <button 
                   onClick={step === 2 && pickupEnabled ? undefined : handleProceedToPayment}
                   disabled={step === 2 && pickupEnabled}
@@ -1708,7 +1790,7 @@ export function CheckoutPage() {
             </div>
           </div>
           
-          {(step === 2 || step === 2.5) ? (
+          {(step === 2 || (step === 2.5 && orderType !== 'pickup')) ? (
             <button 
               onClick={step === 2 && pickupEnabled ? undefined : handleProceedToPayment}
               disabled={step === 2 && pickupEnabled}
@@ -1759,7 +1841,7 @@ export function CheckoutPage() {
         validationResult={validationResult}
         onEdit={() => setValidationResult(null)}
         onProceedOriginal={() => finalizeProceedToPayment(address)}
-        onUseSuggested={(suggested) => finalizeProceedToPayment({ ...address, ...suggested })}
+        onUseSuggested={(suggested) => finalizeProceedToPayment({ ...address, name: suggested.name || address.name, line1: suggested.street1, line2: suggested.street2 || '', city: suggested.city, state: suggested.state, pincode: suggested.zip, country: suggested.country }, true)}
       />
     </div>
   );

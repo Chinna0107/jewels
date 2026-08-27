@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw, Pencil, Plus, Trash2, Search, Link2, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoUrl from '../../assets/logo.png';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 const FROM_ADDRESS = {
@@ -170,39 +171,70 @@ function EditOrderModal({ order, onClose, onSaved }) {
   const tax = parseFloat(order.tax_amount) || 0;
   const discount = parseFloat(order.discount_amount) || 0;
   const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
-  const newTotal = Math.max(0, itemsTotal + shipping + tax - discount);
+  const addr = parseO(order.address);
+  const signatureFee = parseFloat(addr.signature_fee) || 0;
+  const insuranceFee = parseFloat(addr.insurance_fee) || 0;
+  const newTotal = Math.max(0, itemsTotal + shipping + signatureFee + insuranceFee + tax - discount);
   const oldTotal = parseFloat(order.total) || 0;
   const diff = parseFloat((newTotal - oldTotal).toFixed(2));
 
   const filteredProducts = productSearch.trim()
-    ? allProducts.filter(p => p.name?.toLowerCase().includes(productSearch.toLowerCase())).slice(0, 8)
+    ? allProducts.flatMap(p => {
+        const s = productSearch.toLowerCase();
+        let variants = [];
+        try { variants = typeof p.variants === 'string' ? JSON.parse(p.variants) : (p.variants || []); } catch {}
+        
+        const nameMatch = p.name?.toLowerCase().includes(s) || p.product_code?.toLowerCase().includes(s);
+        let matches = [];
+        
+        if (variants.length > 0) {
+          variants.forEach(v => {
+            const vMatch = v.color?.toLowerCase().includes(s);
+            (v.sizes || []).forEach(size => {
+              if (nameMatch || vMatch || size.code?.toLowerCase().includes(s)) {
+                matches.push({ product: p, variant: v, size: size });
+              }
+            });
+          });
+        } else {
+          const sizes = parseJ(p.sizes);
+          if (sizes.length > 0) {
+            sizes.forEach(size => {
+              if (nameMatch || size.code?.toLowerCase().includes(s)) {
+                matches.push({ product: p, variant: null, size: size });
+              }
+            });
+          } else if (nameMatch) {
+            matches.push({ product: p, variant: null, size: null });
+          }
+        }
+        return matches;
+      }).slice(0, 15)
     : [];
 
-  // Resolve price from either variants[].sizes[].our_price or legacy sizes[].price
-  const resolvePrice = (product) => {
-    const variants = parseJ(product.variants);
-    const sizes = parseJ(product.sizes);
-    const fromVariant = variants?.[0]?.sizes?.[0];
-    if (fromVariant) return Number(fromVariant.our_price) || Number(fromVariant.price) || 0;
-    return Number(sizes?.[0]?.our_price) || Number(sizes?.[0]?.price) || 0;
+  const resolvePrice = (itemData) => {
+    const { size } = itemData;
+    return size ? (Number(size.our_price) || Number(size.price) || 0) : 0;
   };
 
-  const selectReplacement = (product) => {
+  const selectReplacement = (itemData) => {
+    const { product, variant, size } = itemData;
     const variants = parseJ(product.variants);
     const sizes = parseJ(product.sizes);
-    const firstVariant = variants[0];
-    const firstSize = firstVariant?.sizes?.[0];
-    const price = firstSize
-      ? (Number(firstSize.our_price) || Number(firstSize.price) || 0)
-      : (Number(sizes?.[0]?.our_price) || Number(sizes?.[0]?.price) || 0);
+    
+    const actualVariant = variant || variants?.[0];
+    const actualSize = size || actualVariant?.sizes?.[0] || sizes?.[0];
+    
+    const price = Number(actualSize?.our_price) || Number(actualSize?.price) || 0;
+    
     const newItem = {
       product: { id: product.id, name: product.name, images: parseJ(product.images), image_url: product.image_url, variants, sizes },
-      variant: firstVariant ? {
-        color: firstVariant.color,
-        size: firstSize?.size || '',
+      variant: actualVariant ? {
+        color: actualVariant.color,
+        size: actualSize?.size || '',
         price,
-        image: firstVariant.images?.[0] || '',
-      } : { size: sizes?.[0]?.size || 'Standard', price },
+        image: actualVariant.images?.[0] || '',
+      } : { size: actualSize?.size || 'Standard', price },
       qty: 1,
     };
     if (replacingIdx === 'new') {
@@ -396,15 +428,18 @@ function EditOrderModal({ order, onClose, onSaved }) {
                   </div>
                   {filteredProducts.length > 0 && (
                     <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
-                      {filteredProducts.map(p => {
-                        const img = (parseJ(p.images))[0] || p.image_url;
+                      {filteredProducts.map((itemData, idx) => {
+                        const { product, variant, size } = itemData;
+                        const p = product;
+                        const img = variant?.images?.[0] || (parseJ(p.images))[0] || p.image_url;
+                        const displayName = `${p.name}${variant?.color ? ` — ${variant.color}` : ''}${size?.size ? ` (${size.size})` : ''}`;
                         return (
-                          <button key={p.id} onClick={() => selectReplacement(p)}
+                          <button key={`${p.id}-${idx}`} onClick={() => selectReplacement(itemData)}
                             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 transition-colors text-left">
                             {img && <img src={img} alt="" className="w-8 h-8 object-contain rounded border border-gray-100 shrink-0" />}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-[#08183A] truncate">{p.name}</p>
-                              <p className="text-xs text-gray-500">${resolvePrice(p).toFixed(2)}</p>
+                              <p className="text-sm font-semibold text-[#08183A] truncate">{displayName}</p>
+                              <p className="text-xs text-gray-500">${resolvePrice(itemData).toFixed(2)}</p>
                             </div>
                           </button>
                         );
@@ -1323,47 +1358,13 @@ ${!isPickup ? `
 
               {expanded === order.id && (
                 <div className="border-t border-[#08183A]/5 p-3 sm:p-4 lg:p-5 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     <div>
                       <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Update Status</p>
                       <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-[#FDF8F0] border border-[#08183A]/10 text-[#08183A] font-sans text-sm focus:outline-none">
                         {(order.order_type === 'pickup' ? PICKUP_STATUSES : SHIPPING_STATUSES).map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Shipment</p>
-                      {order.tracking_id && order.tracking_id.trim() !== "" ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-                            <span className="text-green-700 font-bold font-sans text-xs truncate">AWB: {order.tracking_id}</span>
-                            {order.tracking_link && (
-                              <a href={order.tracking_link} target="_blank" rel="noopener noreferrer"
-                                className="ml-auto flex-shrink-0 text-[#08183A] hover:opacity-80 transition-colors">
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-                          </div>
-                          {order.shipping_label_url && (
-                             <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" className="mt-2 w-full flex items-center justify-center gap-2 bg-[#08183A] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90">
-                               📄 Download Label
-                             </a>
-                          )}
-                          <div className="flex justify-between mt-2">
-                            <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
-                              className="text-[10px] font-sans text-[#08183A]/50 hover:text-[#08183A] transition-colors underline w-full text-center disabled:opacity-50 disabled:cursor-not-allowed">
-                              {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "Re-create Label (Shippo)"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <button onClick={() => fetchShippoRates(order.id)} disabled={shipping[`shippo_${order.id}`] || order.status === 'cancelled'}
-                            className="w-full flex items-center justify-center gap-2 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#08183A] px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            {shipping[`shippo_${order.id}`] ? "Loading Rates..." : "📦 Select Shipping Rate (Shippo)"}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -1547,6 +1548,67 @@ ${!isPickup ? `
                                 </div>
                                 );
                               })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Price Summary */}
+                      {(() => {
+                        let activeItems = [];
+                        try { activeItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch(e) {}
+                        
+                        const subtotal = activeItems.reduce((sum, item) => sum + ((item.variant?.price || item.product?.price || item.price || 0) * item.qty), 0);
+                        const discount = parseFloat(order.discount_amount) || 0;
+                        const shipping = parseFloat(order.shipping_fee) || 0;
+                        const tax = parseFloat(order.tax_amount) || 0;
+                        const taxRate = subtotal > 0 && tax > 0 ? ((tax / (subtotal - discount)) * 100).toFixed(2) : null;
+                        
+                        let addr = {};
+                        try { addr = typeof order.address === 'string' ? JSON.parse(order.address) : (order.address || {}); } catch(e) {}
+                        
+                        return (
+                          <div className="mt-4 pt-4 border-t border-dashed border-[#08183A]/10">
+                            <p className="text-[10px] font-sans text-[#08183A]/40 uppercase tracking-wider mb-2">Price Summary</p>
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-xs text-[#08183A]/70">
+                                <span>Item Total</span>
+                                <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                              </div>
+                              {discount > 0 && (
+                                <div className="flex justify-between text-xs text-green-600">
+                                  <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                                  <span className="font-semibold">-${discount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {shipping > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Shipping Fee</span>
+                                  <span className="font-semibold">${shipping.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {addr.signature_fee > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Signature Confirmation</span>
+                                  <span className="font-semibold">${parseFloat(addr.signature_fee).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {addr.insurance_fee > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Shipping Insurance</span>
+                                  <span className="font-semibold">${parseFloat(addr.insurance_fee).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {tax > 0 && (
+                                <div className="flex justify-between text-xs text-[#08183A]/70">
+                                  <span>Tax{taxRate ? ` (${taxRate}%)` : ''}</span>
+                                  <span className="font-semibold">${tax.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm font-bold text-[#08183A] border-t border-[#08183A]/10 pt-2 mt-2">
+                                <span>Grand Total</span>
+                                <span className="text-[#D4AF37]">${Number(order.total).toFixed(2)}</span>
+                              </div>
                             </div>
                           </div>
                         );

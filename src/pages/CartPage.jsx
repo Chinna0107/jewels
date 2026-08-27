@@ -88,7 +88,7 @@ export function CartPage() {
         const stockData = await stockRes.json();
         if (!stockData.available && stockData.unavailable && stockData.unavailable.length > 0) {
           const names = stockData.unavailable.map(u => `"${u.name}" (${u.available ?? 0} available)`).join(', ');
-          showToast(`Stock unavailable: ${names}`, 'error');
+          showToast(`Stock unavailable: ${names} Product code: ${u.code}`, 'error');
           return;
         }
       }

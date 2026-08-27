@@ -339,17 +339,17 @@ export function ContactPage() {
               { 
                 category: 'Shipping & Delivery',
                 q: 'How long does shipping take?', 
-                a: 'We process and dispatch all orders within 1–2 business days. Delivery typically takes 1-3 business days depending on your location within the US. International shipping times may vary.' 
+                a: 'We process and dispatch all orders within 1–3 business days. Delivery typically takes 3-7 business days depending on your location within the US. International shipping times may vary.' 
               },
               { 
                 category: 'Product Quality',
                 q: 'Is your jewelry waterproof and tarnish-free?', 
-                a: 'Yes! Our 18K PVD gold plated stainless steel jewelry is 100% waterproof and tarnish-free. You can confidently wear it while swimming, showering, or working out without it ever turning your skin green.' 
+                a: 'Yes! Our 18K PVD gold plated stainless steel jewelry is 100% waterproof and tarnish-free. You can confidently wear it while  showering, or working out without it ever turning your skin green.' 
               },
               { 
                 category: 'Returns & Cancellations',
                 q: 'Do you accept returns or exchanges?', 
-                a: 'Yes, we accept returns within 7 days of delivery if the product is unused and in its original condition. Please contact us via WhatsApp, Instagram, or email to initiate a return.' 
+                a: 'All sales are final. However, we take full responsibility for shipping damage and missing items — with proper proof, we will make it right. Please contact us via WhatsApp, Instagram, or email to initiate a return.' 
               },
               { 
                 category: 'Returns & Cancellations',

@@ -16,6 +16,7 @@ export function CategoryListingPage() {
   const [layout, setLayout] = useState('grid');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [sortBy, setSortBy] = useState('featured'); // featured, price_asc, price_desc
+  const [showOnlyOffers, setShowOnlyOffers] = useState(false);
   const { products, categories, offers, loading } = useStoreData();
   
   const modelQuery = searchParams.get('model');
@@ -60,25 +61,53 @@ export function CategoryListingPage() {
                     (p.description && p.description.toLowerCase().includes(lowerSearch));
     }
 
-    return matchCat && matchModel && matchSearch;
+    let matchOffer = true;
+    if (showOnlyOffers) {
+      // Check if ANY variant/size has our_price < mrp (the true definition of reduced price)
+      const allVariants = p.variants && p.variants.length > 0 ? p.variants : [{ sizes: p.sizes || [] }];
+      const hasDiscount = allVariants.some(v =>
+        (v.sizes || []).some(s => {
+          const mrp = Number(s.mrp);
+          const ourPrice = Number(s.our_price);
+          return mrp > 0 && ourPrice > 0 && ourPrice < mrp;
+        })
+      );
+      matchOffer = hasDiscount;
+    }
+
+    return matchCat && matchModel && matchSearch && matchOffer;
   });
 
+  // Mirrors ProductCard's price calculation exactly so sort order matches displayed prices
   const getProductFinalPrice = (product) => {
-    const variants = product.variants || [];
+    let variants = product.variants;
+    // Fallback for old product structure (no variants array)
+    if (!variants || variants.length === 0) {
+      variants = [{
+        sizes: product.sizes
+          ? product.sizes.map(s => ({ size: s.size, mrp: s.price, our_price: s.price }))
+          : []
+      }];
+    }
     const firstVariant = variants[0] || {};
-    const defaultSize = product.sizes?.[0] || firstVariant?.sizes?.[0] || { price: product.price };
-    let originalPrice = Number(defaultSize.mrp) || Number(defaultSize.price) || 0;
+    const defaultSize = firstVariant.sizes && firstVariant.sizes.length > 0
+      ? firstVariant.sizes[0]
+      : { mrp: 0, our_price: 0 };
+
+    const originalPrice = Number(defaultSize.mrp) || Number(defaultSize.our_price) || 0;
     let displayPrice = Number(defaultSize.our_price) || originalPrice;
+
+    // Apply active offer discount if present
     let activeOffer = null;
     if (defaultSize.offer_id) {
       activeOffer = offers?.find(o => o.id == defaultSize.offer_id && o.is_active);
     } else if (product.offer_id) {
       activeOffer = offers?.find(o => o.id === product.offer_id && o.is_active);
     }
-    if (activeOffer) {
+    if (activeOffer && originalPrice > 0) {
       displayPrice = Math.round(originalPrice - (originalPrice * (activeOffer.discount_percentage / 100)));
     }
-    console.log("PRICE for", product.name, product.id, "is", displayPrice); return displayPrice;
+    return displayPrice;
   };
 
   let flattenedProducts = filteredProducts.flatMap(product => {
@@ -104,6 +133,7 @@ export function CategoryListingPage() {
     setSearchParams({});
     navigate(`/category/${newCatId}`);
     setShowMobileFilters(false);
+    setShowOnlyOffers(false);
   };
 
   const handleModelChange = (model) => {
@@ -180,6 +210,29 @@ export function CategoryListingPage() {
         </div>
       )}
 
+      {/* Reduced Price Filter */}
+      <div className="border-t border-[#D4AF37]/20 pt-6">
+        <h3 className="text-sm font-bold text-[#08183A] mb-3 uppercase tracking-wider">Offers</h3>
+        <label className="flex items-center gap-3 cursor-pointer group select-none">
+          <div
+            onClick={() => setShowOnlyOffers(v => !v)}
+            className={`w-10 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0 ${
+              showOnlyOffers ? 'bg-[#08183A]' : 'bg-gray-200'
+            }`}
+          >
+            <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+              showOnlyOffers ? 'translate-x-5' : 'translate-x-0'
+            }`} />
+          </div>
+          <div className="flex flex-col">
+            <span className={`text-sm font-semibold ${
+              showOnlyOffers ? 'text-[#D4AF37]' : 'text-[#08183A]/70'
+            }`}>Reduced Price</span>
+            <span className="text-[10px] text-[#08183A]/40">Show only discounted items</span>
+          </div>
+        </label>
+      </div>
+
       {/* Sort By */}
       <div className="border-t border-[#D4AF37]/20 pt-6">
         <h3 className="text-sm font-bold text-[#08183A] mb-3 uppercase tracking-wider">Sort By</h3>
@@ -226,7 +279,13 @@ export function CategoryListingPage() {
         {/* Filter and Sort Bar for Mobile / Top Bar for Desktop */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 bg-white p-3 md:p-4 rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-[#D4AF37]/20 gap-3">
           <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-            <span className="text-sm font-bold text-[#08183A] bg-[#D4AF37]/10 px-3 py-1.5 rounded-lg">{filteredProducts.length} Items</span>
+            <span className="text-sm font-bold text-[#08183A] bg-[#D4AF37]/10 px-3 py-1.5 rounded-lg">{flattenedProducts.length} Items</span>
+            {showOnlyOffers && (
+              <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+                Reduced Price Active
+              </span>
+            )}
             
             {/* Mobile Filter Trigger */}
             <button 
@@ -297,7 +356,7 @@ export function CategoryListingPage() {
             
             <div className="p-5 border-t border-[#D4AF37]/20 bg-gray-50 flex gap-3">
               <button 
-                onClick={() => { handleCategoryChange('all'); setSortBy('featured'); setShowMobileFilters(false); }}
+                onClick={() => { handleCategoryChange('all'); setSortBy('featured'); setShowOnlyOffers(false); setShowMobileFilters(false); }}
                 className="flex-1 px-4 py-3 border border-[#D4AF37]/20 text-[#08183A] font-bold rounded-xl bg-white shadow-sm"
               >
                 Reset

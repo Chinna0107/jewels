@@ -48,6 +48,8 @@ export function MyOrdersPage() {
     const discountAmt = parseFloat(order.discount_amount) || 0;
     const shippingCost = parseFloat(order.shipping_fee) ?? (!isPickup && Number(order.total) - subtotal > 0 ? Number(order.total) - subtotal : 0);
     const taxAmt = parseFloat(order.tax_amount) || 0;
+    const signatureFee = parseFloat(address.signature_fee) || 0;
+    const insuranceFee = parseFloat(address.insurance_fee) || 0;
     const orderDate = order.created_at
       ? new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' })
       : '—';
@@ -195,6 +197,8 @@ ${!isPickup ? `
         <tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Subtotal</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;width:110px;">$${subtotal.toFixed(2)}</td></tr>
         ${discountAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#059669;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Discount${order.coupon_code ? ' (' + order.coupon_code + ')' : ''}</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;color:#059669;">-$${discountAmt.toFixed(2)}</td></tr>` : ''}
         ${shippingCost > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${shippingCost.toFixed(2)}</td></tr>` : ''}
+        ${signatureFee > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Signature Confirmation</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${signatureFee.toFixed(2)}</td></tr>` : ''}
+        ${insuranceFee > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Shipping Insurance</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${insuranceFee.toFixed(2)}</td></tr>` : ''}
         ${taxAmt > 0 ? `<tr><td style="padding:7px 12px;text-align:right;color:#555;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">Tax</td><td style="padding:7px 12px;text-align:right;font-weight:600;font-size:9.5pt;border-bottom:1px solid #F6EFEF;">$${taxAmt.toFixed(2)}</td></tr>` : ''}
         <tr style="background:#FDF8F0;"><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#08183A;border-top:2px solid #08183A;">TOTAL</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:11pt;color:#D4AF37;border-top:2px solid #08183A;">$${Number(order.total).toFixed(2)}</td></tr>
         ${parseFloat(order.refund_amount) > 0 ? `
@@ -492,7 +496,7 @@ ${!isPickup ? `
                   const discount = parseFloat(order.discount_amount) || 0;
                   const shipping = parseFloat(order.shipping_fee) || 0;
                   const tax = parseFloat(order.tax_amount) || 0;
-                  const taxRate = subtotal > 0 && tax > 0 ? ((tax / (subtotal - discount + shipping)) * 100).toFixed(2) : null;
+                  const taxRate = subtotal > 0 && tax > 0 ? ((tax / (subtotal - discount)) * 100).toFixed(2) : null;
                   return (
                     <div className="mx-6 mb-4 rounded-xl border border-gray-100 overflow-hidden">
                       <div className="px-4 py-2 bg-[#08183A]/5 border-b border-gray-100">
