@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw, Pencil, Plus, Trash2, Search, Link2, History } from "lucide-react";
+import { MessageCircle, ChevronDown, Printer, FileText, ExternalLink, X, AlertTriangle, RefreshCcw, Pencil, Plus, Trash2, Search, Link2, History, XCircle, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoUrl from '../../assets/logo.png';
 import { ShippoConfigModal } from '../../components/admin/ShippoConfigModal';
@@ -153,11 +153,24 @@ function EditOrderModal({ order, onClose, onSaved }) {
 
   const [items, setItems] = useState(() => parseJ(order.items));
   const [address, setAddress] = useState(() => parseO(order.address));
+  const addr = parseO(order.address);
 
   // Extract country code and phone number
-  const initialMobile = parseO(order.address).mobile || order.user_phone || '';
-  const initialCountryCode = initialMobile.startsWith('+') ? (initialMobile.match(/^\+\d{1,3}/) || ['+1'])[0] : '+1';
-  const initialPhone = initialMobile.startsWith('+') ? initialMobile.replace(/^\+\d{1,3}\s*/, '') : initialMobile;
+  const cleanMobile = (addr.mobile || order.user_phone || '').replace(/^[A-Z]{2,3}:/, '').trim();
+  
+  const knownCountryCodes = ['+971', '+966', '+44', '+61', '+91', '+65', '+1'];
+  let initialCountryCode = '+1';
+  let initialPhone = cleanMobile;
+  
+  if (cleanMobile.startsWith('+')) {
+    for (const cc of knownCountryCodes) {
+      if (cleanMobile.startsWith(cc)) {
+        initialCountryCode = cc;
+        initialPhone = cleanMobile.substring(cc.length).trim();
+        break;
+      }
+    }
+  }
 
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [customerPhone, setCustomerPhone] = useState(initialPhone);
@@ -169,9 +182,23 @@ function EditOrderModal({ order, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null);
 
+  // Manual Adjustments State
+  const [manualTax, setManualTax] = useState(false);
+  const [taxAmount, setTaxAmount] = useState(parseFloat(order.tax_amount) || 0);
+  
+  const [manualDiscount, setManualDiscount] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(parseFloat(order.discount_amount) || 0);
+
   const [applyProratedTax, setApplyProratedTax] = useState(true);
   const [applyProratedDiscount, setApplyProratedDiscount] = useState(true);
   const [emailingLink, setEmailingLink] = useState(false);
+
+  // Shipping Add-ons
+  const [signatureRequired, setSignatureRequired] = useState(!!parseFloat(addr.signature_fee));
+  const [manualSignatureFee, setManualSignatureFee] = useState(parseFloat(addr.signature_fee) || 6);
+
+  const [shippingInsurance, setShippingInsurance] = useState(!!parseFloat(addr.insurance_fee));
+  const [manualInsuranceFee, setManualInsuranceFee] = useState(parseFloat(addr.insurance_fee) || 0);
 
   // Product search for replacement
   const [allProducts, setAllProducts] = useState([]);
@@ -190,14 +217,17 @@ function EditOrderModal({ order, onClose, onSaved }) {
   const itemsTotal = items.reduce((s, i) => s + (i.variant?.price || i.product?.price || 0) * (i.qty || 1), 0);
 
   const ratio = originalItemsTotal > 0 ? (itemsTotal / originalItemsTotal) : 1;
-  const currentTax = applyProratedTax ? (originalTax * ratio) : originalTax;
-  const currentDiscount = applyProratedDiscount ? (originalDiscount * ratio) : originalDiscount;
+  const currentTax = manualTax ? Number(taxAmount) : (applyProratedTax ? (originalTax * ratio) : originalTax);
+  const currentDiscount = manualDiscount ? Number(discountAmount) : (applyProratedDiscount ? (originalDiscount * ratio) : originalDiscount);
 
   const shipping = parseFloat(order.shipping_fee) || 0;
-  const addr = parseO(order.address);
-  const signatureFee = parseFloat(addr.signature_fee) || 0;
-  const insuranceFee = parseFloat(addr.insurance_fee) || 0;
-  const newTotal = Math.max(0, itemsTotal + shipping + signatureFee + insuranceFee + currentTax - currentDiscount);
+  
+  const isInternational = address.country && address.country !== 'United States';
+  const insuranceRate = isInternational ? 0.015 : 0.0125;
+  const calculatedSignatureFee = signatureRequired ? parseFloat(manualSignatureFee || 0) : 0;
+  const calculatedInsuranceFee = shippingInsurance ? (manualInsuranceFee ? parseFloat(manualInsuranceFee) : (itemsTotal - currentDiscount) * insuranceRate) : 0;
+
+  const newTotal = Math.max(0, itemsTotal + shipping + calculatedSignatureFee + calculatedInsuranceFee + currentTax - currentDiscount);
   const oldTotal = parseFloat(order.total) || 0;
   const diff = parseFloat((newTotal - oldTotal).toFixed(2));
 
@@ -240,22 +270,23 @@ function EditOrderModal({ order, onClose, onSaved }) {
     return size ? (Number(size.our_price) || Number(size.price) || 0) : 0;
   };
 
-  const selectReplacement = (product) => {
-    const variants = parseJ(product.variants);
-    const sizes = parseJ(product.sizes);
-    const firstVariant = variants[0];
-    const firstSize = firstVariant?.sizes?.[0];
-    const price = firstSize
-      ? (Number(firstSize.our_price) || Number(firstSize.price) || 0)
-      : (Number(sizes?.[0]?.our_price) || Number(sizes?.[0]?.price) || 0);
+  const selectReplacement = (itemData) => {
+    const p = itemData.product;
+    const v = itemData.variant;
+    const sizeObj = itemData.size;
+    
+    const variants = parseJ(p.variants);
+    const sizes = parseJ(p.sizes);
+    const price = resolvePrice(itemData);
+    
     const newItem = {
-      product: { id: product.id, name: product.name, images: parseJ(product.images), image_url: product.image_url, variants, sizes },
-      variant: firstVariant ? {
-        color: firstVariant.color,
-        size: firstSize?.size || '',
+      product: { id: p.id, name: p.name, images: parseJ(p.images), image_url: p.image_url, variants, sizes },
+      variant: v ? {
+        color: v.color,
+        size: sizeObj?.size || '',
         price,
-        image: firstVariant.images?.[0] || '',
-      } : { size: sizes?.[0]?.size || 'Standard', price },
+        image: v.images?.[0] || '',
+      } : { size: sizeObj?.size || 'Standard', price },
       qty: 1,
     };
     if (replacingIdx === 'new') {
@@ -299,12 +330,21 @@ function EditOrderModal({ order, onClose, onSaved }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           items,
-          address: { ...address, mobile: fullPhone },
+          address: { 
+            ...address, 
+            mobile: fullPhone,
+            signature_fee: calculatedSignatureFee,
+            insurance_fee: calculatedInsuranceFee,
+            insurance_requested: shippingInsurance,
+            signature_required: signatureRequired
+          },
           customer_phone: fullPhone,
           tracking_id: trackingId,
           tracking_link: trackingLink,
           tax_amount: currentTax,
           discount_amount: currentDiscount,
+          signature_fee: calculatedSignatureFee,
+          insurance_fee: calculatedInsuranceFee,
           note
         }),
       });
@@ -571,24 +611,129 @@ function EditOrderModal({ order, onClose, onSaved }) {
                 className="w-full text-sm border border-[#08183A]/15 rounded-xl px-3 py-2 bg-[#FDF8F0] text-[#08183A] focus:outline-none focus:border-[#08183A]/30" />
             </div>
 
-            {/* Prorating Options */}
-            {(originalTax > 0 || originalDiscount > 0) && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
-                <p className="text-[10px] font-bold text-[#08183A]/60 uppercase tracking-wider mb-1">Price Adjustments</p>
-                {originalTax > 0 && (
+            {/* Shipping Add-ons */}
+            {order.order_type !== 'pickup' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                <p className="text-[10px] font-bold text-[#08183A]/60 uppercase tracking-wider mb-2">Shipping Extras</p>
+                
+                <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
-                    <input type="checkbox" checked={applyProratedTax} onChange={e => setApplyProratedTax(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
-                    Prorate Tax calculation based on new item total
+                    <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Signature Confirmation
                   </label>
-                )}
-                {originalDiscount > 0 && (
+                  {signatureRequired && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500">$</span>
+                      <input type="number" min="0" step="0.01" value={manualSignatureFee} onChange={e => setManualSignatureFee(e.target.value)} className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#08183A]/30 text-right" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
-                    <input type="checkbox" checked={applyProratedDiscount} onChange={e => setApplyProratedDiscount(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
-                    Prorate Discount based on new item total
+                    <input type="checkbox" checked={shippingInsurance} onChange={e => setShippingInsurance(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Shipping Insurance
                   </label>
-                )}
+                  {shippingInsurance && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500">$</span>
+                      <input type="number" min="0" step="0.01" value={manualInsuranceFee} onChange={e => setManualInsuranceFee(e.target.value)} placeholder={((itemsTotal - currentDiscount) * insuranceRate).toFixed(2)} className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#08183A]/30 text-right" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+
+            {/* Price Adjustments */}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
+              <p className="text-[10px] font-bold text-[#08183A]/60 uppercase tracking-wider mb-1">Price Adjustments</p>
+              
+              {/* Tax Adjustment */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
+                    <input type="checkbox" checked={manualTax} onChange={e => setManualTax(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Override Tax Amount (Flat $)
+                  </label>
+                  {!manualTax && originalTax > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-[#08183A] cursor-pointer">
+                      <input type="checkbox" checked={applyProratedTax} onChange={e => setApplyProratedTax(e.target.checked)} className="accent-[#08183A]" />
+                      Prorate Auto
+                    </label>
+                  )}
+                </div>
+                {manualTax && (
+                  <div className="flex items-center gap-2 bg-white rounded-lg border border-blue-200 px-3 py-2">
+                    <span className="text-gray-500 font-bold">$</span>
+                    <input type="number" min="0" value={taxAmount} onChange={e => setTaxAmount(e.target.value)} className="w-full bg-transparent focus:outline-none text-[#08183A]" />
+                  </div>
+                )}
+              </div>
+
+              {/* Discount Adjustment */}
+              <div className="space-y-2 border-t border-blue-100 pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-[#08183A] cursor-pointer font-medium">
+                    <input type="checkbox" checked={manualDiscount} onChange={e => setManualDiscount(e.target.checked)} className="w-4 h-4 rounded text-[#08183A] focus:ring-[#08183A]" />
+                    Override Discount Amount (Flat $)
+                  </label>
+                  {!manualDiscount && originalDiscount > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-[#08183A] cursor-pointer">
+                      <input type="checkbox" checked={applyProratedDiscount} onChange={e => setApplyProratedDiscount(e.target.checked)} className="accent-[#08183A]" />
+                      Prorate Auto
+                    </label>
+                  )}
+                </div>
+                {manualDiscount && (
+                  <div className="flex items-center gap-2 bg-white rounded-lg border border-blue-200 px-3 py-2">
+                    <span className="text-gray-500 font-bold">$</span>
+                    <input type="number" min="0" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} className="w-full bg-transparent focus:outline-none text-[#08183A]" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-2 mb-2">
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-semibold">${itemsTotal.toFixed(2)}</span>
+              </div>
+              {currentDiscount > 0 && (
+                <div className="flex justify-between text-xs text-green-600">
+                  <span>Discount</span>
+                  <span className="font-semibold">-${currentDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {currentTax > 0 && (
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Tax {manualTax ? '(Manual)' : (applyProratedTax ? '(Prorated)' : '')}</span>
+                  <span className="font-semibold">${currentTax.toFixed(2)}</span>
+                </div>
+              )}
+              {shipping > 0 && (
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Base Shipping Fee</span>
+                  <span className="font-semibold">${shipping.toFixed(2)}</span>
+                </div>
+              )}
+              {signatureRequired && calculatedSignatureFee > 0 && (
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Signature Confirmation</span>
+                  <span className="font-semibold">${calculatedSignatureFee.toFixed(2)}</span>
+                </div>
+              )}
+              {shippingInsurance && calculatedInsuranceFee > 0 && (
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Shipping Insurance</span>
+                  <span className="font-semibold">${calculatedInsuranceFee.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
+                <span className="font-bold text-[#08183A] text-sm">Calculated New Total</span>
+                <span className="font-bold text-[#08183A] text-sm">${newTotal.toFixed(2)}</span>
+              </div>
+            </div>
 
             {/* Price diff summary */}
             <div className={`rounded-xl px-4 py-3 border flex items-center justify-between ${diff > 0 ? 'bg-amber-50 border-amber-200' : diff < 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
@@ -666,7 +811,15 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   
   const originalItemsTotal = currentItemsTotal + alreadyCancelledTotal;
 
-  const [cancelType, setCancelType] = useState('refund');
+  let amountPaid = parseFloat(order.total);
+  if (order.balance_due !== undefined && order.balance_due !== null) {
+    amountPaid = parseFloat(order.total) - parseFloat(order.balance_due);
+  } else if (order.payment_method === 'cod' && !order.stripe_payment_intent_id) {
+    amountPaid = parseFloat(order.advance_paid) || 0;
+  }
+  const isUnpaid = amountPaid <= 0.01;
+
+  const [cancelType, setCancelType] = useState(isUnpaid ? 'no_refund' : 'refund');
   const [selectedQty, setSelectedQty] = useState(() => Object.fromEntries(items.map((it, i) => [i, it.qty])));
 
   const [refundShipping, setRefundShipping] = useState(true);
@@ -703,8 +856,8 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
     ? parseFloat(chargeValue || 0)
     : Math.max(0, subtotalRefund) * (parseFloat(chargeValue || 0) / 100);
 
-  // Hard cap on refund to prevent refunding more than the total order amount
-  const maxRefundable = Math.max(0, (parseFloat(order.total) || 0) - (parseFloat(order.refund_amount) || 0));
+  // Hard cap on refund to prevent refunding more than the total amount PAID
+  const maxRefundable = Math.max(0, amountPaid - (parseFloat(order.refund_amount) || 0));
   const calcRefundTotal = cancelType === 'refund' ? Math.max(0, subtotalRefund - transactionCharge) : 0;
   const refundTotal = Math.min(calcRefundTotal, maxRefundable);
 
@@ -795,8 +948,8 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
               <p className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider mb-2">Cancellation Type</p>
               <select value={cancelType} onChange={e => setCancelType(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-[#08183A] bg-gray-50 focus:outline-none">
-                <option value="refund">Cancel & Refund Payment</option>
-                <option value="no_refund">Cancel Without Refund</option>
+                <option value="refund" disabled={isUnpaid}>Cancel & Refund Payment</option>
+                <option value="no_refund">{isUnpaid ? 'Cancel Unpaid Order (No Refund Needed)' : 'Cancel Without Refund'}</option>
                 <option value="coupon_cancel">Cancel Without Refund (Discount Coupon)</option>
               </select>
             </div>
@@ -904,14 +1057,14 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
             <div className={`flex justify-between items-center border rounded-xl px-4 py-3 ${cancelType === 'refund' ? 'bg-red-50 border-red-100' : 'bg-gray-100 border-gray-200'}`}>
               <div>
                 <span className={`font-bold ${cancelType === 'refund' ? 'text-red-700' : 'text-gray-700'}`}>
-                  {cancelType === 'refund' ? 'Total Refund' : 'Amount to Cancel'}
+                  {cancelType === 'refund' ? 'Total Refund' : (isUnpaid ? 'Total Refund' : 'Amount to Cancel')}
                 </span>
                 {!isFullCancel && anySelected && (
                   <p className={`text-[10px] mt-0.5 ${cancelType === 'refund' ? 'text-red-500' : 'text-gray-500'}`}>Remaining items stay active</p>
                 )}
               </div>
               <span className={`font-bold text-lg ${cancelType === 'refund' ? 'text-red-700' : 'text-gray-700'}`}>
-                ${(cancelType === 'refund' ? refundTotal : selectedItemsTotal).toFixed(2)}
+                ${(cancelType === 'refund' ? refundTotal : (isUnpaid ? 0 : (isFullCancel ? parseFloat(order.total) : selectedItemsTotal))).toFixed(2)}
               </span>
             </div>
 
@@ -1022,6 +1175,10 @@ export function AdminOrdersPage() {
     } finally {
       setRefunding(false);
     }
+  };
+
+  const handleQuickCancel = (order) => {
+    setRefundModal(order);
   };
 
 
@@ -1514,6 +1671,11 @@ ${!isPickup ? `
                         Balance (${order.total - (order.advance_paid || 0)} Pending)
                       </span>
                     )}
+                    {Number(order.balance_due) > 0 && order.status !== 'cancelled' && (
+                      <span className="text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1">
+                        Payment Pending (${Number(order.balance_due).toFixed(2)})
+                      </span>
+                    )}
                     {Number(order.refund_amount) > 0 && (
                       <span className="text-[9px] sm:text-[10px] font-bold font-sans px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
                         Refunded ${Number(order.refund_amount).toFixed(2)}
@@ -1864,7 +2026,7 @@ ${!isPickup ? `
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-4 border-t border-[#08183A]/5">
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-4 border-t border-[#08183A]/5">
                     <button onClick={() => setEditModal(order)}
                       className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans transition-colors">
                       <Pencil className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1890,6 +2052,13 @@ ${!isPickup ? `
                       <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="truncate">WA Invoice</span>
                     </button>
+                    {order.status !== 'cancelled' && (
+                      <button onClick={() => handleQuickCancel(order)}
+                        className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-2.5 rounded-xl text-xs font-semibold font-sans transition-colors">
+                        <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">Cancel Order</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

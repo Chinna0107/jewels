@@ -26,6 +26,7 @@ export function AdminCreateOrderPage() {
   // Shipping Options
   const [signatureRequired, setSignatureRequired] = useState(false);
   const [shippingInsurance, setShippingInsurance] = useState(false);
+  const [manualShipping, setManualShipping] = useState(false);
 
   // Customer State
   const [customerMode, setCustomerMode] = useState("search"); // 'search' | 'manual'
@@ -33,10 +34,27 @@ export function AdminCreateOrderPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   
   // Address State
-  const [useDefaultAddress, setUseDefaultAddress] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState("new");
   const [manualCustomer, setManualCustomer] = useState({
     name: "", email: "", mobile: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "United States"
   });
+  const [manualSignatureFee, setManualSignatureFee] = useState("4.00");
+  const [manualInsuranceFee, setManualInsuranceFee] = useState("");
+
+  // Derive country for insurance calculation
+  const getSelectedCountry = () => {
+    if (customerMode === 'manual') return manualCustomer.country || 'United States';
+    if (orderType === 'shipping' && selectedAddressId === 'new') return manualCustomer.country || 'United States';
+    if (orderType === 'shipping' && selectedAddressId !== 'new') {
+      const addr = selectedCustomer?.addresses?.find(a => a.id === selectedAddressId) || selectedCustomer?.default_address;
+      return addr?.country || 'United States';
+    }
+    return 'United States';
+  };
+
+  const c = getSelectedCountry();
+  const isInternational = c && c.toLowerCase() !== 'united states' && c.toLowerCase() !== 'us';
+  const insuranceRate = isInternational ? 0.015 : 0.0125;
 
   // Product Search State
   const [searchProductQuery, setSearchProductQuery] = useState("");
@@ -48,7 +66,6 @@ export function AdminCreateOrderPage() {
   // Pricing State
   const [manualTax, setManualTax] = useState(false);
   const [taxAmount, setTaxAmount] = useState(8.25); // Default tax 8.25% or amount depending on logic
-  const [manualShipping, setManualShipping] = useState(false);
   const [shippingFee, setShippingFee] = useState(6.00); // Default shipping $6
   const [discountType, setDiscountType] = useState('amount'); // 'amount' | 'percentage'
   const [discountValue, setDiscountValue] = useState(0);
@@ -131,11 +148,13 @@ export function AdminCreateOrderPage() {
   // Auto tax uses taxAmount state as percentage if not manual
   const calculatedTax = manualTax ? Number(taxAmount) : (subtotal - discountAmt) * (Number(taxAmount) / 100);
   
-  // Auto shipping incorporates signature and insurance
-  const signatureFee = signatureRequired ? 6 : 0;
-  const insuranceFee = shippingInsurance ? (subtotal * 0.015) : 0;
-  const baseShipping = manualShipping ? Number(shippingFee) : (subtotal > 200 ? 0 : 6);
-  const calculatedShipping = orderType === 'pickup' ? 0 : (baseShipping + signatureFee + insuranceFee);
+  const calculatedSignatureFee = signatureRequired ? parseFloat(manualSignatureFee || 0) : 0;
+  const calculatedInsuranceFee = shippingInsurance ? (manualInsuranceFee !== "" ? parseFloat(manualInsuranceFee) : ((subtotal - discountAmt) * insuranceRate)) : 0;
+  
+  // Base shipping fee before extras
+  const baseShipping = manualShipping ? Number(shippingFee || 0) : (subtotal > 200 ? 0 : 6);
+  
+  const calculatedShipping = orderType === 'pickup' ? 0 : (baseShipping + calculatedSignatureFee + calculatedInsuranceFee);
 
   const total = Math.max(0, subtotal + calculatedTax + calculatedShipping - discountAmt);
 
@@ -152,33 +171,44 @@ export function AdminCreateOrderPage() {
       addressPayload = { 
         ...manualCustomer,
         signature_required: signatureRequired,
-        signature_fee: signatureRequired ? 6.00 : 0,
+        signature_fee: calculatedSignatureFee,
         insurance_requested: shippingInsurance,
-        insurance_amount: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0,
-        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
+        insurance_amount: calculatedInsuranceFee,
+        insurance_fee: calculatedInsuranceFee
       };
     } else {
-      if (orderType === 'shipping' && !useDefaultAddress && !manualCustomer.line1) {
+      if (orderType === 'shipping' && selectedAddressId === 'new' && !manualCustomer.line1) {
         return setError("Please provide a shipping address for the existing customer");
       }
+      if (orderType === 'shipping' && selectedAddressId !== 'new' && (!selectedCustomer.addresses || selectedCustomer.addresses.length === 0) && !selectedCustomer.default_address) {
+        return setError("Please provide a shipping address.");
+      }
+      const defAddr = (selectedAddressId !== 'new' && selectedCustomer?.addresses) ? (selectedCustomer.addresses.find(a => a.id === selectedAddressId) || selectedCustomer.default_address || {}) : (selectedCustomer?.default_address || {});
       addressPayload = {
         name: selectedCustomer.name,
         email: selectedCustomer.email,
         mobile: selectedCustomer.phone || '',
         user_id: selectedCustomer.id,
-        ...(orderType === 'shipping' && !useDefaultAddress ? {
+        ...(orderType === 'shipping' && selectedAddressId === 'new' ? {
           line1: manualCustomer.line1,
           line2: manualCustomer.line2,
           city: manualCustomer.city,
           state: manualCustomer.state,
           pincode: manualCustomer.pincode,
           country: manualCustomer.country
-        } : {}),
+        } : (orderType === 'shipping' && selectedAddressId !== 'new' ? {
+          line1: defAddr.line1,
+          line2: defAddr.line2,
+          city: defAddr.city,
+          state: defAddr.state,
+          pincode: defAddr.pincode,
+          country: defAddr.country
+        } : {})),
         signature_required: signatureRequired,
-        signature_fee: signatureRequired ? 6.00 : 0,
+        signature_fee: calculatedSignatureFee,
         insurance_requested: shippingInsurance,
-        insurance_amount: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0,
-        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
+        insurance_amount: calculatedInsuranceFee,
+        insurance_fee: calculatedInsuranceFee
       };
     }
 
@@ -401,18 +431,33 @@ export function AdminCreateOrderPage() {
                     {orderType === 'shipping' && (
                       <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-4 mt-4">
                         <p className="text-sm font-bold text-[#08183A]">Shipping Address</p>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input type="radio" checked={useDefaultAddress} onChange={() => setUseDefaultAddress(true)} className="accent-[#08183A]" />
-                            Use Customer's Default Address
-                          </label>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input type="radio" checked={!useDefaultAddress} onChange={() => setUseDefaultAddress(false)} className="accent-[#08183A]" />
+                        
+                        <div className="flex flex-col gap-3">
+                          {selectedCustomer.addresses && selectedCustomer.addresses.map((addr, idx) => (
+                            <label key={addr.id} className="flex items-start gap-3 text-sm cursor-pointer p-3 bg-white border border-gray-200 rounded-lg">
+                              <input type="radio" name="customerAddress" checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} className="accent-[#08183A] mt-1" />
+                              <div>
+                                <span className="font-bold block mb-1">{addr.is_default ? 'Default Address' : `Saved Address ${idx + 1}`}</span>
+                                {addr.line1}, {addr.city}, {addr.state} {addr.pincode}, {addr.country}
+                              </div>
+                            </label>
+                          ))}
+                          {(!selectedCustomer.addresses || selectedCustomer.addresses.length === 0) && selectedCustomer.default_address && (
+                            <label className="flex items-start gap-3 text-sm cursor-pointer p-3 bg-white border border-gray-200 rounded-lg">
+                              <input type="radio" name="customerAddress" checked={selectedAddressId === 'default'} onChange={() => setSelectedAddressId('default')} className="accent-[#08183A] mt-1" />
+                              <div>
+                                <span className="font-bold block mb-1">Default Address</span>
+                                {selectedCustomer.default_address.line1}, {selectedCustomer.default_address.city}, {selectedCustomer.default_address.state} {selectedCustomer.default_address.pincode}, {selectedCustomer.default_address.country}
+                              </div>
+                            </label>
+                          )}
+                          <label className="flex items-center gap-2 text-sm cursor-pointer mt-2">
+                            <input type="radio" name="customerAddress" checked={selectedAddressId === 'new'} onChange={() => setSelectedAddressId('new')} className="accent-[#08183A]" />
                             Provide New Address
                           </label>
                         </div>
                         
-                        {!useDefaultAddress && (
+                        {selectedAddressId === 'new' && (
                           <div className="mt-4 border-t border-gray-200 pt-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                               <div className="sm:col-span-2">
@@ -448,7 +493,17 @@ export function AdminCreateOrderPage() {
                       <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                         {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
                           <li key={c.id}>
-                            <button onClick={() => { setSelectedCustomer(c); setSearchCustomerQuery(""); }} className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                            <button onClick={() => { 
+                              setSelectedCustomer(c); 
+                              setSearchCustomerQuery(""); 
+                              if (c.addresses && c.addresses.length > 0) {
+                                setSelectedAddressId(c.addresses.find(a => a.is_default)?.id || c.addresses[0].id);
+                              } else if (c.default_address) {
+                                setSelectedAddressId('default');
+                              } else {
+                                setSelectedAddressId('new');
+                              }
+                            }} className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0">
                               <p className="font-bold text-sm text-[#08183A]">{c.name}</p>
                               <p className="text-xs text-gray-500">{c.email} {c.phone ? `• ${c.phone}` : ''}</p>
                             </button>
@@ -668,15 +723,31 @@ export function AdminCreateOrderPage() {
               {/* Shipping Options & Override */}
               {orderType === 'shipping' && (
                 <div className="border-t border-gray-200/50 pt-4 space-y-3">
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
-                      <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="accent-[#08183A]" />
-                      Signature Confirmation (+$6.00)
-                    </label>
-                    <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
-                      <input type="checkbox" checked={shippingInsurance} onChange={e => setShippingInsurance(e.target.checked)} className="accent-[#08183A]" />
-                      Shipping Insurance (+1.5%)
-                    </label>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer w-48">
+                        <input type="checkbox" checked={signatureRequired} onChange={e => setSignatureRequired(e.target.checked)} className="accent-[#08183A]" />
+                        Signature Confirmation
+                      </label>
+                      {signatureRequired && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500">$</span>
+                          <input type="number" min="0" step="0.01" value={manualSignatureFee} onChange={e => setManualSignatureFee(e.target.value)} className="w-16 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer w-48">
+                        <input type="checkbox" checked={shippingInsurance} onChange={e => setShippingInsurance(e.target.checked)} className="accent-[#08183A]" />
+                        Shipping Insurance ({isInternational ? '1.5%' : '1.25%'})
+                      </label>
+                      {shippingInsurance && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500">$</span>
+                          <input type="number" min="0" step="0.01" value={manualInsuranceFee} onChange={e => setManualInsuranceFee(e.target.value)} placeholder={((subtotal - discountAmt) * insuranceRate).toFixed(2)} className="w-20 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="border-t border-gray-100 pt-2 flex items-center justify-between mb-2">
@@ -684,7 +755,7 @@ export function AdminCreateOrderPage() {
                       <input type="checkbox" checked={manualShipping} onChange={e => setManualShipping(e.target.checked)} className="accent-[#08183A]" />
                       Override Shipping Fee
                     </label>
-                    {!manualShipping && <span className="text-xs font-bold text-gray-500">${calculatedShipping.toFixed(2)} (Auto)</span>}
+                    {!manualShipping && <span className="text-xs font-bold text-gray-500">${baseShipping.toFixed(2)} (Auto)</span>}
                   </div>
                   {manualShipping && (
                     <input type="number" min="0" value={shippingFee} onChange={e => setShippingFee(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#08183A]" placeholder="0.00" />
@@ -711,6 +782,45 @@ export function AdminCreateOrderPage() {
                       <span className="text-gray-500 ml-1">%</span>
                     </div>
                   </div>
+                )}
+              </div>
+
+              <div className="border-t border-[#08183A]/20 pt-4 flex flex-col gap-2 mb-4">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                </div>
+                {discountAmt > 0 && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>Discount</span>
+                    <span className="font-semibold">-${discountAmt.toFixed(2)}</span>
+                  </div>
+                )}
+                {calculatedTax > 0 && (
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>Tax {manualTax ? '(Manual)' : `(${taxAmount}%)`}</span>
+                    <span className="font-semibold">${calculatedTax.toFixed(2)}</span>
+                  </div>
+                )}
+                {orderType === 'shipping' && (
+                  <>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Shipping Fee {manualShipping ? '(Manual)' : '(Auto)'}</span>
+                      <span className="font-semibold">${baseShipping.toFixed(2)}</span>
+                    </div>
+                    {signatureRequired && calculatedSignatureFee > 0 && (
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Signature Confirmation</span>
+                        <span className="font-semibold">${calculatedSignatureFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {shippingInsurance && calculatedInsuranceFee > 0 && (
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Shipping Insurance</span>
+                        <span className="font-semibold">${calculatedInsuranceFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

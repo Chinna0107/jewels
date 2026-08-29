@@ -17,17 +17,26 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/a
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 import { COUNTRIES } from '../data/countries';
-import { getStatesForCountry } from '../data/states';
+import { getStatesForCountry, US_STATES, CA_PROVINCES } from '../data/states';
 
 function getLocalPhone(phoneStr) {
   if (!phoneStr) return '';
   const clean = phoneStr.startsWith('+') ? phoneStr : '+' + phoneStr;
   const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
   const country = sortedCountries.find(c => clean.startsWith(c.dial));
+  let local = '';
   if (country) {
-    return clean.slice(country.dial.length).replace(/\D/g, '');
+    local = clean.slice(country.dial.length).replace(/\D/g, '');
+  } else {
+    local = phoneStr.replace(/\D/g, '');
   }
-  return phoneStr.replace(/\D/g, '');
+  
+  // If the extracted local part is 11 digits and starts with 1 for a +1 dial code, it's a duplicated country code
+  if (country && country.dial === '+1' && local.length === 11 && local.startsWith('1')) {
+    local = local.slice(1);
+  }
+  
+  return local;
 }
 
 function getDialCountryCode(phoneStr) {
@@ -194,7 +203,7 @@ const CARD_ELEMENT_OPTIONS = {
   },
 };
 
-function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, setTermsAccepted, addressConfirmed, setAddressConfirmed, address, sessionSecondsLeft, onEditAddress, paymentError, onRetry, orderType, pickupContact }) {
+function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, setTermsAccepted, addressConfirmed, setAddressConfirmed, address, sessionSecondsLeft, onEditAddress, paymentError, onRetry, orderType, pickupContact, pickupDialCode }) {
   const stripe = useStripe();
   const elements = useElements();
   const isExpiringSoon = sessionSecondsLeft !== null && sessionSecondsLeft <= 60;
@@ -229,7 +238,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
           </div>
           <div className="text-xs text-blue-900 leading-relaxed">
             <p className="font-bold">{pickupContact?.name}</p>
-            {pickupContact?.phone && <p>📞 {pickupContact.phone}</p>}
+            {pickupContact?.phone && <p>📞 {COUNTRIES.find(c=>c.code===pickupDialCode)?.dial || '+1'} {pickupContact.phone}</p>}
             {pickupContact?.email && <p>✉️ {pickupContact.email}</p>}
           </div>
           <p className="text-[10px] text-blue-700">We'll notify you on WhatsApp/Text when your order is ready for pickup.</p>
@@ -246,7 +255,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
             <p>{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p>
             <p>{address.city}{address.state ? `, ${address.state}` : ''} {address.pincode}</p>
             <p>{address.country}</p>
-            <p className="text-green-700 mt-0.5">📞 {address.mobile}</p>
+            <p className="text-green-700 mt-0.5">📞 {address.country ? (COUNTRIES.find(c=>c.name===address.country)?.dial || '+1') : '+1'} {address.mobile}</p>
           </div>
           {address.line2 ? null : (
             <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -297,7 +306,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
           <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
             className="mt-0.5 w-4 h-4 accent-brand-dark-blue shrink-0" />
           <span className="text-[11px] text-gray-500 leading-relaxed">
-            I agree to the Houra Jewels <Link to="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</Link>, understand that all sales are final—no returns or exchanges—as stated in the <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Shipping Policy</Link> and <Link to="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Exchange & Return Policy</Link>, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
+            I agree to the Houra Jewels <Link to="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</Link>, understand that all sales are final—no returns or exchanges—as stated in the <Link to={isPickup ? "/pickup-policy" : "/shipping-policy"} target="_blank" className="text-brand-dark-blue font-bold underline">{isPickup ? 'Pickup Policy' : 'Shipping Policy'}</Link> and <Link to="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Exchange & Return Policy</Link>, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
           </span>
         </label>
         <button
@@ -425,7 +434,7 @@ export function CheckoutPage() {
 
   useEffect(() => {
     if (user) {
-      setPickupContact({ name: user.name || '', email: user.email || '', phone: getLocalPhone(user.phone) });
+      setPickupContact({ name: user.name || '', email: user.email || '', phone: '' });
       // Force US as default for pickup dial code (store is US-based; +1 matches both US and CA)
       setPickupDialCode('US');
       
@@ -1447,7 +1456,6 @@ export function CheckoutPage() {
                   <label className={`flex items-start gap-3 group ${isUS ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                     <input type="checkbox" checked={isUS && signatureRequired} onChange={e => {
                       setSignatureRequired(e.target.checked);
-                      if (!e.target.checked) setInsuranceRequested(false);
                     }} disabled={!isUS} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
                     <div>
                       <span className={`text-sm font-bold text-gray-800 ${isUS ? 'group-hover:text-brand-dark-blue transition-colors' : ''}`}>Signature Confirmation {isUS ? '(+$4.00)' : '(US Only)'}</span>
@@ -1458,15 +1466,15 @@ export function CheckoutPage() {
               })()}
 
               <div className="pt-3 border-t border-gray-100">
-                <label className={`flex items-start gap-3 group ${signatureRequired ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
-                  <input type="checkbox" checked={signatureRequired && insuranceRequested} onChange={e => {
+                <label className="flex items-start gap-3 group cursor-pointer">
+                  <input type="checkbox" checked={insuranceRequested} onChange={e => {
                     setInsuranceRequested(e.target.checked);
                     if (e.target.checked) {
                       setInsuranceDeclaredValue((subtotal - discount + taxAmount).toFixed(2));
                     }
-                  }} disabled={!signatureRequired} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
+                  }} className="mt-1 w-4 h-4 accent-brand-dark-blue rounded flex-shrink-0" />
                   <div>
-                    <span className={`text-sm font-bold text-gray-800 ${signatureRequired ? 'group-hover:text-brand-dark-blue transition-colors' : ''}`}>Additional Shipping Insurance {!signatureRequired && '(Requires Signature)'}</span>
+                    <span className="text-sm font-bold text-gray-800 group-hover:text-brand-dark-blue transition-colors">Additional Shipping Insurance</span>
                     <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">Check our <Link to="/shipping-policy" target="_blank" className="text-brand-dark-blue font-bold underline hover:text-brand-gold">Shipping Policy</Link> for more details about Shipping Insurance & Lost Package Claims.</p>
                   </div>
                 </label>
@@ -1606,7 +1614,7 @@ export function CheckoutPage() {
                     type="text"
                     inputMode="numeric"
                     value={pickupContact.phone}
-                    onChange={e => setPickupContact(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                    onChange={e => setPickupContact(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
                     placeholder="Phone number"
                     className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/30 transition-all"
                   />
@@ -1656,12 +1664,7 @@ export function CheckoutPage() {
         {step === 2.5 && orderType === 'pickup' && (
           <div className="max-w-3xl mx-auto mt-4">
             <button
-              onClick={() => {
-                if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
-                if (pickupContact.phone.replace(/\D/g, '').length < 7) { showToast('Please enter a valid phone number.', 'error'); return; }
-                if (!pickupTermsAccepted) { showToast('Please accept the Pickup Terms & Conditions to proceed.', 'error'); return; }
-                setStep(3);
-              }}
+              onClick={handleProceedToPayment}
               disabled={!pickupTermsAccepted}
               className={`w-full font-bold text-base rounded-xl py-4 flex items-center justify-center gap-2 transition-all ${
                 !pickupTermsAccepted
@@ -1689,6 +1692,7 @@ export function CheckoutPage() {
               onRetry={() => setPaymentError(null)}
               orderType={orderType}
               pickupContact={pickupContact}
+              pickupDialCode={pickupDialCode}
             />
           </Elements>
         )}
@@ -1841,7 +1845,20 @@ export function CheckoutPage() {
         validationResult={validationResult}
         onEdit={() => setValidationResult(null)}
         onProceedOriginal={() => finalizeProceedToPayment(address)}
-        onUseSuggested={(suggested) => finalizeProceedToPayment({ ...address, name: suggested.name || address.name, line1: suggested.street1, line2: suggested.street2 || '', city: suggested.city, state: suggested.state, pincode: suggested.zip, country: suggested.country }, true)}
+        onUseSuggested={(suggested) => {
+          let c = suggested.country;
+          if (c === 'US') c = 'United States';
+          else if (c === 'CA') c = 'Canada';
+          
+          let s = suggested.state;
+          const statesList = getStatesForCountry(c);
+          if (statesList) {
+             const found = statesList.find(st => st.code === s);
+             if (found) s = found.name;
+          }
+          
+          finalizeProceedToPayment({ ...address, name: suggested.name || address.name, line1: suggested.street1, line2: suggested.street2 || '', city: suggested.city, state: s, pincode: suggested.zip, country: c }, true);
+        }}
       />
     </div>
   );
