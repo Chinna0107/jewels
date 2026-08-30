@@ -16,10 +16,17 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   // Determine default box size and weight in grams based on total quantity
   const totalQty = items.reduce((sum, item) => sum + (item.qty || 1), 0);
   
+  // Calculate total items weight (default 0g if unspecified)
+  const itemsWeight = items.reduce((sum, item) => {
+    const pWeight = parseFloat(item.product?.weight || item.weight || 0);
+    return sum + (pWeight * (item.qty || 1));
+  }, 0);
+  
   const initialBoxPreset = totalQty > 4 ? "8x8x1" : "6x4x1";
   const initialLength = totalQty > 4 ? "8" : "6";
   const initialWidth = totalQty > 4 ? "8" : "4";
-  const initialWeight = totalQty > 4 ? "125" : "75";
+  const initialBoxWeight = totalQty > 4 ? 125 : 75;
+  const initialWeight = (initialBoxWeight + itemsWeight).toString();
   
   const [boxPreset, setBoxPreset] = useState(initialBoxPreset);
   const [length, setLength] = useState(initialLength);
@@ -44,8 +51,8 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   const handleBoxChange = (e) => {
     const val = e.target.value;
     setBoxPreset(val);
-    if (val === "6x4x1") { setLength("6"); setWidth("4"); setHeight("1"); setWeight("75"); }
-    else if (val === "8x8x1") { setLength("8"); setWidth("8"); setHeight("1"); setWeight("125"); }
+    if (val === "6x4x1") { setLength("6"); setWidth("4"); setHeight("1"); setWeight((75 + itemsWeight).toString()); }
+    else if (val === "8x8x1") { setLength("8"); setWidth("8"); setHeight("1"); setWeight((125 + itemsWeight).toString()); }
   };
 
   const handleSubmit = (e) => {
@@ -159,6 +166,7 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
                   <div className="mt-2 ml-7">
                     <label className="block text-xs font-bold text-gray-700 mb-1">Declared Value for Insurance (USD)</label>
                     <input type="number" min="0" step="0.01" value={insuranceAmount} onChange={e => setInsuranceAmount(e.target.value)} placeholder="0.00" className="w-full sm:w-1/2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D4AF37]" required />
+                    <p className="text-[10px] text-gray-500 mt-1">Note: Shippo bills insurance premiums separately (typically 1.25%). It will not reflect in the rate below.</p>
                   </div>
                 )}
               </div>

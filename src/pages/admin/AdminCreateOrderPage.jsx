@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
+import { COUNTRIES } from "../../data/countries";
+import { getStatesForCountry } from "../../data/states";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
@@ -39,7 +41,7 @@ export function AdminCreateOrderPage() {
     name: "", email: "", mobile: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "United States"
   });
   const [manualSignatureFee, setManualSignatureFee] = useState("4.00");
-  const [manualInsuranceFee, setManualInsuranceFee] = useState("");
+  const [insuranceDeclaredValue, setInsuranceDeclaredValue] = useState("");
 
   // Derive country for insurance calculation
   const getSelectedCountry = () => {
@@ -149,14 +151,14 @@ export function AdminCreateOrderPage() {
   const calculatedTax = manualTax ? Number(taxAmount) : (subtotal - discountAmt) * (Number(taxAmount) / 100);
   
   const calculatedSignatureFee = signatureRequired ? parseFloat(manualSignatureFee || 0) : 0;
-  const calculatedInsuranceFee = shippingInsurance ? (manualInsuranceFee !== "" ? parseFloat(manualInsuranceFee) : ((subtotal - discountAmt) * insuranceRate)) : 0;
+  const calculatedInsuranceFee = shippingInsurance ? ((insuranceDeclaredValue !== "" ? parseFloat(insuranceDeclaredValue) : (subtotal - discountAmt)) * insuranceRate) : 0;
   
   // Base shipping fee before extras
   const baseShipping = manualShipping ? Number(shippingFee || 0) : (subtotal > 200 ? 0 : 6);
   
-  const calculatedShipping = orderType === 'pickup' ? 0 : (baseShipping + calculatedSignatureFee + calculatedInsuranceFee);
+  const calculatedShipping = orderType === 'pickup' ? 0 : baseShipping;
 
-  const total = Math.max(0, subtotal + calculatedTax + calculatedShipping - discountAmt);
+  const total = Math.max(0, subtotal + calculatedTax + calculatedShipping + calculatedSignatureFee + calculatedInsuranceFee - discountAmt);
 
   const handleSubmit = async () => {
     setError("");
@@ -240,8 +242,8 @@ export function AdminCreateOrderPage() {
         payment_method: paymentMethod, // 'offline' or 'payment_link'
         is_admin_created: true,
         balance_due: paymentMethod === 'payment_link' ? total : 0,
-        signature_fee: signatureRequired ? 6.00 : 0,
-        insurance_fee: shippingInsurance ? (subtotal - discountAmt) * 0.015 : 0
+        signature_fee: calculatedSignatureFee,
+        insurance_fee: calculatedInsuranceFee
       };
 
       const endpoint = `${BACKEND_URL}/admin/orders`;
@@ -465,14 +467,27 @@ export function AdminCreateOrderPage() {
                                   value={manualCustomer.line1} 
                                   onChange={(val) => setManualCustomer({...manualCustomer, line1: val})}
                                   onSelect={(place) => {
-                                    setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country });
+                                    setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country || 'United States' });
                                   }}
                                 />
                               </div>
                               <input type="text" value={manualCustomer.city} onChange={e => setManualCustomer({...manualCustomer, city: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="City" />
-                              <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                              {(() => {
+                                const states = getStatesForCountry(manualCustomer.country);
+                                return states ? (
+                                  <select value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]">
+                                    <option value="">Select state</option>
+                                    {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                                  </select>
+                                ) : (
+                                  <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                                );
+                              })()}
                               <input type="text" value={manualCustomer.pincode} onChange={e => setManualCustomer({...manualCustomer, pincode: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Zip / Postal Code" />
-                              <input type="text" value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Country" />
+                              <select value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value, state: ''})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]">
+                                <option value="">Select country</option>
+                                {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                              </select>
                             </div>
                           </div>
                         )}
@@ -539,7 +554,7 @@ export function AdminCreateOrderPage() {
                         value={manualCustomer.line1} 
                         onChange={(val) => setManualCustomer({...manualCustomer, line1: val})}
                         onSelect={(place) => {
-                          setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country });
+                          setManualCustomer({ ...manualCustomer, line1: place.line1, city: place.city, state: place.state, pincode: place.pincode, country: place.country || 'United States' });
                         }}
                       />
                     </div>
@@ -547,13 +562,26 @@ export function AdminCreateOrderPage() {
                       <input type="text" value={manualCustomer.city} onChange={e => setManualCustomer({...manualCustomer, city: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="City" />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                      {(() => {
+                        const states = getStatesForCountry(manualCustomer.country);
+                        return states ? (
+                          <select value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]">
+                            <option value="">Select state</option>
+                            {states.map(s => <option key={s.code} value={s.name}>{s.name}</option>)}
+                          </select>
+                        ) : (
+                          <input type="text" value={manualCustomer.state} onChange={e => setManualCustomer({...manualCustomer, state: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="State" />
+                        );
+                      })()}
                     </div>
                     <div>
                       <input type="text" value={manualCustomer.pincode} onChange={e => setManualCustomer({...manualCustomer, pincode: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Zip / Postal Code" />
                     </div>
                     <div>
-                      <input type="text" value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]" placeholder="Country" />
+                      <select value={manualCustomer.country} onChange={e => setManualCustomer({...manualCustomer, country: e.target.value, state: ''})} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#08183A]">
+                        <option value="">Select country</option>
+                        {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -743,8 +771,9 @@ export function AdminCreateOrderPage() {
                       </label>
                       {shippingInsurance && (
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500">$</span>
-                          <input type="number" min="0" step="0.01" value={manualInsuranceFee} onChange={e => setManualInsuranceFee(e.target.value)} placeholder={((subtotal - discountAmt) * insuranceRate).toFixed(2)} className="w-20 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Coverage Value: $</span>
+                          <input type="number" min="0" step="0.01" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder={(subtotal - discountAmt).toFixed(2)} className="w-24 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide ml-2">Fee: ${calculatedInsuranceFee.toFixed(2)}</span>
                         </div>
                       )}
                     </div>

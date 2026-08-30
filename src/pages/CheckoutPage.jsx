@@ -306,7 +306,7 @@ function StripePaymentForm({ isPlacingOrder, handlePlaceOrder, termsAccepted, se
           <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
             className="mt-0.5 w-4 h-4 accent-brand-dark-blue shrink-0" />
           <span className="text-[11px] text-gray-500 leading-relaxed">
-            I agree to the Houra Jewels <Link to="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</Link>, understand that all sales are final—no returns or exchanges—as stated in the <Link to={isPickup ? "/pickup-policy" : "/shipping-policy"} target="_blank" className="text-brand-dark-blue font-bold underline">{isPickup ? 'Pickup Policy' : 'Shipping Policy'}</Link> and <Link to="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Exchange & Return Policy</Link>, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
+            I agree to the Houra Jewels <Link to="/terms-of-service" target="_blank" className="text-brand-dark-blue font-bold underline">Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Privacy Policy</Link>, understand that all sales are final—no returns or exchanges—as stated in the  <Link to="/returns-policy" target="_blank" className="text-brand-dark-blue font-bold underline">Exchange & Return Policy</Link>, and agree to contact Houra Jewels first regarding any billing issue before initiating a payment dispute or chargeback, except where permitted or required by applicable law or payment-network rules.
           </span>
         </label>
         <button
@@ -434,7 +434,7 @@ export function CheckoutPage() {
 
   useEffect(() => {
     if (user) {
-      setPickupContact({ name: user.name || '', email: user.email || '', phone: '' });
+      setPickupContact({ name: user.name || '', email: user.email || '', phone: user.phone ? getLocalPhone(user.phone) : '' });
       // Force US as default for pickup dial code (store is US-based; +1 matches both US and CA)
       setPickupDialCode('US');
       

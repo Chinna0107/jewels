@@ -19,15 +19,21 @@ export function CartPage() {
 
   // Helper: get live stock for a cart item from the products store
   const getLiveStock = (item) => {
+    const fallback = item.variant?.stock ?? item.product?.stock ?? 0;
     const liveProduct = products.find(p => p.id === item.product.id);
-    if (!liveProduct) return item.variant?.stock ?? 0;
+    if (!liveProduct) return fallback;
     let variants = liveProduct.variants;
     if (typeof variants === 'string') try { variants = JSON.parse(variants); } catch { variants = []; }
-    for (const v of (variants || [])) {
-      const s = (v.sizes || []).find(s => s.size === item.variant?.size);
-      if (s) return Number(s.stock ?? 0);
+    if (!variants || variants.length === 0) return Number(liveProduct.stock ?? fallback);
+    for (const v of variants) {
+      if (v.sizes && Array.isArray(v.sizes)) {
+        const s = v.sizes.find(s => s.size === item.variant?.size);
+        if (s) return Number(s.stock ?? 0);
+      } else if (v.size === item.variant?.size) {
+        return Number(v.stock ?? 0);
+      }
     }
-    return Number(liveProduct.stock ?? 0);
+    return fallback;
   };
   
   const container = React.useRef(null);
@@ -87,8 +93,8 @@ export function CartPage() {
       if (stockRes.ok) {
         const stockData = await stockRes.json();
         if (!stockData.available && stockData.unavailable && stockData.unavailable.length > 0) {
-          const names = stockData.unavailable.map(u => `"${u.name}" (${u.available ?? 0} available)`).join(', ');
-          showToast(`Stock unavailable: ${names} Product code: ${u.code}`, 'error');
+          const names = stockData.unavailable.map(u => `"${u.name}" (Code: ${u.product_code || u.code || 'N/A'}, ${u.available ?? 0} available)`).join(', ');
+          showToast(`Stock unavailable: ${names}`, 'error');
           return;
         }
       }

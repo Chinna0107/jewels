@@ -303,6 +303,11 @@ ${!isPickup ? `
                         Balance (${order.total - (order.advance_paid || 0)} pending)
                       </span>
                     )}
+                    {Number(order.balance_due) > 0 && order.status !== 'cancelled' && (
+                      <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                        Payment Pending (${Number(order.balance_due).toFixed(2)})
+                      </span>
+                    )}
                     <p className="text-lg font-bold text-[#D4AF37]">${Number(order.total).toLocaleString('en-IN')}</p>
                   </div>
                 </div>
@@ -604,6 +609,12 @@ ${!isPickup ? `
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#08183A]/60">Amount Pending</span>
                         <span className="text-xs font-bold text-amber-600">${(Number(order.total) - Number(order.advance_paid || 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {Number(order.balance_due) > 0 && order.status !== 'cancelled' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#08183A]/60">Payment Pending</span>
+                        <span className="text-xs font-bold text-amber-600">${Number(order.balance_due).toFixed(2)}</span>
                       </div>
                     )}
                     {order.stripe_payment_intent_id && (
