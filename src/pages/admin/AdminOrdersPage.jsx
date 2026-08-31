@@ -1114,7 +1114,7 @@ export function AdminOrdersPage() {
       setLoading(false);
       return;
     }
-    fetch(`${BACKEND_URL}/admin/orders`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${BACKEND_URL}/admin/orders?t=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
         if (d.orders) {

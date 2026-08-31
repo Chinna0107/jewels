@@ -103,12 +103,12 @@ function StatTile({ icon: Icon, target, prefix = '', suffix = '', label, link, c
 // ── Stats banner ─────────────────────────────────────────────────────────────
 function StatsBanner() {
   const stats = [
-    { icon: InstagramIcon, target: 12.6, decimals: 1, suffix: 'K', label: 'Instagram Family', color: '#E1306C', link: 'https://www.instagram.com/hourajewels?igsh=c2llNGRzM2RpbHZ3&utm_source=qr' },
-    { icon: Package, target: 1000, suffix: '+', label: 'Orders Delivered Across USA', color: '#D4AF37' },
-    { icon: MapPin, target: 500, suffix: '+', label: 'Pick Up Orders', color: '#60a5fa' },
-    { icon: Globe, target: 20, suffix: '+', label: 'International Orders', color: '#34d399' },
+    { icon: InstagramIcon, target: 13.5, decimals: 1, suffix: 'K', label: 'Instagram Family', color: '#E1306C', link: 'https://www.instagram.com/hourajewels?igsh=c2llNGRzM2RpbHZ3&utm_source=qr' },
+    { icon: Package, target: 1200, suffix: '+', label: 'Orders Delivered Across USA', color: '#D4AF37' },
+    { icon: MapPin, target: 600, suffix: '+', label: 'Pick Up Orders', color: '#60a5fa' },
+    { icon: Globe, target: 25, suffix: '+', label: 'International Orders', color: '#34d399' },
     { icon: Users, target: 1000, suffix: '+', label: 'Happy Customers', color: '#f472b6' },
-    { icon: Store, target: 15, suffix: '+', label: 'Offline Expo Stalls', color: '#a78bfa' },
+    { icon: Store, target: 20, suffix: '+', label: 'Offline Expo Stalls', color: '#a78bfa' },
   ];
 
   return (

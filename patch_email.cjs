@@ -1,8 +1,15 @@
 const fs = require('fs');
-const file = '/Users/hemanthkancharla/jewelsbe/utils/email.js';
-let content = fs.readFileSync(file, 'utf8');
-content = content.replace(
-  "const imageUrl = i.variant?.images?.[0] || i.product?.image_url || i.images?.[0] || '';",
-  `const rawImageUrl = i.variant?.images?.[0] || i.product?.image_url || i.images?.[0] || '';\n      const isBase64 = typeof rawImageUrl === 'string' && rawImageUrl.startsWith('data:image');\n      const imageUrl = isBase64 ? '' : rawImageUrl;`
+let file = fs.readFileSync('/Users/hemanthkancharla/jewelsbe/utils/email.js', 'utf8');
+
+file = file.replace(
+  /\$\{parseFloat\(balanceDue\)\.toFixed\(2\)\}<\/strong>/g,
+  '$\${parseFloat(balanceDue).toFixed(2)} USD</strong>'
 );
-fs.writeFileSync(file, content);
+
+file = file.replace(
+  /Pay Now \(\$\{parseFloat\(balanceDue\)\.toFixed\(2\)\}\)/g,
+  'Pay Now ($${parseFloat(balanceDue).toFixed(2)} USD)'
+);
+
+fs.writeFileSync('/Users/hemanthkancharla/jewelsbe/utils/email.js', file);
+console.log('patched email.js');

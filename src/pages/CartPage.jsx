@@ -93,7 +93,11 @@ export function CartPage() {
       if (stockRes.ok) {
         const stockData = await stockRes.json();
         if (!stockData.available && stockData.unavailable && stockData.unavailable.length > 0) {
-          const names = stockData.unavailable.map(u => `"${u.name}" (Code: ${u.product_code || u.code || 'N/A'}, ${u.available ?? 0} available)`).join(', ');
+          const names = stockData.unavailable.map(u => {
+            const matchedItem = items.find(i => (i.product?.name || i.name) === u.name);
+            const code = matchedItem?.variant?.size_code || matchedItem?.variant?.code || matchedItem?.product?.product_code || matchedItem?.product?.code || 'N/A';
+            return `"${u.name}" (Code: ${code}, ${u.available ?? 0} available)`;
+          }).join(', ');
           showToast(`Stock unavailable: ${names}`, 'error');
           return;
         }

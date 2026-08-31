@@ -16,7 +16,14 @@ export function AdminProductsPage() {
     variants: [
       { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "", notes: "" }] }
     ],
-    details: [],
+    details: [
+      { label: "Material", value: "Premium Stainless Steel" },
+      { label: "Plating", value: "18K Gold PVD Plated" },
+      { label: "Jewelry type", value: "Necklace" },
+      { label: "Stones", value: "Zircon" },
+      { label: "Size", value: "16 to 18 inches Adjustable Length" },
+      { label: "Weight", value: "3.3g" }
+    ],
     reviews: []
   };
 

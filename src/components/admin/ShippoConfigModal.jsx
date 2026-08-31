@@ -16,9 +16,30 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   // Determine default box size and weight in grams based on total quantity
   const totalQty = items.reduce((sum, item) => sum + (item.qty || 1), 0);
   
-  // Calculate total items weight (default 0g if unspecified)
   const itemsWeight = items.reduce((sum, item) => {
-    const pWeight = parseFloat(item.product?.weight || item.weight || 0);
+    let specificWeight = item.variant?.weight;
+    if (!specificWeight && item.product?.variants) {
+      let pVariants = item.product.variants;
+      if (typeof pVariants === 'string') {
+        try { pVariants = JSON.parse(pVariants); } catch(e) {}
+      }
+      if (Array.isArray(pVariants)) {
+        const vColor = (item.variant?.color || '').toLowerCase().trim();
+        const matchV = pVariants.find(v => (v.color || '').toLowerCase().trim() === vColor);
+        if (matchV && matchV.sizes) {
+          let vSizes = matchV.sizes;
+          if (typeof vSizes === 'string') {
+             try { vSizes = JSON.parse(vSizes); } catch(e) {}
+          }
+          if (Array.isArray(vSizes)) {
+            const searchSize = String(item.variant?.size || '').toLowerCase().trim();
+            const matchS = vSizes.find(s => String(s.size || '').toLowerCase().trim() === searchSize);
+            if (matchS && matchS.weight) specificWeight = matchS.weight;
+          }
+        }
+      }
+    }
+    const pWeight = parseFloat(specificWeight || item.product?.weight || item.weight || 0);
     return sum + (pWeight * (item.qty || 1));
   }, 0);
   

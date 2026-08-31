@@ -151,7 +151,7 @@ export function AdminCreateOrderPage() {
   const calculatedTax = manualTax ? Number(taxAmount) : (subtotal - discountAmt) * (Number(taxAmount) / 100);
   
   const calculatedSignatureFee = signatureRequired ? parseFloat(manualSignatureFee || 0) : 0;
-  const calculatedInsuranceFee = shippingInsurance ? ((insuranceDeclaredValue !== "" ? parseFloat(insuranceDeclaredValue) : (subtotal - discountAmt)) * insuranceRate) : 0;
+  const calculatedInsuranceFee = shippingInsurance ? ((insuranceDeclaredValue !== "" ? parseFloat(insuranceDeclaredValue) : (subtotal - discountAmt + calculatedTax)) * insuranceRate) : 0;
   
   // Base shipping fee before extras
   const baseShipping = manualShipping ? Number(shippingFee || 0) : (subtotal > 200 ? 0 : 6);
@@ -175,7 +175,7 @@ export function AdminCreateOrderPage() {
         signature_required: signatureRequired,
         signature_fee: calculatedSignatureFee,
         insurance_requested: shippingInsurance,
-        insurance_amount: calculatedInsuranceFee,
+        insurance_amount: shippingInsurance ? (insuranceDeclaredValue !== "" ? parseFloat(insuranceDeclaredValue) : (subtotal - discountAmt + calculatedTax)) : 0,
         insurance_fee: calculatedInsuranceFee
       };
     } else {
@@ -209,7 +209,7 @@ export function AdminCreateOrderPage() {
         signature_required: signatureRequired,
         signature_fee: calculatedSignatureFee,
         insurance_requested: shippingInsurance,
-        insurance_amount: calculatedInsuranceFee,
+        insurance_amount: shippingInsurance ? (insuranceDeclaredValue !== "" ? parseFloat(insuranceDeclaredValue) : (subtotal - discountAmt + calculatedTax)) : 0,
         insurance_fee: calculatedInsuranceFee
       };
     }
@@ -772,7 +772,7 @@ export function AdminCreateOrderPage() {
                       {shippingInsurance && (
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Coverage Value: $</span>
-                          <input type="number" min="0" step="0.01" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder={(subtotal - discountAmt).toFixed(2)} className="w-24 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
+                          <input type="number" min="0" step="0.01" value={insuranceDeclaredValue} onChange={e => setInsuranceDeclaredValue(e.target.value)} placeholder={(subtotal - discountAmt + calculatedTax).toFixed(2)} className="w-24 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none" />
                           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide ml-2">Fee: ${calculatedInsuranceFee.toFixed(2)}</span>
                         </div>
                       )}
