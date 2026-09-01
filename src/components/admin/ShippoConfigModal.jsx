@@ -55,7 +55,7 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
   const [height, setHeight] = useState("1");
   const [weight, setWeight] = useState(initialWeight);
 
-  const [signatureRequired, setSignatureRequired] = useState(!!address.signature_required);
+  const [signatureRequired, setSignatureRequired] = useState(false);
   const [insuranceRequested, setInsuranceRequested] = useState(!!address.insurance_requested);
   const [insuranceAmount, setInsuranceAmount] = useState(address.insurance_amount ? String(address.insurance_amount) : "");
 

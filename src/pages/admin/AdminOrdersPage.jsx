@@ -1852,7 +1852,7 @@ ${!isPickup ? `
                           {address.insurance_requested && (
                             <div className="flex items-start gap-2">
                               <span className="text-[10px] font-bold text-[#08183A]/40 uppercase tracking-wider w-14 shrink-0 mt-0.5">Extras</span>
-                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">🛡️ Insured (${address.insurance_amount})</span>
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">🛡️ Insured (${Number(address.insurance_amount).toFixed(2)})</span>
                             </div>
                           )}
                         </div>
