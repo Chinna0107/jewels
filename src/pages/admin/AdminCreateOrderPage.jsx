@@ -24,6 +24,7 @@ export function AdminCreateOrderPage() {
   // Form State
   const [orderType, setOrderType] = useState("shipping"); // 'shipping' | 'pickup'
   const [paymentMethod, setPaymentMethod] = useState("offline"); // 'offline' | 'payment_link'
+  const [transactionId, setTransactionId] = useState(""); // manual transaction ID for offline payments
   
   // Shipping Options
   const [signatureRequired, setSignatureRequired] = useState(false);
@@ -240,7 +241,7 @@ export function AdminCreateOrderPage() {
         coupon_code: couponCode,
         order_type: orderType,
         payment_method: paymentMethod, // 'offline' or 'payment_link'
-        is_admin_created: true,
+        stripe_payment_intent_id: paymentMethod === 'offline' ? transactionId : null,
         balance_due: paymentMethod === 'payment_link' ? total : 0,
         signature_fee: calculatedSignatureFee,
         insurance_fee: calculatedInsuranceFee
@@ -708,6 +709,17 @@ export function AdminCreateOrderPage() {
                       <span className="text-[10px] text-gray-500">Mark as paid immediately</span>
                     </div>
                   </label>
+                  {paymentMethod === 'offline' && (
+                    <div className="ml-7 mb-2">
+                      <input 
+                        type="text" 
+                        placeholder="Transaction ID (Zelle, Check, etc.)" 
+                        value={transactionId} 
+                        onChange={(e) => setTransactionId(e.target.value)} 
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                  )}
                   <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
                     <input type="radio" name="paymentMethod" value="payment_link" checked={paymentMethod === 'payment_link'} onChange={() => setPaymentMethod('payment_link')} className="w-4 h-4 accent-[#08183A]" />
                     <div className="flex flex-col">

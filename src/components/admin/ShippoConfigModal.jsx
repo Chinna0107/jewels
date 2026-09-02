@@ -57,7 +57,7 @@ export function ShippoConfigModal({ order, onClose, onSubmit }) {
 
   const [signatureRequired, setSignatureRequired] = useState(false);
   const [insuranceRequested, setInsuranceRequested] = useState(!!address.insurance_requested);
-  const [insuranceAmount, setInsuranceAmount] = useState(address.insurance_amount ? String(address.insurance_amount) : "");
+  const [insuranceAmount, setInsuranceAmount] = useState(address.insurance_amount ? String(parseFloat(address.insurance_amount).toFixed(2)) : "");
 
   // International Check
   const isInternational = address.country && address.country.toLowerCase() !== "united states" && address.country.toLowerCase() !== "us";
