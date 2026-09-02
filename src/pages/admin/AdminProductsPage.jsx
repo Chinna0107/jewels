@@ -12,7 +12,7 @@ export function AdminProductsPage() {
   const [editProduct, setEditProduct] = useState(null);
   
   const initialFormData = { 
-    name: "", description: "", product_code: "", instagram_reel_url: "", category: "", model: "", is_active: true, allow_reviews: true,
+    name: "", description: "Elevate your everyday style with our Premium 18K Gold PVD-Plated Stainless Steel Jewelry, thoughtfully crafted for a luxurious look, lasting durability, and enduring shine.\n\nWaterproof • Sweatproof • Hypoallergenic • Tarnish-Resistant\n\nDesigned for everyday luxury, each piece blends timeless sophistication with modern style.\n\nMade to shine. Made to last. Made for every look.\n\nWear it Once, Love it Forever.", product_code: "", instagram_reel_url: "", category: "", model: "", is_active: true, allow_reviews: true,
     variants: [
       { color: "", instagram_link: "", images: [], sizes: [{ size: "", mrp: "", our_price: "", stock: 0, stock_delta: "", code: "", weight: "", offer_id: "", notes: "" }] }
     ],
