@@ -195,16 +195,13 @@ export function LoginPage() {
   const handleGoogleSuccess = async (tokenResponse) => {
     setLocalError('');
     const res = await googleLogin(tokenResponse.access_token || tokenResponse.credential || tokenResponse.id_token);
-    // Note: useGoogleLogin with flow: 'implicit' gives access_token. We can use googleAuth if it accepts id_token or access_token.
-    // To get id_token, we should use standard credentialResponse from GoogleLogin, OR use implicit flow but backend needs userinfo endpoint.
-    // Wait, the backend verifyIdToken expects an id_token!
-    // So we should NOT use `useGoogleLogin` which only gives access_token unless we use flow: 'auth-code'.
-    // Actually, `useGoogleLogin` with flow default gives an access token.
-    // Let me revise this. I'll use `GoogleLogin` component if I want idToken easily, OR I can use `useGoogleLogin` and fetch user info on frontend and pass it, OR better yet, just use `googleAuth(tokenResponse.credential)` if I use the bare `GoogleLogin` component, OR I can just use `google-auth-library` verifyIdToken if I can get the id_token.
-    // Let's use `useGoogleLogin` with `flow: 'implicit'` but wait! We can just fetch user info on the frontend and send it to our backend, or even better, if we need idToken, we can use `window.google.accounts.oauth2` or just use the `<GoogleLogin />` component. Since we have custom buttons, `useGoogleLogin` is required.
-    // Wait! `useGoogleLogin` DOES NOT return an `id_token`. It only returns an `access_token`. The backend `verifyIdToken` requires an `id_token`.
-    // Instead of `verifyIdToken` in backend, I can fetch `https://www.googleapis.com/oauth2/v3/userinfo` with the `access_token`!
-    // That's much easier for custom buttons. Let's change backend to accept `accessToken` instead.
+    if (res.success) {
+      navigate(res.role === 'admin' ? '/admin' : redirect);
+    } else if (res.requireSignup) {
+      navigate('/signup');
+    } else {
+      setLocalError(res.error);
+    }
   };
 
   const loginWithGoogle = useGoogleLogin({
@@ -212,8 +209,13 @@ export function LoginPage() {
       setLocalError('');
       // Send access_token to backend
       const res = await googleLogin(tokenResponse.access_token);
-      if (res.success) navigate(res.role === 'admin' ? '/admin' : redirect);
-      else setLocalError(res.error);
+      if (res.success) {
+        navigate(res.role === 'admin' ? '/admin' : redirect);
+      } else if (res.requireSignup) {
+        navigate('/signup');
+      } else {
+        setLocalError(res.error);
+      }
     },
     onError: () => {
       setLocalError('Google Login Failed');

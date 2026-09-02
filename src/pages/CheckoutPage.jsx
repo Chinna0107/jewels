@@ -758,6 +758,8 @@ export function CheckoutPage() {
       }
     } else if (orderType === 'pickup') {
       if (!pickupContact.name.trim()) { showToast('Please enter your name.', 'error'); return; }
+      if (!pickupContact.email.trim()) { showToast('Please enter your email address for the receipt.', 'error'); return; }
+      if (!/^\S+@\S+\.\S+$/.test(pickupContact.email.trim())) { showToast('Please enter a valid email address.', 'error'); return; }
       if (pickupContact.phone.replace(/\D/g, '').length < 10) {
         showToast('Please enter a valid 10-digit phone number for pickup notification.', 'error');
         return;
@@ -1627,8 +1629,9 @@ export function CheckoutPage() {
               {/* Email */}
               {!user?.email && (
                 <div>
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Email (optional)</label>
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Email (required for receipt)</label>
                   <input
+                    required
                     value={pickupContact.email}
                     onChange={e => setPickupContact(p => ({ ...p, email: e.target.value }))}
                     placeholder="your@email.com"

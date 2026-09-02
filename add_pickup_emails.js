@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 const file = '/Users/hemanthkancharla/jewelsbe/utils/email.js';
 let content = fs.readFileSync(file, 'utf8');
 
@@ -52,7 +51,7 @@ async function sendReadyForPickupEmail(order) {
     console.error('Customer ready for pickup email send failed:', err);
   }
 }
-`;
+\`;
 
 const pickupCompletedFunc = `
 async function sendPickupCompletedEmail(order) {
@@ -102,7 +101,7 @@ async function sendPickupCompletedEmail(order) {
     console.error('Customer pickup completed email send failed:', err);
   }
 }
-`;
+\`;
 
 if (!content.includes('sendReadyForPickupEmail')) {
   content = content.replace('module.exports = {', readyForPickupFunc + '\n' + pickupCompletedFunc + '\nmodule.exports = {');
@@ -111,23 +110,4 @@ if (!content.includes('sendReadyForPickupEmail')) {
   console.log('Updated email.js');
 } else {
   console.log('Already exists');
-}
-
-const adminFile = '/Users/hemanthkancharla/jewelsbe/routes/admin.js';
-let adminContent = fs.readFileSync(adminFile, 'utf8');
-
-if (!adminContent.includes('sendReadyForPickupEmail')) {
-  adminContent = adminContent.replace("if (status === 'shipped') {", 
-  `} else if (status === 'ready for pickup') {
-        const { sendReadyForPickupEmail } = require('../utils/email');
-        if (sendReadyForPickupEmail) await sendReadyForPickupEmail(order);
-      } else if (status === 'pickup completed') {
-        const { sendPickupCompletedEmail } = require('../utils/email');
-        if (sendPickupCompletedEmail) await sendPickupCompletedEmail(order);
-      }
-      if (status === 'shipped') {`);
-  fs.writeFileSync(adminFile, adminContent);
-  console.log('Updated admin.js');
-} else {
-  console.log('admin.js already updated');
 }

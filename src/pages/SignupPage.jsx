@@ -222,7 +222,7 @@ export function SignupPage() {
       setLocalError('Mobile number must be exactly 10 digits.');
       return;
     }
-    const res = await googleLogin(pendingGoogleToken, form.phone, form.country);
+    const res = await googleLogin(pendingGoogleToken, form.phone, form.country, true);
     if (res.success) {
       const authState = useAuthStore.getState();
       await useAuthStore.getState().updateProfile(authState.user?.name, form.phone, form.country);

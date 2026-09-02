@@ -194,8 +194,8 @@ function EditOrderModal({ order, onClose, onSaved }) {
   const [emailingLink, setEmailingLink] = useState(false);
 
   // Shipping Add-ons
-  const [signatureRequired, setSignatureRequired] = useState(!!parseFloat(addr.signature_fee));
-  const [manualSignatureFee, setManualSignatureFee] = useState(parseFloat(addr.signature_fee) || 6);
+  const [signatureRequired, setSignatureRequired] = useState(addr.signature_required === true || addr.signature_required === 'true' || !!parseFloat(addr.signature_fee));
+  const [manualSignatureFee, setManualSignatureFee] = useState(parseFloat(addr.signature_fee) || 4);
 
   const [shippingInsurance, setShippingInsurance] = useState(!!parseFloat(addr.insurance_fee));
   const [manualInsuranceFee, setManualInsuranceFee] = useState(parseFloat(addr.insurance_fee) || 0);
@@ -1085,10 +1085,12 @@ function RefundModal({ order, refunding, refundResult, onConfirm, onClose }) {
   );
 }
 
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
 export function AdminOrdersPage() {
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    libraries: ['places'],
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   const [orders, setOrders] = useState([]);

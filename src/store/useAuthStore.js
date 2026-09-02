@@ -86,17 +86,18 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  googleLogin: async (idToken, phone, country) => {
+  googleLogin: async (idToken, phone, country, isSignup = false) => {
     set({ loading: true, error: null });
     try {
-      const { data } = await api.post('/auth/google', { idToken, phone, country });
+      const { data } = await api.post('/auth/google', { idToken, phone, country, isSignup });
       localStorage.setItem('token', data.token);
       set({ token: data.token, user: data.user, loading: false });
       return { success: true, role: data.user.role };
     } catch (err) {
       const error = err.response?.data?.error || 'Google Login failed';
+      const requireSignup = err.response?.data?.requireSignup || false;
       set({ loading: false, error });
-      return { success: false, error };
+      return { success: false, error, requireSignup };
     }
   },
 
